@@ -1,0 +1,6 @@
+[spio]
+manifest-version = 1
+
+[package]
+name = "bad name"
+version = "0.1.0"

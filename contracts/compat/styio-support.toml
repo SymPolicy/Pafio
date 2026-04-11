@@ -1,0 +1,16 @@
+schema = 1
+spio_version = "0.1.0-dev"
+
+[[supported_styio]]
+min = "0.0.1"
+max_exclusive = "0.1.0"
+channel = "stable"
+edition_max = "2026"
+required_capabilities = [
+  "machine_info_json",
+  "single_file_entry",
+  "jsonl_diagnostics"
+]
+supported_compile_plan_versions = []
+integration_phase = "bootstrap-only"
+notes = "Current bootstrap compatibility stops at manifest validation, handshake, and compiler metadata. Project build/run integration must wait for a published compile-plan contract."

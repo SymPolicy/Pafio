@@ -1,0 +1,9 @@
+[spio]
+manifest-version = 1
+
+[package]
+name = "acme/app"
+version = "0.1.0"
+
+[dependencies]
+core = { package = "acme/core", path = "../core", version = "^1.0.0" }

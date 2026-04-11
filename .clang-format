@@ -1,0 +1,50 @@
+Language: Cpp
+BasedOnStyle: Google
+IndentWidth: 2
+UseTab: Never
+TabWidth: 2
+ColumnLimit: 0
+PointerAlignment: Right
+AccessModifierOffset: -2
+AlignAfterOpenBracket: BlockIndent
+ContinuationIndentWidth: 2
+BreakBeforeBraces: Custom
+BraceWrapping:
+  AfterClass: true
+  AfterEnum: true
+  AfterNamespace: true
+  AfterStruct: true
+  AfterUnion: true
+  AfterExternBlock: true
+  AfterFunction: false
+  AfterCaseLabel: false
+  AfterControlStatement: Never
+  BeforeCatch: true
+  BeforeElse: true
+  BeforeLambdaBody: true
+  BeforeWhile: false
+  SplitEmptyFunction: true
+  SplitEmptyRecord: true
+  SplitEmptyNamespace: true
+BreakBeforeBinaryOperators: NonAssignment
+AlignOperands: Align
+BreakBeforeTernaryOperators: true
+BreakConstructorInitializers: AfterColon
+BreakStringLiterals: true
+BinPackArguments: false
+BinPackParameters: false
+BitFieldColonSpacing: After
+DerivePointerAlignment: true
+EmptyLineBeforeAccessModifier: Always
+AllowShortEnumsOnASingleLine: false
+AllowShortFunctionsOnASingleLine: Empty
+AllowShortLambdasOnASingleLine: Empty
+AllowShortCaseLabelsOnASingleLine: false
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortBlocksOnASingleLine: Empty
+AllowShortLoopsOnASingleLine: false
+AlwaysBreakAfterReturnType: TopLevelDefinitions
+AlwaysBreakTemplateDeclarations: Yes
+IncludeBlocks: Regroup
+SpaceAfterTemplateKeyword: true
+SeparateDefinitionBlocks: Always

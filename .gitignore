@@ -39,3 +39,19 @@
 
 # debug information files
 *.dwo
+
+.build/
+build/
+build-codex/
+.spio/
+tmp/
+dist/
+*.tmp
+*.log
+CMakeUserPresets.json
+CMakePresets.json
+CMakeCache.txt
+CMakeFiles/
+Testing/
+__pycache__/
+.pytest_cache/
