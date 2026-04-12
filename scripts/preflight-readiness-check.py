@@ -13,6 +13,7 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 NATIVE_CHECK = ROOT / "scripts" / "native-check.sh"
 EXTRACTABILITY_CHECK = ROOT / "scripts" / "extractability-check.sh"
 SPIO = ROOT / "scripts" / "spio"
+STYIO_INTERFACE_GATE = ROOT / "scripts" / "styio-interface-gate.py"
 FIXTURE_MANIFEST = ROOT / "tests" / "unit" / "fixtures" / "manifests" / "ok-single-package" / "spio.toml"
 
 
@@ -58,6 +59,19 @@ def main(argv: list[str] | None = None) -> int:
                     str(FIXTURE_MANIFEST),
                     "--styio-bin",
                     args.styio_bin,
+                ],
+                env=env,
+            )
+        )
+        steps.append(
+            run_step(
+                "styio_interface_gate",
+                [
+                    sys.executable,
+                    str(STYIO_INTERFACE_GATE),
+                    "--styio-bin",
+                    args.styio_bin,
+                    "--json",
                 ],
                 env=env,
             )

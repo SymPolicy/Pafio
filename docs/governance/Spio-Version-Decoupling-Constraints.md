@@ -45,6 +45,7 @@ styio --machine-info=json
 
 The returned payload is the authority for:
 
+- tool identity
 - supported machine contract versions
 - supported capability flags
 - maximum supported `edition`
@@ -80,6 +81,8 @@ Every `spio` build cache key must include at least:
 No build output may be shared across mismatched values for those dimensions.
 
 Pinned git source caches must also live under hermetic `SPIO_HOME` state rather than arbitrary developer-local checkouts.
+
+Managed compiler installs created by `spio tool install` must also live under hermetic `SPIO_HOME/tools/` state rather than arbitrary mutable developer-local paths.
 
 ## 7. Lockfile Stability
 

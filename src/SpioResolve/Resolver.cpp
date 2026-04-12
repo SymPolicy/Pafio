@@ -1,8 +1,10 @@
 #include "SpioResolve/Resolver.hpp"
 
 #include "SpioCore/Errors.hpp"
+#include "SpioCore/Paths.hpp"
 #include "SpioCore/Version.hpp"
 #include "SpioManifest/Manifest.hpp"
+#include "SpioRegistryClient/Client.hpp"
 
 #include <algorithm>
 #include <array>
@@ -31,6 +33,7 @@ enum class SourceKind
   kWorkspace,
   kPath,
   kGit,
+  kRegistry,
 };
 
 struct SourceOrigin
@@ -38,6 +41,9 @@ struct SourceOrigin
   SourceKind kind = SourceKind::kPath;
   std::optional<std::string> git_source;
   std::optional<std::string> git_rev;
+  std::optional<std::string> registry_root;
+  std::optional<std::string> registry_version;
+  std::optional<std::string> registry_sha256;
   std::optional<std::string> repo_hash;
   std::optional<fs::path> snapshot_root;
 };
@@ -196,19 +202,6 @@ std::string TrimTrailingNewline(std::string text)
   return text;
 }
 
-fs::path ResolveSpioHome()
-{
-  if (const char *explicit_home = std::getenv("SPIO_HOME"); explicit_home != nullptr && explicit_home[0] != '\0')
-  {
-    return CanonicalAbsolutePath(explicit_home);
-  }
-  if (const char *home = std::getenv("HOME"); home != nullptr && home[0] != '\0')
-  {
-    return CanonicalAbsolutePath(fs::path(home) / ".spio");
-  }
-  throw spio::CacheError("unable to resolve SPIO_HOME: set SPIO_HOME or HOME");
-}
-
 std::string SourceKindString(SourceKind kind)
 {
   switch (kind)
@@ -219,11 +212,13 @@ std::string SourceKindString(SourceKind kind)
       return "path";
     case SourceKind::kGit:
       return "git";
+    case SourceKind::kRegistry:
+      return "registry";
   }
   return "path";
 }
 
-std::string GitRelativeKey(const SourceOrigin &origin, const fs::path &package_dir)
+std::string SnapshotRelativeKey(const SourceOrigin &origin, const fs::path &package_dir)
 {
   const fs::path snapshot_root = CanonicalAbsolutePath(origin.snapshot_root.value());
   const fs::path relative = CanonicalAbsolutePath(package_dir).lexically_relative(snapshot_root);
@@ -235,7 +230,11 @@ std::string BuildSourceFingerprint(const SourceOrigin &origin, const fs::path &p
 {
   if (origin.kind == SourceKind::kGit)
   {
-    return "git:" + origin.git_source.value() + "#" + origin.git_rev.value() + ":" + GitRelativeKey(origin, package_dir);
+    return "git:" + origin.git_source.value() + "#" + origin.git_rev.value() + ":" + SnapshotRelativeKey(origin, package_dir);
+  }
+  if (origin.kind == SourceKind::kRegistry)
+  {
+    return "registry:" + origin.registry_root.value() + "#" + origin.registry_sha256.value() + ":" + SnapshotRelativeKey(origin, package_dir);
   }
   return SourceKindString(origin.kind) + ":" + PathKey(package_dir);
 }
@@ -246,6 +245,10 @@ std::string BuildLockId(const SourceOrigin &origin, const spio::PackageConfig &p
   if (origin.kind == SourceKind::kGit)
   {
     id += "#" + origin.git_rev.value();
+  }
+  else if (origin.kind == SourceKind::kRegistry)
+  {
+    id += "#" + origin.registry_sha256.value();
   }
   return id;
 }
@@ -268,9 +271,14 @@ std::vector<spio::Dependency> CollectDependencies(const spio::PackageConfig &pac
 class GitSourceCache
 {
 public:
-  explicit GitSourceCache(const fs::path &spio_home)
-      : spio_home_(CanonicalAbsolutePath(spio_home))
+  explicit GitSourceCache(const fs::path &spio_home, const bool offline, std::optional<fs::path> vendor_root)
+      : spio_home_(CanonicalAbsolutePath(spio_home)),
+        offline_(offline)
   {
+    if (vendor_root.has_value())
+    {
+      vendor_root_ = CanonicalAbsolutePath(*vendor_root);
+    }
     fs::create_directories(spio_home_ / "git" / "repos");
     fs::create_directories(spio_home_ / "git" / "checkouts");
   }
@@ -278,10 +286,34 @@ public:
   SourceOrigin Materialize(const std::string &normalized_source, const std::string &rev)
   {
     const std::string repo_hash = Hex64(Fnv1a64(normalized_source));
+    if (const std::optional<fs::path> vendored_snapshot = FindVendoredSnapshot(repo_hash, rev); vendored_snapshot.has_value())
+    {
+      return SourceOrigin{
+          .kind = SourceKind::kGit,
+          .git_source = normalized_source,
+          .git_rev = rev,
+          .repo_hash = repo_hash,
+          .snapshot_root = *vendored_snapshot,
+      };
+    }
+
     const fs::path repo_dir = spio_home_ / "git" / "repos" / (repo_hash + ".git");
-    EnsureMirror(normalized_source, repo_dir);
+    if (!fs::exists(repo_dir))
+    {
+      if (offline_)
+      {
+        throw spio::FetchError(
+            "offline mode requires a vendored snapshot or cached git mirror for '" + normalized_source + "'");
+      }
+      EnsureMirror(normalized_source, repo_dir);
+    }
     if (!HasRevision(repo_dir, rev))
     {
+      if (offline_)
+      {
+        throw spio::FetchError(
+            "offline mode is missing git rev '" + rev + "' in the local cache for '" + normalized_source + "'");
+      }
       FetchOrigin(repo_dir);
       if (!HasRevision(repo_dir, rev))
       {
@@ -301,6 +333,27 @@ public:
   }
 
 private:
+  std::optional<fs::path> FindVendoredSnapshot(const std::string &repo_hash, const std::string &rev) const
+  {
+    if (!vendor_root_.has_value())
+    {
+      return std::nullopt;
+    }
+
+    const fs::path snapshot_root = *vendor_root_ / "git" / repo_hash / rev;
+    if (!fs::exists(snapshot_root))
+    {
+      return std::nullopt;
+    }
+
+    const fs::path ready_marker = snapshot_root / ".spio-snapshot-ready";
+    if (fs::exists(ready_marker) || fs::exists(snapshot_root / "spio.toml"))
+    {
+      return CanonicalAbsolutePath(snapshot_root);
+    }
+    return std::nullopt;
+  }
+
   void EnsureMirror(const std::string &normalized_source, const fs::path &repo_dir) const
   {
     if (fs::exists(repo_dir))
@@ -381,15 +434,18 @@ private:
   }
 
   fs::path spio_home_;
+  bool offline_ = false;
+  std::optional<fs::path> vendor_root_;
 };
 
 class SingleVersionResolver
 {
 public:
-  explicit SingleVersionResolver(const fs::path &manifest_path)
+  explicit SingleVersionResolver(const fs::path &manifest_path, const spio::ResolveOptions &options)
       : root_manifest_path_(CanonicalAbsolutePath(manifest_path)),
         root_manifest_(spio::LoadManifest(root_manifest_path_)),
-        git_cache_(ResolveSpioHome())
+        options_(NormalizeOptions(root_manifest_path_, options)),
+        git_cache_(spio::ResolveSpioHome(), options_.offline, options_.vendor_root)
   {
     BuildRootSeeds();
   }
@@ -428,6 +484,10 @@ public:
           .source_kind = SourceKindString(node.origin.kind),
           .git = node.origin.git_source,
           .rev = node.origin.git_rev,
+          .registry = node.origin.registry_root,
+          .sha256 = node.origin.registry_sha256,
+          .repo_hash = node.origin.repo_hash,
+          .snapshot_root = node.origin.snapshot_root,
           .dependencies = node.dependencies,
           .dependency_aliases = node.dependency_aliases,
       });
@@ -452,6 +512,8 @@ public:
           .source_kind = package.source_kind,
           .git = package.git,
           .rev = package.rev,
+          .registry = package.registry,
+          .sha256 = package.sha256,
           .dependencies = package.dependencies,
       });
     }
@@ -466,6 +528,24 @@ public:
   }
 
 private:
+  static spio::ResolveOptions NormalizeOptions(const fs::path &manifest_path, const spio::ResolveOptions &options)
+  {
+    spio::ResolveOptions normalized = options;
+    if (!normalized.vendor_root.has_value())
+    {
+      const fs::path default_vendor_root = spio::ProjectVendorRootForManifest(manifest_path);
+      if (fs::exists(default_vendor_root))
+      {
+        normalized.vendor_root = default_vendor_root;
+      }
+    }
+    else
+    {
+      normalized.vendor_root = CanonicalAbsolutePath(*normalized.vendor_root);
+    }
+    return normalized;
+  }
+
   struct Node
   {
     fs::path manifest_path;
@@ -602,7 +682,7 @@ private:
     }
 
     SourceOrigin selected_origin = origin_hint;
-    if (origin_hint.kind != SourceKind::kGit)
+    if (origin_hint.kind == SourceKind::kWorkspace || origin_hint.kind == SourceKind::kPath)
     {
       const std::string selected_dir = PathKey(matches.front().parent_path());
       selected_origin.kind = top_level_workspace_dirs_.contains(selected_dir) ? SourceKind::kWorkspace : SourceKind::kPath;
@@ -646,6 +726,35 @@ private:
       throw spio::ResolutionError("git dependency snapshot does not contain spio.toml: " + root_manifest.string());
     }
     return SelectPackageManifestFromRoot(root_manifest, git_origin, dependency.package);
+  }
+
+  ManifestSelection ResolveRegistryDependency(const Node &parent, const spio::Dependency &dependency)
+  {
+    (void) parent;
+    if (!dependency.package.has_value())
+    {
+      throw spio::ResolutionError("registry dependency '" + dependency.alias + "' must declare package = \"namespace/name\"");
+    }
+    if (!dependency.version.has_value())
+    {
+      throw spio::ResolutionError("registry dependency '" + dependency.alias + "' must declare version = \"x.y.z\"");
+    }
+
+    const spio::RegistryMaterializationResult materialized =
+        spio::MaterializeRegistryPackage(dependency.source, *dependency.package, *dependency.version, options_.offline);
+    const SourceOrigin registry_origin{
+        .kind = SourceKind::kRegistry,
+        .registry_root = materialized.registry_root,
+        .registry_version = materialized.version,
+        .registry_sha256 = materialized.sha256,
+        .snapshot_root = materialized.snapshot_root,
+    };
+    const fs::path root_manifest = materialized.snapshot_root / "spio.toml";
+    if (!fs::exists(root_manifest))
+    {
+      throw spio::ResolutionError("registry dependency snapshot does not contain spio.toml: " + root_manifest.string());
+    }
+    return SelectPackageManifestFromRoot(root_manifest, registry_origin, dependency.package);
   }
 
   size_t ResolveNode(const fs::path &manifest_path, const SourceOrigin &origin)
@@ -712,9 +821,13 @@ private:
       {
         selected = ResolvePathDependency(nodes_.at(node_index), dependency);
       }
-      else
+      else if (dependency.source_kind == spio::DependencySourceKind::kGit)
       {
         selected = ResolveGitDependency(nodes_.at(node_index), dependency);
+      }
+      else
+      {
+        selected = ResolveRegistryDependency(nodes_.at(node_index), dependency);
       }
 
       const size_t dependency_index = ResolveNode(selected.manifest_path, selected.origin);
@@ -751,6 +864,7 @@ private:
 
   fs::path root_manifest_path_;
   spio::ManifestDocument root_manifest_;
+  spio::ResolveOptions options_;
   GitSourceCache git_cache_;
   std::vector<ManifestSelection> root_seeds_;
   std::set<std::string> top_level_workspace_dirs_;
@@ -764,14 +878,14 @@ private:
 namespace spio
 {
 
-ResolvedGraphResult ResolveSingleVersionGraph(const fs::path &manifest_path)
+ResolvedGraphResult ResolveSingleVersionGraph(const fs::path &manifest_path, const ResolveOptions &options)
 {
-  return SingleVersionResolver(manifest_path).ResolveGraph();
+  return SingleVersionResolver(manifest_path, options).ResolveGraph();
 }
 
-LockGenerationResult ResolveSingleVersionLockfile(const fs::path &manifest_path)
+LockGenerationResult ResolveSingleVersionLockfile(const fs::path &manifest_path, const ResolveOptions &options)
 {
-  return SingleVersionResolver(manifest_path).Resolve();
+  return SingleVersionResolver(manifest_path, options).Resolve();
 }
 
 }  // namespace spio

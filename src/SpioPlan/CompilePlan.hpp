@@ -1,5 +1,7 @@
 #pragma once
 
+#include "SpioResolve/Resolver.hpp"
+
 #include <cstddef>
 #include <filesystem>
 #include <optional>
@@ -18,6 +20,8 @@ struct BuildPlanRequest
   bool select_lib = false;
   std::string profile = "dev";
   std::optional<std::string> compiler_version;
+  bool offline = false;
+  std::optional<std::filesystem::path> vendor_root;
 };
 
 struct BuildPlanResult

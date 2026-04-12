@@ -1,0 +1,246 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import pathlib
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+
+
+ROOT = pathlib.Path(__file__).resolve().parents[1]
+DEFAULT_SPIO = ROOT / "scripts" / "spio"
+DEFAULT_FIXTURE_MANIFEST = ROOT / "tests" / "unit" / "fixtures" / "manifests" / "ok-single-package" / "spio.toml"
+SEMVER_RE = re.compile(r"^\d+\.\d+\.\d+$")
+EDITION_RE = re.compile(r"^\d+$")
+
+
+def run_step(name: str, command: list[str], *, env: dict[str, str] | None = None) -> dict:
+    try:
+        proc = subprocess.run(
+            command,
+            cwd=str(ROOT),
+            capture_output=True,
+            text=True,
+            env=env,
+        )
+        return {
+            "name": name,
+            "command": command,
+            "returncode": proc.returncode,
+            "stdout": proc.stdout,
+            "stderr": proc.stderr,
+            "ok": proc.returncode == 0,
+        }
+    except OSError as err:
+        return {
+            "name": name,
+            "command": command,
+            "returncode": 127,
+            "stdout": "",
+            "stderr": str(err),
+            "ok": False,
+        }
+
+
+def load_json(stdout_text: str, context: str) -> dict:
+    try:
+        payload = json.loads(stdout_text)
+    except json.JSONDecodeError as err:
+        raise RuntimeError(f"{context} did not emit valid JSON") from err
+    if not isinstance(payload, dict):
+        raise RuntimeError(f"{context} must emit a top-level JSON object")
+    return payload
+
+
+def validate_machine_info(payload: dict, *, require_compile_plan: bool) -> list[str]:
+    errors: list[str] = []
+
+    tool = payload.get("tool")
+    if tool != "styio":
+        errors.append("machine-info field 'tool' must equal 'styio'")
+
+    compiler_version = payload.get("compiler_version")
+    if not isinstance(compiler_version, str) or not SEMVER_RE.match(compiler_version):
+        errors.append("machine-info field 'compiler_version' must be strict semver x.y.z")
+
+    channel = payload.get("channel")
+    if not isinstance(channel, str) or not channel:
+        errors.append("machine-info field 'channel' must be a non-empty string")
+
+    supported_contracts = payload.get("supported_contracts")
+    if not isinstance(supported_contracts, dict):
+        errors.append("machine-info field 'supported_contracts' must be an object")
+    else:
+        compile_plan = supported_contracts.get("compile_plan")
+        if not isinstance(compile_plan, list) or not all(isinstance(item, int) for item in compile_plan):
+            errors.append("machine-info field 'supported_contracts.compile_plan' must be an array of integers")
+        elif require_compile_plan and 1 not in compile_plan:
+            errors.append("machine-info must advertise compile-plan v1 support when --require-compile-plan is set")
+
+    capabilities = payload.get("capabilities")
+    if not isinstance(capabilities, list) or not all(isinstance(item, str) for item in capabilities):
+        errors.append("machine-info field 'capabilities' must be an array of strings")
+    else:
+        for required in ("machine_info_json", "jsonl_diagnostics"):
+            if required not in capabilities:
+                errors.append(f"machine-info capabilities are missing required baseline capability '{required}'")
+
+    edition_max = payload.get("edition_max")
+    if not isinstance(edition_max, str) or not EDITION_RE.match(edition_max):
+        errors.append("machine-info field 'edition_max' must be a numeric string")
+
+    return errors
+
+
+def write_temp_project(root: pathlib.Path) -> pathlib.Path:
+    manifest_path = root / "spio.toml"
+    source_path = root / "src" / "main.styio"
+    source_path.parent.mkdir(parents=True, exist_ok=True)
+    manifest_path.write_text(
+        "[spio]\n"
+        "manifest-version = 1\n\n"
+        "[package]\n"
+        "name = \"acme/interop\"\n"
+        "version = \"0.1.0\"\n"
+        "edition = \"2026\"\n"
+        "publish = false\n\n"
+        "[toolchain]\n"
+        "channel = \"nightly\"\n"
+        "implicit-std = true\n\n"
+        "[[bin]]\n"
+        "name = \"interop\"\n"
+        "path = \"src/main.styio\"\n",
+        encoding="utf-8",
+    )
+    source_path.write_text(">_(\"interop\")\n", encoding="utf-8")
+    return manifest_path
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(prog="styio-interface-gate.py")
+    parser.add_argument("--styio-bin", required=True, help="published styio binary to validate")
+    parser.add_argument("--spio-bin", default=str(DEFAULT_SPIO), help="spio wrapper used for black-box checks")
+    parser.add_argument("--manifest-path", help="manifest used for the spio compatibility check")
+    parser.add_argument("--require-compile-plan", action="store_true", help="also validate direct compile-plan execution")
+    parser.add_argument("--json", action="store_true", help="emit machine-readable summary")
+    args = parser.parse_args(argv)
+
+    styio_bin = str(pathlib.Path(args.styio_bin).resolve())
+    spio_bin = str(pathlib.Path(args.spio_bin).resolve())
+    check_manifest_path = pathlib.Path(args.manifest_path).resolve() if args.manifest_path else DEFAULT_FIXTURE_MANIFEST
+
+    steps: list[dict] = []
+    validation_errors: list[str] = []
+    temp_root: pathlib.Path | None = None
+
+    machine_info_step = run_step("machine_info", [styio_bin, "--machine-info=json"])
+    steps.append(machine_info_step)
+
+    machine_info_payload: dict | None = None
+    if machine_info_step["ok"]:
+        try:
+            machine_info_payload = load_json(machine_info_step["stdout"], "styio --machine-info=json")
+            validation_errors.extend(
+                validate_machine_info(machine_info_payload, require_compile_plan=args.require_compile_plan)
+            )
+        except RuntimeError as err:
+            validation_errors.append(str(err))
+
+    compatibility_step = run_step(
+        "spio_check",
+        [
+            spio_bin,
+            "--json",
+            "check",
+            "--manifest-path",
+            str(check_manifest_path),
+            "--styio-bin",
+            styio_bin,
+        ],
+        env=dict(os.environ),
+    )
+    steps.append(compatibility_step)
+
+    if args.require_compile_plan:
+        temp_root = pathlib.Path(tempfile.mkdtemp(prefix="spio-styio-interface-gate-"))
+        compile_manifest = write_temp_project(temp_root)
+        dry_run_step = run_step(
+            "spio_build_dry_run",
+            [
+                spio_bin,
+                "--json",
+                "build",
+                "--dry-run",
+                "--manifest-path",
+                str(compile_manifest),
+            ],
+        )
+        steps.append(dry_run_step)
+
+        if dry_run_step["ok"]:
+            try:
+                dry_run_payload = load_json(dry_run_step["stdout"], "spio build --dry-run")
+                plan_path = pathlib.Path(dry_run_payload["plan_path"])
+                build_root = pathlib.Path(dry_run_payload["build_root"])
+                artifact_dir = pathlib.Path(dry_run_payload["artifact_dir"])
+                diag_dir = pathlib.Path(dry_run_payload["diag_dir"])
+
+                compile_plan_step = run_step("compile_plan_execute", [styio_bin, "--compile-plan", str(plan_path)])
+                steps.append(compile_plan_step)
+
+                if compile_plan_step["ok"]:
+                    for expected_dir, label in (
+                        (build_root, "build_root"),
+                        (artifact_dir, "artifact_dir"),
+                        (diag_dir, "diag_dir"),
+                    ):
+                        if not expected_dir.exists() or not expected_dir.is_dir():
+                            validation_errors.append(
+                                f"compile-plan execution did not materialize outputs.{label}: {expected_dir}"
+                            )
+            except (RuntimeError, KeyError, TypeError) as err:
+                validation_errors.append(f"compile-plan dry-run payload is invalid: {err}")
+
+    ok = all(step["ok"] for step in steps) and not validation_errors
+
+    summary = {
+        "ok": ok,
+        "styio_bin": styio_bin,
+        "spio_bin": spio_bin,
+        "require_compile_plan": args.require_compile_plan,
+        "machine_info": machine_info_payload,
+        "validation_errors": validation_errors,
+        "steps": steps,
+    }
+
+    if args.json:
+        sys.stdout.write(json.dumps(summary, sort_keys=True) + "\n")
+    else:
+        for step in steps:
+            status = "OK" if step["ok"] else "FAIL"
+            sys.stdout.write(f"[{status}] {step['name']}\n")
+            if step["stdout"].strip():
+                sys.stdout.write(step["stdout"])
+                if not step["stdout"].endswith("\n"):
+                    sys.stdout.write("\n")
+            if step["stderr"].strip():
+                sys.stderr.write(step["stderr"])
+                if not step["stderr"].endswith("\n"):
+                    sys.stderr.write("\n")
+        for error in validation_errors:
+            sys.stderr.write(f"[FAIL] {error}\n")
+        sys.stdout.write(f"styio interface gate {'passed' if ok else 'failed'}\n")
+
+    if temp_root is not None:
+        shutil.rmtree(temp_root, ignore_errors=True)
+
+    return 0 if ok else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

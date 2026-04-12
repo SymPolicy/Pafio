@@ -29,6 +29,12 @@ const std::regex &SemverRegex()
   return pattern;
 }
 
+const std::regex &Sha256Regex()
+{
+  static const std::regex pattern("^[0-9a-f]{64}$");
+  return pattern;
+}
+
 template <typename T>
 T RequireValue(const toml::table &table, std::string_view key, std::string_view context)
 {
@@ -89,10 +95,18 @@ void ValidateSemver(const std::string &version, std::string_view context)
 
 void ValidateSourceKind(const std::string &source_kind)
 {
-  static const std::set<std::string> allowed = {"workspace", "path", "git"};
+  static const std::set<std::string> allowed = {"workspace", "path", "git", "registry"};
   if (!allowed.contains(source_kind))
   {
-    throw spio::ValidationError("lockfile package source-kind must be one of workspace, path, or git");
+    throw spio::ValidationError("lockfile package source-kind must be one of workspace, path, git, or registry");
+  }
+}
+
+void ValidateSha256(const std::string &sha256, std::string_view context)
+{
+  if (!std::regex_match(sha256, Sha256Regex()))
+  {
+    throw spio::ValidationError(std::string(context) + " must be a lowercase sha256 hex digest");
   }
 }
 
@@ -166,6 +180,8 @@ LockfileDocument LoadLockfile(const fs::path &lockfile_path)
     parsed.source_kind = RequireValue<std::string>(*package, "source-kind", "[[package]]");
     parsed.git = OptionalString(*package, "git");
     parsed.rev = OptionalString(*package, "rev");
+    parsed.registry = OptionalString(*package, "registry");
+    parsed.sha256 = OptionalString(*package, "sha256");
     parsed.dependencies = ParseStringArray(*package, "dependencies", "[[package]]");
 
     if (parsed.id.empty())
@@ -185,10 +201,30 @@ LockfileDocument LoadLockfile(const fs::path &lockfile_path)
       {
         throw ValidationError("[[package]].rev must be a non-empty string when source-kind = \"git\"");
       }
+      if (parsed.registry.has_value() || parsed.sha256.has_value())
+      {
+        throw ValidationError("[[package]].registry and [[package]].sha256 are only valid when source-kind = \"registry\"");
+      }
     }
-    else if (parsed.git.has_value() || parsed.rev.has_value())
+    else if (parsed.source_kind == "registry")
     {
-      throw ValidationError("[[package]].git and [[package]].rev are only valid when source-kind = \"git\"");
+      if (!parsed.registry.has_value() || parsed.registry->empty())
+      {
+        throw ValidationError("[[package]].registry must be a non-empty string when source-kind = \"registry\"");
+      }
+      if (!parsed.sha256.has_value())
+      {
+        throw ValidationError("[[package]].sha256 must be present when source-kind = \"registry\"");
+      }
+      ValidateSha256(*parsed.sha256, "[[package]].sha256");
+      if (parsed.git.has_value() || parsed.rev.has_value())
+      {
+        throw ValidationError("[[package]].git and [[package]].rev are only valid when source-kind = \"git\"");
+      }
+    }
+    else if (parsed.git.has_value() || parsed.rev.has_value() || parsed.registry.has_value() || parsed.sha256.has_value())
+    {
+      throw ValidationError("[[package]].git/rev are only valid for git packages and [[package]].registry/sha256 are only valid for registry packages");
     }
 
     lockfile.packages.push_back(std::move(parsed));
@@ -224,6 +260,11 @@ std::string SerializeLockfileCanonical(const LockfileDocument &lockfile)
     {
       out << "git = " << QuoteTomlString(package.git.value_or("")) << "\n";
       out << "rev = " << QuoteTomlString(package.rev.value_or("")) << "\n";
+    }
+    else if (package.source_kind == "registry")
+    {
+      out << "registry = " << QuoteTomlString(package.registry.value_or("")) << "\n";
+      out << "sha256 = " << QuoteTomlString(package.sha256.value_or("")) << "\n";
     }
 
     std::vector<std::string> dependencies = package.dependencies;

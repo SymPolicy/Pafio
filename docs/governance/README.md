@@ -8,7 +8,11 @@
 - CLI contract
 - entrypoint and argument index
 - manifest and lockfile conventions
+- registry repository contract
 - documentation maintenance model
+
+Role-specific registry client/server documents live under `docs/registry/` and must link back to governance instead of redefining shared layout rules.
+Private-boundary rules for auth/account/trust hooks live under `docs/security/` and must not be embedded here as deployment-specific detail.
 
 ## Maintenance Rule
 

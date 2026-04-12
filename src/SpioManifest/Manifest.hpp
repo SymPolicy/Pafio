@@ -12,6 +12,7 @@ enum class DependencySourceKind
 {
   kPath,
   kGit,
+  kRegistry,
 };
 
 struct Dependency
@@ -21,6 +22,7 @@ struct Dependency
   DependencySourceKind source_kind = DependencySourceKind::kPath;
   std::string source;
   std::optional<std::string> rev;
+  std::optional<std::string> version;
 };
 
 struct Toolchain

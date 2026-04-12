@@ -1,8 +1,8 @@
 # spio Integration Tests
 
-**Purpose:** Describe the black-box integration tests that validate `spio` against an external `styio` executable through the public machine contract only.
+**Purpose:** Describe the black-box integration tests that validate `spio` against external dependencies such as a published `styio` executable or a shared registry origin through public contracts only.
 
-**Last updated:** 2026-04-09
+**Last updated:** 2026-04-12
 
 ## Requirements
 
@@ -14,9 +14,14 @@
 
 ## Planned Gates
 
+- `spio_registry_server_gate`
+- `spio_registry_promotion_gate`
+- `spio_registry_split_origin_http_gate`
 - `spio_workflow_gate`
 - `spio_extractability_gate`
 - `styio_spio_dual_maintenance_gate`
+
+Private auth-bearing publish gates are intentionally excluded from this tracked directory and should live under `tests-private/` when a closed-source security module is in use.
 
 Primary preflight entry:
 

@@ -16,6 +16,10 @@ rsync -a \
   --exclude '__pycache__/' \
   --exclude '.pytest_cache/' \
   --exclude 'Testing/' \
+  --exclude 'src-private/' \
+  --exclude 'tests-private/' \
+  --exclude 'docs-private/' \
+  --exclude 'scripts-private/' \
   "$ROOT"/ "$TMP_DIR/spio"/
 
 (

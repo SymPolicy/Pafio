@@ -7,6 +7,8 @@
 - master plan
 - workstreams
 - bootstrap summary
+- stage reviews and retrospective summaries
+- future-direction and cross-team coordination summaries
 
 ## Maintenance Rule
 

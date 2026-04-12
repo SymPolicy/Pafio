@@ -163,6 +163,7 @@ json ProbeMachineInfo(const fs::path &binary)
   }
 
   static const std::array required_fields = {
+      "tool",
       "compiler_version",
       "channel",
       "supported_contracts",
@@ -183,6 +184,10 @@ json ProbeMachineInfo(const fs::path &binary)
   if (!payload["capabilities"].is_array())
   {
     throw spio::CompatibilityError("compiler handshake field 'capabilities' must be an array");
+  }
+  if (payload["tool"] != "styio")
+  {
+    throw spio::CompatibilityError("compiler handshake field 'tool' must equal 'styio'");
   }
 
   return payload;
@@ -266,23 +271,102 @@ std::vector<int> LoadIntArray(const toml::table &table, const std::string &key)
   return values;
 }
 
+struct ProjectToolchainPin
+{
+  fs::path pin_path;
+  std::string compiler_version;
+  std::string compiler_channel;
+};
+
+std::optional<ProjectToolchainPin> LoadProjectToolchainPin(const fs::path &manifest_path)
+{
+  const std::optional<fs::path> pin_path = spio::FindProjectToolchainPinPath(manifest_path);
+  if (!pin_path.has_value())
+  {
+    return std::nullopt;
+  }
+
+  toml::table doc;
+  try
+  {
+    doc = toml::parse_file(pin_path->string());
+  }
+  catch (const toml::parse_error &err)
+  {
+    throw spio::ToolError(
+        "failed to parse project toolchain pin '" + pin_path->string() + "': " + std::string(err.description()));
+  }
+
+  const toml::table *styio_table = doc["styio"].as_table();
+  if (styio_table == nullptr)
+  {
+    throw spio::ToolError("project toolchain pin is missing [styio]: " + pin_path->string());
+  }
+
+  const auto compiler_version = styio_table->get_as<std::string>("version");
+  const auto compiler_channel = styio_table->get_as<std::string>("channel");
+  if (compiler_version == nullptr || compiler_version->get().empty())
+  {
+    throw spio::ToolError("project toolchain pin is missing styio.version: " + pin_path->string());
+  }
+  if (compiler_channel == nullptr || compiler_channel->get().empty())
+  {
+    throw spio::ToolError("project toolchain pin is missing styio.channel: " + pin_path->string());
+  }
+
+  return ProjectToolchainPin{
+      .pin_path = *pin_path,
+      .compiler_version = compiler_version->get(),
+      .compiler_channel = compiler_channel->get(),
+  };
+}
+
 }  // namespace
 
 namespace spio
 {
 
-std::optional<fs::path> ResolveStyioBinary(const std::optional<std::string> &explicit_path)
+std::optional<fs::path> ResolveStyioBinary(
+    const std::optional<std::string> &explicit_path,
+    const std::optional<fs::path> &manifest_path)
 {
   if (explicit_path.has_value() && !explicit_path->empty())
   {
-    return fs::path(*explicit_path);
+    return CanonicalAbsolutePath(*explicit_path);
   }
 
   if (const char *env = std::getenv("SPIO_STYIO_BIN"))
   {
     if (*env != '\0')
     {
-      return fs::path(env);
+      return CanonicalAbsolutePath(env);
+    }
+  }
+
+  if (manifest_path.has_value())
+  {
+    if (const std::optional<ProjectToolchainPin> pin = LoadProjectToolchainPin(*manifest_path); pin.has_value())
+    {
+      const fs::path spio_home = ResolveSpioHome();
+      const fs::path managed_binary =
+          ManagedStyioBinaryPath(ManagedStyioInstallRoot(spio_home, pin->compiler_channel, pin->compiler_version));
+      if (!fs::exists(managed_binary) || !fs::is_regular_file(managed_binary))
+      {
+        throw ToolError(
+            "project toolchain pin requires an installed managed styio compiler: " + pin->compiler_channel + "/" +
+            pin->compiler_version + " (" + pin->pin_path.string() + ")");
+      }
+      return managed_binary;
+    }
+  }
+
+  const std::optional<fs::path> spio_home = ResolveOptionalSpioHome();
+  if (spio_home.has_value())
+  {
+    const fs::path managed_binary = ManagedStyioBinaryPath(ManagedStyioCurrentRoot(*spio_home));
+    if (fs::exists(managed_binary))
+    {
+      return managed_binary;
     }
   }
 

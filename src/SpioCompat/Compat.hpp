@@ -19,7 +19,9 @@ struct CompatibilityReport
   std::vector<std::string> capabilities;
 };
 
-std::optional<std::filesystem::path> ResolveStyioBinary(const std::optional<std::string> &explicit_path);
+std::optional<std::filesystem::path> ResolveStyioBinary(
+    const std::optional<std::string> &explicit_path,
+    const std::optional<std::filesystem::path> &manifest_path = std::nullopt);
 CompatibilityReport CheckCompilerCompatibility(const std::filesystem::path &binary);
 
 }  // namespace spio

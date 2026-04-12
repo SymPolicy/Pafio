@@ -11,10 +11,8 @@ The current native implementation freezes:
 - `toolchain`
 - explicit `lib` / `bin` / `test` targets
 - workspace membership rules
-- `workspace`, `path`, and pinned `git` dependencies only
-- `single-version-v1` resolution across workspace, path, and pinned git sources
-
-Registry-oriented dependency declarations remain out of scope for this phase.
+- `workspace`, `path`, pinned `git`, and registry dependencies
+- `single-version-v1` resolution across workspace, path, pinned git, and registry sources
 
 ## Manifest
 
@@ -33,6 +31,7 @@ If `[package]` is present:
 - `package.name` must match `namespace/name`
 - `package.version` must be strict semver `x.y.z`
 - `package.edition` must be an explicit string
+- `package.publish` is optional and defaults to `false`
 - `[toolchain]` is required
 - `[toolchain].channel` must be a non-empty string
 - `[toolchain].implicit-std` must be a boolean
@@ -58,12 +57,17 @@ If `[package]` is present:
 
 ### Dependency Rules
 
-- phase 2 accepts exactly one dependency source kind per entry
-- allowed phase-2 source kinds are:
+- the current native core accepts exactly one dependency source kind per entry
+- allowed source kinds are:
   - `path`
   - `git`
+  - `registry`
 - `git` dependencies require `rev`
-- registry-style `version` dependencies are reserved for a later registry phase and must be rejected by the phase-2 native core
+- registry dependencies require:
+  - `package = "namespace/name"`
+  - `version = "x.y.z"`
+  - `registry = "<url>"`
+- registry roots must use `file://`, `http://`, or `https://`
 
 ## Lockfile
 
@@ -73,8 +77,9 @@ If `[package]` is present:
 - `[metadata].generated-by` must be a non-empty string
 - `[metadata].resolver` must be `single-version-v1`
 - `[[package]]` entries must be emitted deterministically
-- lockfile package `source-kind` values are limited to `workspace`, `path`, and `git`
+- lockfile package `source-kind` values are limited to `workspace`, `path`, `git`, and `registry`
 - git lock entries must record both `git` source and pinned `rev`
+- registry lock entries must record both `registry` root and immutable blob `sha256`
 - lockfiles must not encode absolute filesystem paths
 - Produced by tooling, not intended for hand-authoring
 
@@ -85,16 +90,21 @@ If `[package]` is present:
   - explicit workspace members when present
   - recursive `path` dependencies
   - pinned `git` dependencies
+  - registry dependencies declared through `version` + `registry`
   - transitive manifests discovered inside pinned git snapshots
+  - transitive manifests discovered inside registry package snapshots
   - both `[dependencies]` and `[dev-dependencies]`
 - the manifest at the pinned git revision is authoritative for package name, version, and transitive dependencies
+- the manifest inside the registry package snapshot is authoritative for package name, version, and transitive dependencies
 - `single-version-v1` allows one effective package version and one effective source fingerprint per package name
 - git-sourced `path` dependencies must stay within the pinned snapshot instead of escaping onto host-local paths
+- registry packages are fetched by immutable blob digest and extracted under `SPIO_HOME/registry/checkouts/`
 - the lockfile path is fixed to the adjacent `spio.lock` next to the selected manifest
 - lock package identifiers use:
   - `workspace:<package-name>@<package-version>`
   - `path:<package-name>@<package-version>`
   - `git:<package-name>@<package-version>#<rev>`
+  - `registry:<package-name>@<package-version>#<sha256>`
 - if two different source fingerprints resolve the same package name, lock generation must fail explicitly instead of silently merging them
 
 ## Canonical Write-Back
@@ -126,8 +136,9 @@ Canonical `spio.toml` output uses this section order:
 - `[workspace]`: `members`, `exclude`, `resolver`
 - dependency inline tables:
   - `package` when present
-  - source selector field: `path` or `git`
+  - source selector field: `path`, `git`, or `version`
   - `rev` for `git`
+  - `registry` for registry dependencies
 
 Canonical native manifest output materializes `publish = false` when the parsed package configuration leaves it at the phase-2 default.
 
@@ -152,6 +163,8 @@ Within each `[[package]]`, field order is:
 - `source-kind`
 - `git` for `source-kind = "git"`
 - `rev` for `source-kind = "git"`
+- `registry` for `source-kind = "registry"`
+- `sha256` for `source-kind = "registry"`
 - `dependencies`
 
 `dependencies` arrays inside canonical lock output are sorted lexicographically.
@@ -171,6 +184,7 @@ Fixture classes include:
 - explicit test-target validation
 - path dependency
 - git dependency
+- registry dependency
 - bad package name
 - bad source declaration
 - bad lock version

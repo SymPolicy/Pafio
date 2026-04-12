@@ -145,10 +145,14 @@ Primary defect:
 
 Deliverables:
 
+- reproducibility workflow flags
+- project-local vendor state
 - source package format
+- `spio vendor`
 - `spio pack`
 - `spio publish`
 - `spio tool install`
+- project-local toolchain pinning
 - fake registry and later real registry rollout
 
 Exit gate:

@@ -104,7 +104,7 @@ TEST(ManifestTests, LoadsExplicitTestTargets)
   EXPECT_EQ(manifest.package->tests[0].path, "tests/smoke.styio");
 }
 
-TEST(ManifestTests, RejectsRegistryVersionDependencyInPhaseTwoCore)
+TEST(ManifestTests, LoadsRegistryDependencySource)
 {
   const fs::path manifest_path = WriteTempToml(
       "[spio]\n"
@@ -120,10 +120,17 @@ TEST(ManifestTests, RejectsRegistryVersionDependencyInPhaseTwoCore)
       "name = \"app\"\n"
       "path = \"src/main.styio\"\n\n"
       "[dependencies]\n"
-      "core = { package = \"acme/core\", version = \"0.1.0\" }\n",
-      "bad-version-dependency.toml");
+      "core = { package = \"acme/core\", version = \"0.1.0\", registry = \"https://packages.example.test\" }\n",
+      "registry-dependency.toml");
 
-  EXPECT_THROW(spio::LoadManifest(manifest_path), spio::ValidationError);
+  const auto manifest = spio::LoadManifest(manifest_path);
+  ASSERT_TRUE(manifest.package.has_value());
+  ASSERT_EQ(manifest.package->dependencies.size(), 1U);
+  EXPECT_EQ(manifest.package->dependencies[0].alias, "core");
+  EXPECT_EQ(manifest.package->dependencies[0].package.value_or(""), "acme/core");
+  EXPECT_EQ(manifest.package->dependencies[0].version.value_or(""), "0.1.0");
+  EXPECT_EQ(manifest.package->dependencies[0].source, "https://packages.example.test");
+  EXPECT_EQ(manifest.package->dependencies[0].source_kind, spio::DependencySourceKind::kRegistry);
 }
 
 TEST(ManifestTests, SerializesSinglePackageFixtureCanonically)
@@ -196,6 +203,46 @@ TEST(ManifestTests, CanonicalSerializerSortsBinsAndDependencyAliases)
           "[dependencies]\n"
           "a_dep = { package = \"acme/a\", git = \"https://example.com/a.git\", rev = \"123abc\" }\n"
           "z_dep = { package = \"acme/z\", path = \"../z\" }\n"));
+}
+
+TEST(ManifestTests, CanonicalSerializerEmitsRegistryDependencies)
+{
+  const fs::path manifest_path = WriteTempToml(
+      "[spio]\n"
+      "manifest-version = 1\n\n"
+      "[package]\n"
+      "name = \"acme/app\"\n"
+      "version = \"0.1.0\"\n"
+      "edition = \"2026\"\n\n"
+      "[toolchain]\n"
+      "channel = \"nightly\"\n"
+      "implicit-std = true\n\n"
+      "[[bin]]\n"
+      "name = \"app\"\n"
+      "path = \"src/main.styio\"\n\n"
+      "[dependencies]\n"
+      "core = { package = \"acme/core\", registry = \"https://packages.example.test\", version = \"0.1.0\" }\n",
+      "registry-serialize.toml");
+
+  const auto manifest = spio::LoadManifest(manifest_path);
+  EXPECT_EQ(
+      spio::SerializeManifestCanonical(manifest),
+      std::string(
+          "[spio]\n"
+          "manifest-version = 1\n\n"
+          "[package]\n"
+          "name = \"acme/app\"\n"
+          "version = \"0.1.0\"\n"
+          "edition = \"2026\"\n"
+          "publish = false\n\n"
+          "[toolchain]\n"
+          "channel = \"nightly\"\n"
+          "implicit-std = true\n\n"
+          "[[bin]]\n"
+          "name = \"app\"\n"
+          "path = \"src/main.styio\"\n\n"
+          "[dependencies]\n"
+          "core = { package = \"acme/core\", version = \"0.1.0\", registry = \"https://packages.example.test\" }\n"));
 }
 
 TEST(ManifestTests, CanonicalSerializerSortsTestTargets)

@@ -11,6 +11,12 @@
 namespace spio
 {
 
+struct ResolveOptions
+{
+  bool offline = false;
+  std::optional<std::filesystem::path> vendor_root;
+};
+
 struct LockGenerationResult
 {
   std::filesystem::path manifest_path;
@@ -34,6 +40,10 @@ struct ResolvedPackage
   std::string source_kind;
   std::optional<std::string> git;
   std::optional<std::string> rev;
+  std::optional<std::string> registry;
+  std::optional<std::string> sha256;
+  std::optional<std::string> repo_hash;
+  std::optional<std::filesystem::path> snapshot_root;
   std::vector<std::string> dependencies;
   std::vector<ResolvedDependencyAlias> dependency_aliases;
 };
@@ -47,7 +57,11 @@ struct ResolvedGraphResult
   LockfileDocument lockfile;
 };
 
-ResolvedGraphResult ResolveSingleVersionGraph(const std::filesystem::path &manifest_path);
-LockGenerationResult ResolveSingleVersionLockfile(const std::filesystem::path &manifest_path);
+ResolvedGraphResult ResolveSingleVersionGraph(
+    const std::filesystem::path &manifest_path,
+    const ResolveOptions &options = {});
+LockGenerationResult ResolveSingleVersionLockfile(
+    const std::filesystem::path &manifest_path,
+    const ResolveOptions &options = {});
 
 }  // namespace spio

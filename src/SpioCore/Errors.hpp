@@ -15,6 +15,9 @@ inline constexpr int kExitResolve = 13;
 inline constexpr int kExitFetch = 14;
 inline constexpr int kExitCache = 15;
 inline constexpr int kExitPack = 16;
+inline constexpr int kExitPublish = 17;
+inline constexpr int kExitToolInstall = 18;
+inline constexpr int kExitVendor = 19;
 inline constexpr int kExitPlan = 20;
 inline constexpr int kExitContract = 21;
 inline constexpr int kExitCompilerSpawn = 22;
@@ -55,6 +58,24 @@ public:
 };
 
 class PackError : public std::runtime_error
+{
+public:
+  using std::runtime_error::runtime_error;
+};
+
+class PublishError : public std::runtime_error
+{
+public:
+  using std::runtime_error::runtime_error;
+};
+
+class ToolError : public std::runtime_error
+{
+public:
+  using std::runtime_error::runtime_error;
+};
+
+class VendorError : public std::runtime_error
 {
 public:
   using std::runtime_error::runtime_error;

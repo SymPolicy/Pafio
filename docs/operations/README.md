@@ -6,6 +6,9 @@
 
 - verification matrix
 - repository split runbook
+- registry server runbook
+
+Private auth-bearing operational procedures must live under `docs-private/` and `scripts-private/`, not under this tracked directory.
 
 ## Maintenance Rule
 

@@ -48,6 +48,11 @@ bool IsNonEmptyRelativePath(const std::string &value)
   return !path.is_absolute();
 }
 
+bool IsRegistryRootUrl(const std::string &value)
+{
+  return value.starts_with("file://") || value.starts_with("http://") || value.starts_with("https://");
+}
+
 const toml::table &RequireTable(const toml::table &parent, std::string_view key, std::string_view context)
 {
   if (const toml::table *table = parent[key].as_table())
@@ -139,6 +144,14 @@ void ValidateRelativePath(const std::string &path_value, std::string_view contex
   }
 }
 
+void ValidateRegistryRoot(const std::string &registry_root, std::string_view context)
+{
+  if (!IsRegistryRootUrl(registry_root))
+  {
+    throw spio::ValidationError(std::string(context) + " must use file://, http://, or https://");
+  }
+}
+
 std::vector<spio::Dependency> ParseDependencies(const toml::table &doc, std::string_view table_name)
 {
   const toml::table *dependencies = doc[table_name].as_table();
@@ -161,14 +174,12 @@ std::vector<spio::Dependency> ParseDependencies(const toml::table &doc, std::str
     const bool has_path = dep->contains("path");
     const bool has_git = dep->contains("git");
     const bool has_version = dep->contains("version");
-    const int source_kind_count = static_cast<int>(has_path) + static_cast<int>(has_git) + static_cast<int>(has_version);
+    const bool has_registry = dep->contains("registry");
+    const bool has_registry_source = has_version || has_registry;
+    const int source_kind_count = static_cast<int>(has_path) + static_cast<int>(has_git) + static_cast<int>(has_registry_source);
     if (source_kind_count != 1)
     {
       throw spio::ValidationError("dependency '" + alias + "' in [" + std::string(table_name) + "] must declare exactly one source kind");
-    }
-    if (has_version)
-    {
-      throw spio::ValidationError("dependency '" + alias + "' in [" + std::string(table_name) + "] uses registry-style 'version', which is reserved for a later phase");
     }
 
     spio::Dependency dependency;
@@ -185,7 +196,7 @@ std::vector<spio::Dependency> ParseDependencies(const toml::table &doc, std::str
       dependency.source = RequireValue<std::string>(*dep, "path", "dependency '" + alias + "'");
       ValidateRelativePath(dependency.source, "dependency '" + alias + "' path");
     }
-    else
+    else if (has_git)
     {
       dependency.source_kind = spio::DependencySourceKind::kGit;
       dependency.source = RequireValue<std::string>(*dep, "git", "dependency '" + alias + "'");
@@ -198,6 +209,18 @@ std::vector<spio::Dependency> ParseDependencies(const toml::table &doc, std::str
       {
         throw spio::ValidationError("dependency '" + alias + "' rev must be a non-empty string");
       }
+    }
+    else
+    {
+      if (!dependency.package.has_value())
+      {
+        throw spio::ValidationError("dependency '" + alias + "' must declare package = \"namespace/name\" for registry sources");
+      }
+      dependency.source_kind = spio::DependencySourceKind::kRegistry;
+      dependency.version = RequireValue<std::string>(*dep, "version", "dependency '" + alias + "'");
+      ValidateSemver(*dependency.version, "dependency '" + alias + "' version");
+      dependency.source = RequireValue<std::string>(*dep, "registry", "dependency '" + alias + "'");
+      ValidateRegistryRoot(dependency.source, "dependency '" + alias + "' registry");
     }
 
     parsed.push_back(std::move(dependency));
@@ -451,8 +474,16 @@ void EmitDependencySection(std::ostringstream &out, const std::string &section_n
     }
     else
     {
-      emit_field("git", dependency.source);
-      emit_field("rev", dependency.rev.value_or(""));
+      if (dependency.source_kind == spio::DependencySourceKind::kGit)
+      {
+        emit_field("git", dependency.source);
+        emit_field("rev", dependency.rev.value_or(""));
+      }
+      else
+      {
+        emit_field("version", dependency.version.value_or(""));
+        emit_field("registry", dependency.source);
+      }
     }
     out << " }\n";
   }

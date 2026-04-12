@@ -177,10 +177,28 @@ std::string ReadFile(const fs::path &path)
   return buffer.str();
 }
 
+std::string FileUrl(const fs::path &path)
+{
+  return "file://" + CanonicalAbsolutePath(path).generic_string();
+}
+
 void RunGitOrAssert(const std::vector<std::string> &args)
 {
   const ChildProcessResult result = RunChildProcess("git", args);
   ASSERT_EQ(result.exit_code, 0) << TrimTrailingNewline(result.stderr_text.empty() ? result.stdout_text : result.stderr_text);
+}
+
+void PublishIntoFilesystemRegistryOrAssert(const fs::path &manifest_path, const fs::path &registry_root)
+{
+  ASSERT_EQ(
+      spio::RunCli({
+          "publish",
+          "--manifest-path",
+          manifest_path.string(),
+          "--registry",
+          registry_root.string(),
+      }),
+      spio::kExitSuccess);
 }
 
 std::string GitHeadRev(const fs::path &repo_root)
@@ -465,6 +483,110 @@ TEST(ResolverTests, RejectsSingleVersionConflictsAcrossPathAndGit)
   EXPECT_THROW(spio::ResolveSingleVersionLockfile(root / "spio.toml"), spio::ResolutionError);
 }
 
+TEST(ResolverTests, ResolvesRegistryPackagesFromFilesystemRegistry)
+{
+  const fs::path root = MakeTempDir("registry-workspace");
+  const ScopedEnvVar spio_home("SPIO_HOME", (root / ".spio-home").string());
+  const fs::path registry_root = root / "registry";
+  const std::string registry_url = FileUrl(registry_root);
+
+  WriteFile(
+      root / "publish/util/spio.toml",
+      "[spio]\n"
+      "manifest-version = 1\n\n"
+      "[package]\n"
+      "name = \"acme/util\"\n"
+      "version = \"0.2.0\"\n"
+      "edition = \"2026\"\n"
+      "publish = true\n\n"
+      "[toolchain]\n"
+      "channel = \"nightly\"\n"
+      "implicit-std = true\n\n"
+      "[lib]\n"
+      "path = \"src/lib.styio\"\n");
+  WriteFile(root / "publish/util/src/lib.styio", "# util\n");
+  PublishIntoFilesystemRegistryOrAssert(root / "publish/util/spio.toml", registry_root);
+
+  WriteFile(
+      root / "publish/feed/spio.toml",
+      std::string(
+          "[spio]\n"
+          "manifest-version = 1\n\n"
+          "[package]\n"
+          "name = \"acme/feed\"\n"
+          "version = \"1.2.0\"\n"
+          "edition = \"2026\"\n"
+          "publish = true\n\n"
+          "[toolchain]\n"
+          "channel = \"nightly\"\n"
+          "implicit-std = true\n\n"
+          "[lib]\n"
+          "path = \"src/lib.styio\"\n\n"
+          "[dependencies]\n"
+          "util = { package = \"acme/util\", version = \"0.2.0\", registry = \"") +
+          registry_url +
+          "\" }\n");
+  WriteFile(root / "publish/feed/src/lib.styio", "# feed\n");
+  PublishIntoFilesystemRegistryOrAssert(root / "publish/feed/spio.toml", registry_root);
+
+  WriteFile(
+      root / "spio.toml",
+      std::string(
+          "[spio]\n"
+          "manifest-version = 1\n\n"
+          "[package]\n"
+          "name = \"acme/app\"\n"
+          "version = \"0.1.0\"\n"
+          "edition = \"2026\"\n\n"
+          "[toolchain]\n"
+          "channel = \"nightly\"\n"
+          "implicit-std = true\n\n"
+          "[[bin]]\n"
+          "name = \"app\"\n"
+          "path = \"src/main.styio\"\n\n"
+          "[dependencies]\n"
+          "feed = { package = \"acme/feed\", version = \"1.2.0\", registry = \"") +
+          registry_url +
+          "\" }\n");
+
+  const auto generated = spio::ResolveSingleVersionLockfile(root / "spio.toml");
+  ASSERT_EQ(generated.lockfile.packages.size(), 3U);
+
+  const auto find_package = [&](const std::string &name) -> const spio::LockPackage & {
+    const auto it = std::find_if(
+        generated.lockfile.packages.begin(),
+        generated.lockfile.packages.end(),
+        [&](const spio::LockPackage &package) {
+          return package.name == name;
+        });
+    EXPECT_NE(it, generated.lockfile.packages.end());
+    return *it;
+  };
+
+  const spio::LockPackage &feed = find_package("acme/feed");
+  EXPECT_EQ(feed.source_kind, "registry");
+  EXPECT_EQ(feed.registry.value_or(""), registry_url);
+  ASSERT_TRUE(feed.sha256.has_value());
+  EXPECT_EQ(feed.sha256->size(), 64U);
+  EXPECT_TRUE(feed.id.starts_with("registry:acme/feed@1.2.0#"));
+  ASSERT_EQ(feed.dependencies.size(), 1U);
+  EXPECT_TRUE(feed.dependencies[0].starts_with("registry:acme/util@0.2.0#"));
+
+  const spio::LockPackage &util = find_package("acme/util");
+  EXPECT_EQ(util.source_kind, "registry");
+  EXPECT_EQ(util.registry.value_or(""), registry_url);
+  ASSERT_TRUE(util.sha256.has_value());
+  EXPECT_EQ(util.sha256->size(), 64U);
+
+  const spio::LockPackage &app = find_package("acme/app");
+  EXPECT_EQ(app.source_kind, "workspace");
+  ASSERT_EQ(app.dependencies.size(), 1U);
+  EXPECT_EQ(app.dependencies[0], feed.id);
+
+  EXPECT_TRUE(fs::exists(root / ".spio-home" / "registry" / "blobs" / "sha256"));
+  EXPECT_TRUE(fs::exists(root / ".spio-home" / "registry" / "checkouts" / "acme" / "feed" / "1.2.0" / feed.sha256.value()));
+}
+
 TEST(TreeCliTests, RendersAsciiTreeForPinnedGitWorkspaceGraph)
 {
   const fs::path root = MakeTempDir("tree-git-workspace");
@@ -704,6 +826,79 @@ TEST(AddCliTests, AddsGitDependencyToDevSectionAndRefreshesLockfile)
   ASSERT_EQ(lockfile.packages.size(), 3U);
 }
 
+TEST(AddCliTests, AddsRegistryDependencyAndRefreshesLockfile)
+{
+  const fs::path root = MakeTempDir("add-registry");
+  const ScopedEnvVar spio_home("SPIO_HOME", (root / ".spio-home").string());
+  const fs::path registry_root = root / "registry";
+  const std::string registry_url = FileUrl(registry_root);
+  const fs::path manifest_path = root / "spio.toml";
+
+  WriteFile(
+      root / "publish/util/spio.toml",
+      "[spio]\n"
+      "manifest-version = 1\n\n"
+      "[package]\n"
+      "name = \"acme/util\"\n"
+      "version = \"0.2.0\"\n"
+      "edition = \"2026\"\n"
+      "publish = true\n\n"
+      "[toolchain]\n"
+      "channel = \"nightly\"\n"
+      "implicit-std = true\n\n"
+      "[lib]\n"
+      "path = \"src/lib.styio\"\n");
+  WriteFile(root / "publish/util/src/lib.styio", "# util\n");
+  PublishIntoFilesystemRegistryOrAssert(root / "publish/util/spio.toml", registry_root);
+
+  WriteFile(
+      manifest_path,
+      "[spio]\n"
+      "manifest-version = 1\n\n"
+      "[package]\n"
+      "name = \"acme/app\"\n"
+      "version = \"0.1.0\"\n"
+      "edition = \"2026\"\n\n"
+      "[toolchain]\n"
+      "channel = \"nightly\"\n"
+      "implicit-std = true\n\n"
+      "[[bin]]\n"
+      "name = \"app\"\n"
+      "path = \"src/main.styio\"\n");
+
+  EXPECT_EQ(
+      spio::RunCli(
+          {"add", "acme/util", "--registry", registry_url, "--version", "0.2.0", "--manifest-path", manifest_path.string()}),
+      spio::kExitSuccess);
+
+  EXPECT_EQ(
+      ReadFile(manifest_path),
+      std::string(
+          "[spio]\n"
+          "manifest-version = 1\n\n"
+          "[package]\n"
+          "name = \"acme/app\"\n"
+          "version = \"0.1.0\"\n"
+          "edition = \"2026\"\n"
+          "publish = false\n\n"
+          "[toolchain]\n"
+          "channel = \"nightly\"\n"
+          "implicit-std = true\n\n"
+          "[[bin]]\n"
+          "name = \"app\"\n"
+          "path = \"src/main.styio\"\n\n"
+          "[dependencies]\n"
+          "util = { package = \"acme/util\", version = \"0.2.0\", registry = \"") +
+          registry_url +
+          "\" }\n");
+
+  const auto lockfile = spio::LoadLockfile(root / "spio.lock");
+  ASSERT_EQ(lockfile.packages.size(), 2U);
+  EXPECT_TRUE(lockfile.packages[0].id.starts_with("registry:acme/util@0.2.0#"));
+  EXPECT_EQ(lockfile.packages[0].registry.value_or(""), registry_url);
+  EXPECT_EQ(lockfile.packages[1].id, "workspace:acme/app@0.1.0");
+}
+
 TEST(AddCliTests, RollsBackManifestAndLockWhenResolutionFails)
 {
   const fs::path root = MakeTempDir("add-rollback");
@@ -856,6 +1051,64 @@ TEST(FetchCliTests, FetchesGitSourcesWithoutWritingLockfile)
   EXPECT_TRUE(fs::exists(root / ".spio-home" / "git" / "checkouts"));
   EXPECT_FALSE(fs::is_empty(root / ".spio-home" / "git" / "repos"));
   EXPECT_FALSE(fs::is_empty(root / ".spio-home" / "git" / "checkouts"));
+}
+
+TEST(FetchCliTests, FetchesRegistrySourcesWithoutWritingLockfile)
+{
+  const fs::path root = MakeTempDir("fetch-registry");
+  const ScopedEnvVar spio_home("SPIO_HOME", (root / ".spio-home").string());
+  const fs::path registry_root = root / "registry";
+  const std::string registry_url = FileUrl(registry_root);
+  const fs::path manifest_path = root / "spio.toml";
+
+  WriteFile(
+      root / "publish/util/spio.toml",
+      "[spio]\n"
+      "manifest-version = 1\n\n"
+      "[package]\n"
+      "name = \"acme/util\"\n"
+      "version = \"0.2.0\"\n"
+      "edition = \"2026\"\n"
+      "publish = true\n\n"
+      "[toolchain]\n"
+      "channel = \"nightly\"\n"
+      "implicit-std = true\n\n"
+      "[lib]\n"
+      "path = \"src/lib.styio\"\n");
+  WriteFile(root / "publish/util/src/lib.styio", "# util\n");
+  PublishIntoFilesystemRegistryOrAssert(root / "publish/util/spio.toml", registry_root);
+
+  WriteFile(
+      manifest_path,
+      std::string(
+          "[spio]\n"
+          "manifest-version = 1\n\n"
+          "[package]\n"
+          "name = \"acme/app\"\n"
+          "version = \"0.1.0\"\n"
+          "edition = \"2026\"\n\n"
+          "[toolchain]\n"
+          "channel = \"nightly\"\n"
+          "implicit-std = true\n\n"
+          "[[bin]]\n"
+          "name = \"app\"\n"
+          "path = \"src/main.styio\"\n\n"
+          "[dependencies]\n"
+          "util = { package = \"acme/util\", version = \"0.2.0\", registry = \"") +
+          registry_url +
+          "\" }\n");
+
+  testing::internal::CaptureStdout();
+  EXPECT_EQ(spio::RunCli({"--json", "fetch", "--manifest-path", manifest_path.string()}), spio::kExitSuccess);
+  const json payload = json::parse(testing::internal::GetCapturedStdout());
+
+  EXPECT_EQ(payload.at("command").get<std::string>(), "fetch");
+  EXPECT_EQ(payload.at("packages").get<size_t>(), 2U);
+  EXPECT_EQ(payload.at("git_packages").get<size_t>(), 0U);
+  EXPECT_EQ(payload.at("registry_packages").get<size_t>(), 1U);
+  EXPECT_FALSE(fs::exists(root / "spio.lock"));
+  EXPECT_TRUE(fs::exists(root / ".spio-home" / "registry" / "blobs" / "sha256"));
+  EXPECT_TRUE(fs::exists(root / ".spio-home" / "registry" / "checkouts" / "acme" / "util" / "0.2.0"));
 }
 
 TEST(CheckCliTests, RejectsBrokenPathDependencyWithoutLockfile)

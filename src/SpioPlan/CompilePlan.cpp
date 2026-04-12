@@ -584,7 +584,10 @@ BuildPlanResult WriteBuildCompilePlan(const BuildPlanRequest &request)
   }
   ValidateIntent(request.intent);
 
-  const ResolvedGraphResult graph = ResolveSingleVersionGraph(request.manifest_path);
+  ResolveOptions resolve_options;
+  resolve_options.offline = request.offline;
+  resolve_options.vendor_root = request.vendor_root;
+  const ResolvedGraphResult graph = ResolveSingleVersionGraph(request.manifest_path, resolve_options);
   ValidateUniformToolchain(graph);
 
   const ResolvedPackage &entry_package = ResolveEntryPackage(request, graph);

@@ -16,6 +16,8 @@ struct LockPackage
   std::string source_kind;
   std::optional<std::string> git;
   std::optional<std::string> rev;
+  std::optional<std::string> registry;
+  std::optional<std::string> sha256;
   std::vector<std::string> dependencies;
 };
 

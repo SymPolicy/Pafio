@@ -91,7 +91,7 @@ def _probe_machine_info(binary: Path) -> dict:
     except json.JSONDecodeError as err:
         raise CompatibilityError(f"compiler '{binary}' returned invalid machine-info JSON") from err
 
-    required_fields = ("compiler_version", "channel", "supported_contracts", "capabilities", "edition_max")
+    required_fields = ("tool", "compiler_version", "channel", "supported_contracts", "capabilities", "edition_max")
     for field in required_fields:
         if field not in payload:
             raise CompatibilityError(f"compiler handshake missing required field: {field}")
@@ -99,6 +99,8 @@ def _probe_machine_info(binary: Path) -> dict:
         raise CompatibilityError("compiler handshake field 'supported_contracts' must be an object")
     if not isinstance(payload["capabilities"], list):
         raise CompatibilityError("compiler handshake field 'capabilities' must be an array")
+    if payload["tool"] != "styio":
+        raise CompatibilityError("compiler handshake field 'tool' must equal 'styio'")
 
     return payload
 

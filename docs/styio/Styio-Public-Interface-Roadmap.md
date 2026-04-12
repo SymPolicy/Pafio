@@ -2,7 +2,13 @@
 
 **Purpose:** Describe the exact compiler-facing interfaces that `spio` needs from `styio`, so future `spio` maintainers know what to request, test, and vendor without depending on compiler internals.
 
-**Last updated:** 2026-04-09
+**Last updated:** 2026-04-12
+
+This file is the sequencing view.
+
+The normative compiler handoff contract now lives in:
+
+- [Styio-External-Interface-Requirement-Spec.md](./Styio-External-Interface-Requirement-Spec.md)
 
 ## Required Compiler Interfaces
 
@@ -16,6 +22,7 @@ styio --machine-info=json
 
 Bootstrap-stable fields needed by `spio`:
 
+- tool identity
 - compiler version
 - release channel
 - supported contract versions
@@ -41,6 +48,7 @@ styio --compile-plan <path>
 - explicit acceptance or rejection of a plan version
 - isolated output directories
 - stable error reporting through text or JSON diagnostics
+- direct black-box acceptance through `scripts/styio-interface-gate.py --require-compile-plan`
 
 Status:
 
@@ -50,6 +58,20 @@ Status:
 ### 3. JSON Diagnostics
 
 `spio` should consume only stable machine-readable diagnostics, not human-only stderr text.
+
+### 4. Handoff Gate
+
+Compiler publication is not complete until the released binary passes:
+
+```text
+./scripts/styio-interface-gate.py --styio-bin /absolute/path/to/styio
+```
+
+and, once compile-plan support is advertised:
+
+```text
+./scripts/styio-interface-gate.py --styio-bin /absolute/path/to/styio --require-compile-plan
+```
 
 ## Interface Ownership
 

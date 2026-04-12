@@ -25,6 +25,12 @@ const std::regex &PackageNameRegex()
   return pattern;
 }
 
+const std::regex &SemverRegex()
+{
+  static const std::regex pattern("^\\d+\\.\\d+\\.\\d+$");
+  return pattern;
+}
+
 bool IsNonEmptyRelativePath(const std::string &value)
 {
   if (value.empty())
@@ -34,11 +40,24 @@ bool IsNonEmptyRelativePath(const std::string &value)
   return !fs::path(value).is_absolute();
 }
 
+bool IsRegistryRootUrl(const std::string &value)
+{
+  return value.starts_with("file://") || value.starts_with("http://") || value.starts_with("https://");
+}
+
 void ValidatePackageName(const std::string &value, const std::string &context)
 {
   if (!std::regex_match(value, PackageNameRegex()))
   {
     throw spio::ValidationError(context + " must match namespace/name");
+  }
+}
+
+void ValidateSemver(const std::string &value, const std::string &context)
+{
+  if (!std::regex_match(value, SemverRegex()))
+  {
+    throw spio::ValidationError(context + " must be strict semver x.y.z");
   }
 }
 
@@ -228,7 +247,13 @@ DependencyCommandResult AddDependencyAndRefreshLock(const AddDependencyRequest &
     throw ValidationError("dependency source must be a non-empty string");
   }
   ValidatePackageName(request.package_name, "dependency package");
-  if (!request.use_git && !IsNonEmptyRelativePath(request.source))
+  const int source_kind_count = static_cast<int>(request.use_git) + static_cast<int>(request.use_registry) +
+                                static_cast<int>(!request.use_git && !request.use_registry);
+  if (source_kind_count != 1)
+  {
+    throw ValidationError("add requires exactly one dependency source kind");
+  }
+  if (!request.use_git && !request.use_registry && !IsNonEmptyRelativePath(request.source))
   {
     throw ValidationError("path dependency source must be an explicit relative path");
   }
@@ -238,10 +263,30 @@ DependencyCommandResult AddDependencyAndRefreshLock(const AddDependencyRequest &
     {
       throw ValidationError("git dependencies require --rev <rev>");
     }
+    if (request.version.has_value())
+    {
+      throw ValidationError("--version is only valid with --registry");
+    }
   }
-  else if (request.rev.has_value())
+  else if (request.use_registry)
   {
-    throw ValidationError("--rev is only valid with --git");
+    if (request.rev.has_value())
+    {
+      throw ValidationError("--rev is only valid with --git");
+    }
+    if (!request.version.has_value() || request.version->empty())
+    {
+      throw ValidationError("registry dependencies require --version <x.y.z>");
+    }
+    ValidateSemver(*request.version, "dependency version");
+    if (!IsRegistryRootUrl(request.source))
+    {
+      throw ValidationError("registry dependency source must use file://, http://, or https://");
+    }
+  }
+  else if (request.rev.has_value() || request.version.has_value())
+  {
+    throw ValidationError("--rev is only valid with --git and --version is only valid with --registry");
   }
 
   const std::string alias = request.alias.value_or(PackageShortName(request.package_name));
@@ -282,9 +327,11 @@ DependencyCommandResult AddDependencyAndRefreshLock(const AddDependencyRequest &
   Dependency dependency;
   dependency.alias = alias;
   dependency.package = request.package_name;
-  dependency.source_kind = request.use_git ? DependencySourceKind::kGit : DependencySourceKind::kPath;
+  dependency.source_kind = request.use_git ? DependencySourceKind::kGit
+                                           : (request.use_registry ? DependencySourceKind::kRegistry : DependencySourceKind::kPath);
   dependency.source = request.source;
   dependency.rev = request.rev;
+  dependency.version = request.version;
 
   std::vector<Dependency> &dependencies = SelectSection(package, request.section);
   dependencies.push_back(std::move(dependency));
@@ -345,20 +392,25 @@ DependencyCommandResult RemoveDependencyAndRefreshLock(const RemoveDependencyReq
       match.section);
 }
 
-FetchCommandResult FetchDependencies(const fs::path &manifest_path)
+FetchCommandResult FetchDependencies(const fs::path &manifest_path, const ResolveOptions &options)
 {
   if (!fs::exists(manifest_path))
   {
     throw ValidationError("manifest not found: " + manifest_path.string());
   }
 
-  const LockGenerationResult generated = ResolveSingleVersionLockfile(manifest_path);
+  const LockGenerationResult generated = ResolveSingleVersionLockfile(manifest_path, options);
   size_t git_package_count = 0;
+  size_t registry_package_count = 0;
   for (const LockPackage &package : generated.lockfile.packages)
   {
     if (package.source_kind == "git")
     {
       ++git_package_count;
+    }
+    else if (package.source_kind == "registry")
+    {
+      ++registry_package_count;
     }
   }
 
@@ -366,6 +418,7 @@ FetchCommandResult FetchDependencies(const fs::path &manifest_path)
       .manifest_path = generated.manifest_path,
       .package_count = generated.lockfile.packages.size(),
       .git_package_count = git_package_count,
+      .registry_package_count = registry_package_count,
   };
 }
 

@@ -23,9 +23,12 @@ The intended public command set is:
 - `spio check`
 - `spio test`
 - `spio tree`
+- `spio vendor`
 - `spio pack`
 - `spio publish`
 - `spio tool install`
+- `spio tool use`
+- `spio tool pin`
 
 The bootstrap implementation may expose stubs for recognized commands before the full behavior exists.
 
@@ -48,11 +51,39 @@ Resolver-backed dependency tree rendering is part of the active command surface:
 spio tree --manifest-path path/to/spio.toml
 ```
 
+Project-local vendored snapshot materialization is also part of the active command surface:
+
+```text
+spio vendor --manifest-path path/to/spio.toml
+spio vendor --manifest-path path/to/spio.toml --output path/to/.spio/vendor
+```
+
 Local source-package archive emission is also part of the active command surface:
 
 ```text
 spio pack --manifest-path path/to/spio.toml
 spio pack --manifest-path path/to/spio.toml --package namespace/name
+```
+
+Local publish preflight is also part of the active command surface:
+
+```text
+spio publish --manifest-path path/to/spio.toml --dry-run
+spio publish --manifest-path path/to/spio.toml --package namespace/name --dry-run
+spio publish --manifest-path path/to/spio.toml --registry path/to/registry-root
+spio publish --manifest-path path/to/spio.toml --registry https://packages.example.test
+# private security-module builds only:
+spio publish --manifest-path path/to/spio.toml --registry https://packages.example.test --registry-profile write-dev
+spio publish --manifest-path path/to/spio.toml --registry https://packages.example.test --registry-policy-file path/to/publish-policy.toml
+spio publish --manifest-path path/to/spio.toml --registry https://packages.example.test --registry-header 'X-Spio-Write-Token: dev-token'
+```
+
+Managed local compiler installation is also part of the active command surface:
+
+```text
+spio tool install --styio-bin /path/to/styio
+spio tool use --version 0.0.5 --channel stable
+spio tool pin --version 0.0.5 --channel stable --manifest-path path/to/spio.toml
 ```
 
 Local compile-plan emission is also part of the active command surface:
@@ -66,7 +97,7 @@ spio test --manifest-path path/to/spio.toml --dry-run
 Basic dependency edit and source fetch commands are also part of the active command surface:
 
 ```text
-spio add <package-name> (--path <path> | --git <source> --rev <rev>) ...
+spio add <package-name> (--path <path> | --git <source> --rev <rev> | --registry <url> --version <x.y.z>) ...
 spio remove <alias-or-package> ...
 spio fetch --manifest-path path/to/spio.toml
 ```
@@ -111,6 +142,9 @@ Phase-2 rule:
 - `14` dependency fetch failed
 - `15` cache failure
 - `16` source package archive failure
+- `17` publish preflight or transport failure
+- `18` tool management failure
+- `19` project-local vendor materialization failure
 - `20` compile-plan generation failed
 - `21` compile-plan contract mismatch
 - `22` compiler process spawn failed
@@ -148,7 +182,8 @@ Optional keys:
 - `spio check` treats a parse-valid but content-stale adjacent `spio.lock` as a lock failure
 - phase-2 native `check` validates `toolchain`, target tables, dependency source-kind rules, and workspace membership rules
 - resolver-backed `check` may use `SPIO_HOME` for pinned git source cache state
-- if `--styio-bin` is passed or `SPIO_STYIO_BIN` is set, `check` must also call `styio --machine-info=json`
+- resolver-backed `check` may also use `SPIO_HOME/registry/` for cached registry metadata, blobs, and extracted snapshots
+- if `--styio-bin` is passed, `SPIO_STYIO_BIN` is set, a project toolchain pin resolves, or a managed current compiler exists, `check` must also call `styio --machine-info=json`
 - resolver-backed `check` runs before the optional compiler handshake
 - compiler compatibility must be decided from the machine handshake plus `contracts/compat/styio-support.toml`
 - bootstrap `check` must not read compiler source code or infer compatibility from repository layout
@@ -157,25 +192,66 @@ Optional keys:
 - successful `add` and `remove` must refresh the adjacent `spio.lock` through the active resolver path
 - failed post-edit resolution in `add` or `remove` must roll back both manifest and adjacent lockfile state
 - resolver-backed `fetch` resolves the active graph and materializes source cache state without rewriting manifest or lock files
+- `check`, `fetch`, `vendor`, `build`, `run`, and `test` accept workflow reproducibility flags:
+  - `--locked` requires an adjacent fresh `spio.lock`
+  - `--offline` forbids network fetches and relies only on local cache or vendored snapshots
+  - `--frozen` combines `--locked` and `--offline`
 - resolver-backed `lock` only reads or writes the adjacent `spio.lock` next to the selected manifest
-- resolver-backed `lock` resolves workspace, path, and pinned-git graphs under `single-version-v1`
-- resolver-backed `lock` may use `SPIO_HOME` for git source cache state
+- resolver-backed `lock` resolves workspace, path, pinned-git, and registry graphs under `single-version-v1`
+- resolver-backed `lock` may use `SPIO_HOME` for git and registry source cache state
+- resolver-backed `lock` accepts `--offline` in the current native core
 - `spio lock --check` returns exit `11` when the adjacent lockfile is missing or stale
-- resolver-backed `tree` resolves the same workspace, path, and pinned-git graph directly from the selected manifest
+- resolver-backed `tree` resolves the same workspace, path, pinned-git, and registry graph directly from the selected manifest
 - resolver-backed `tree` is read-only and does not require or rewrite an adjacent `spio.lock`
 - human-readable `tree` output uses canonical package ids with ASCII connectors
+- `spio vendor` resolves the active graph and copies pinned git snapshots into project-local `.spio/vendor/` by default
+- `spio vendor` writes vendor metadata to `.spio/vendor/spio-vendor.json`
+- resolver-backed commands may prefer project-local vendored snapshots under `.spio/vendor/` before falling back to `SPIO_HOME`
 - `spio pack` selects exactly one local package from the active manifest root and never talks to the compiler
 - `spio pack` writes a deterministic local source archive to `<package-root>/dist/<short-name>-<version>.tar` unless `--output <path>` overrides it
 - `spio pack` packages canonical `spio.toml` plus regular files under the selected package root
 - `spio pack` excludes the adjacent `spio.lock`, generated top-level directories, and workspace member/excluded subtrees when packing a combined root package manifest
 - `spio pack` rejects symlinks and unsupported filesystem node types inside the included tree
+- `spio publish --dry-run` performs local publish preflight and stages the same local source archive shape used by `spio pack`
+- `spio publish --dry-run` requires `package.publish = true`
+- published packages may include dependency entries only when those dependencies are themselves registry-addressable
+- non-dry-run `spio publish` is active for an explicit registry root passed through `--registry <path-or-url>`
+- local paths and `file://...` roots publish directly into the local filesystem registry layout
+- `http://...` and `https://...` roots publish through anonymous HTTP `PUT` to the same marker/blob/entry paths
+- `--registry-profile <name>`, `--registry-policy-file <path>`, and `--registry-header <name:value>` reserve the private write-side security interface for remote publish
+- the tracked open-source core rejects those three options unless a private security module is linked from `src-private/`
+- when a private security module accepts them, they apply only to remote publish against the write origin and do not affect read-side fetch behavior
+- publish writes:
+  - registry marker: `<registry-root>/spio-registry.json`
+  - immutable archive blob: `<registry-root>/blobs/sha256/<xx>/<yy>/<sha256>.tar`
+  - version entry: `<registry-root>/index/<namespace>/<name>/<version>.json`
+- registry version entries record dependency metadata for `[dependencies]` and `[dev-dependencies]`
+- publish must reject republishing an existing package version entry
+- remote publish currently assumes an origin that preserves immutable paths and rejects overwrites
+- publish JSON must not expose raw request headers or resolved private policy file paths; it may expose only redacted security metadata
+- first-class auth/account policy remains outside the tracked public tree behind the private security-module boundary
+- registry dependency roots in manifests use `file://`, `http://`, or `https://`
+- resolver-backed `fetch` materializes registry marker metadata, version entries, immutable blobs, and extracted snapshots under `SPIO_HOME/registry/`
+- `spio tool install` installs only local self-contained `styio` executables in the current native core
+- `spio tool install` must validate the compiler through `styio --machine-info=json` plus the published compatibility matrix before writing managed state
+- `spio tool install` writes managed compiler state under `SPIO_HOME/tools/styio/`
+- `spio tool use` switches the managed current compiler to an already installed versioned root under `SPIO_HOME/tools/styio/`
+- `spio tool use` must re-validate the selected managed compiler through `styio --machine-info=json` plus the published compatibility matrix before promoting it to current
+- `spio tool pin` writes a project-local toolchain pin file beside the selected manifest
+- project-local toolchain pin discovery searches upward from the selected manifest directory for `spio-toolchain.toml`
+- `spio check`, `spio build`, `spio run`, and `spio test` resolve compilers in this order:
+  - explicit `--styio-bin <path>`
+  - `SPIO_STYIO_BIN`
+  - nearest project-local `spio-toolchain.toml`
+  - managed current compiler under `SPIO_HOME/tools/styio/current/bin/styio`
+- a discovered project-local toolchain pin is authoritative and must fail if the pinned managed compiler is missing
 - `spio build --dry-run` resolves the active graph and writes a local `compile-plan v1` to `.spio/build/<cache-key>/plan.json`
 - `spio build --dry-run` must not require compiler probing
 - `spio run --dry-run` resolves the active graph and writes a local `compile-plan v1` with `intent = "run"` to `.spio/build/<cache-key>/plan.json`
 - `spio run` only supports explicit binary targets in the current native core
 - `spio test --dry-run` resolves the active graph and writes a local `compile-plan v1` with `intent = "test"` to `.spio/build/<cache-key>/plan.json`
 - `spio test` only supports explicit manifest `[[test]]` targets in the current native core
-- non-dry-run `spio build` requires `--styio-bin <path>` or `SPIO_STYIO_BIN`
+- non-dry-run `spio build` requires a resolved compiler from explicit `--styio-bin <path>`, `SPIO_STYIO_BIN`, a project toolchain pin, or the managed current compiler
 - non-dry-run `spio build` may call `styio --compile-plan <path>` only when the published compatibility matrix enables compile-plan v1 for the current phase
 - non-dry-run `spio run` follows the same published compile-plan gate as `spio build`
 - non-dry-run `spio test` follows the same published compile-plan gate as `spio build`

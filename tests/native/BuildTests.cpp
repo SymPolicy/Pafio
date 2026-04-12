@@ -289,7 +289,7 @@ TEST(BuildCliTests, NonDryRunBuildIsBlockedByPublishedCompatibilityPhase)
       fake_styio,
       "#!/bin/sh\n"
       "if [ \"$1\" = \"--machine-info=json\" ]; then\n"
-      "  printf '%s\\n' '{\"compiler_version\":\"0.0.5\",\"channel\":\"stable\",\"supported_contracts\":{\"compile_plan\":[]},\"capabilities\":[\"machine_info_json\",\"single_file_entry\",\"jsonl_diagnostics\"],\"edition_max\":\"2026\"}'\n"
+      "  printf '%s\\n' '{\"tool\":\"styio\",\"compiler_version\":\"0.0.5\",\"channel\":\"stable\",\"supported_contracts\":{\"compile_plan\":[]},\"capabilities\":[\"machine_info_json\",\"single_file_entry\",\"jsonl_diagnostics\"],\"edition_max\":\"2026\"}'\n"
       "  exit 0\n"
       "fi\n"
       "echo unexpected invocation >&2\n"
@@ -392,7 +392,7 @@ TEST(RunCliTests, NonDryRunRunIsBlockedByPublishedCompatibilityPhase)
       fake_styio,
       "#!/bin/sh\n"
       "if [ \"$1\" = \"--machine-info=json\" ]; then\n"
-      "  printf '%s\\n' '{\"compiler_version\":\"0.0.5\",\"channel\":\"stable\",\"supported_contracts\":{\"compile_plan\":[]},\"capabilities\":[\"machine_info_json\",\"single_file_entry\",\"jsonl_diagnostics\"],\"edition_max\":\"2026\"}'\n"
+      "  printf '%s\\n' '{\"tool\":\"styio\",\"compiler_version\":\"0.0.5\",\"channel\":\"stable\",\"supported_contracts\":{\"compile_plan\":[]},\"capabilities\":[\"machine_info_json\",\"single_file_entry\",\"jsonl_diagnostics\"],\"edition_max\":\"2026\"}'\n"
       "  exit 0\n"
       "fi\n"
       "echo unexpected invocation >&2\n"
@@ -498,7 +498,7 @@ TEST(TestCliTests, NonDryRunTestIsBlockedByPublishedCompatibilityPhase)
       fake_styio,
       "#!/bin/sh\n"
       "if [ \"$1\" = \"--machine-info=json\" ]; then\n"
-      "  printf '%s\\n' '{\"compiler_version\":\"0.0.5\",\"channel\":\"stable\",\"supported_contracts\":{\"compile_plan\":[]},\"capabilities\":[\"machine_info_json\",\"single_file_entry\",\"jsonl_diagnostics\"],\"edition_max\":\"2026\"}'\n"
+      "  printf '%s\\n' '{\"tool\":\"styio\",\"compiler_version\":\"0.0.5\",\"channel\":\"stable\",\"supported_contracts\":{\"compile_plan\":[]},\"capabilities\":[\"machine_info_json\",\"single_file_entry\",\"jsonl_diagnostics\"],\"edition_max\":\"2026\"}'\n"
       "  exit 0\n"
       "fi\n"
       "echo unexpected invocation >&2\n"

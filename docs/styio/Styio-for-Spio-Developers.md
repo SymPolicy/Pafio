@@ -2,7 +2,13 @@
 
 **Purpose:** Give future `spio` maintainers a migration-ready knowledge pack for the `styio` compiler project: what is stable, what is not, which documents matter, and which files must never become hidden dependencies.
 
-**Last updated:** 2026-04-09
+**Last updated:** 2026-04-12
+
+Read this after:
+
+- [Styio-External-Interface-Requirement-Spec.md](./Styio-External-Interface-Requirement-Spec.md)
+- [Styio-Public-Interface-Roadmap.md](./Styio-Public-Interface-Roadmap.md)
+- [Spio-Future-Direction-and-Styio-Coordination.md](../planning/Spio-Future-Direction-and-Styio-Coordination.md)
 
 ## 1. Mental Model
 
@@ -16,6 +22,7 @@ The safe integration boundary is:
 - machine-readable compiler metadata
 - versioned compile-plan contract
 - stable diagnostics format
+- black-box acceptance through `scripts/styio-interface-gate.py`
 
 The unsafe integration boundary is:
 
@@ -168,7 +175,7 @@ Useful supporting material for compatibility work:
 
 Before the subtree moves to `$HOME/DevSpace/Unka-Malloc/styio-spio`, confirm:
 
-- all `spio` compiler integration goes through `SPIO_STYIO_BIN`
+- all `spio` compiler integration goes through explicit `--styio-bin`, `SPIO_STYIO_BIN`, project-local `spio-toolchain.toml`, or managed current compiler selection
 - no `spio` code reads `styio/src` or `styio/tests` directly
 - `spio/contracts/` remains the source of truth for package-manager-side contracts
 - `styio --machine-info=json` is used for compatibility checks instead of compiler-source inspection

@@ -2,13 +2,19 @@
 
 #include "SpioCompat/Compat.hpp"
 #include "SpioCore/Errors.hpp"
+#include "SpioCore/Paths.hpp"
 #include "SpioCore/Version.hpp"
 #include "SpioManifest/Lockfile.hpp"
 #include "SpioManifest/Manifest.hpp"
 #include "SpioPack/Pack.hpp"
 #include "SpioPlan/CompilePlan.hpp"
+#include "SpioPublish/Publish.hpp"
+#include "SpioRegistryServer/Publish.hpp"
 #include "SpioResolve/Resolver.hpp"
+#include "SpioSecurity/RegistrySecurity.hpp"
+#include "SpioTool/Install.hpp"
 #include "SpioTree/Render.hpp"
+#include "SpioVendor/Vendor.hpp"
 #include "SpioWorkflow/Dependencies.hpp"
 
 #include <algorithm>
@@ -41,6 +47,46 @@ struct ChildProcessResult
   std::string stdout_text;
   std::string stderr_text;
 };
+
+struct WorkflowFlags
+{
+  bool locked = false;
+  bool offline = false;
+};
+
+std::string TrimAsciiWhitespace(std::string value)
+{
+  const auto is_space = [](const unsigned char ch) {
+    return ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r';
+  };
+
+  while (!value.empty() && is_space(static_cast<unsigned char>(value.front())))
+  {
+    value.erase(value.begin());
+  }
+  while (!value.empty() && is_space(static_cast<unsigned char>(value.back())))
+  {
+    value.pop_back();
+  }
+  return value;
+}
+
+std::optional<std::string> NormalizeRegistryHeader(std::string value)
+{
+  const size_t separator = value.find(':');
+  if (separator == std::string::npos)
+  {
+    return std::nullopt;
+  }
+
+  std::string name = TrimAsciiWhitespace(value.substr(0U, separator));
+  std::string header_value = TrimAsciiWhitespace(value.substr(separator + 1U));
+  if (name.empty() || header_value.empty())
+  {
+    return std::nullopt;
+  }
+  return name + ": " + header_value;
+}
 
 json BuildMachineInfoPayload()
 {
@@ -115,18 +161,21 @@ int PrintGlobalHelp()
       << "  machine-info [--json]\n"
       << "  new <package-name> [directory] [--lib|--bin]\n"
       << "  init [--name <package-name>] [--lib|--bin]\n"
-      << "  check [--manifest-path <path>] [--styio-bin <path>]\n"
-      << "  add <package-name> (--path <path> | --git <source> --rev <rev>) [--alias <name>] [--dev] [--manifest-path <path>]\n"
+      << "  check [--manifest-path <path>] [--styio-bin <path>] [--locked|--offline|--frozen]\n"
+      << "  add <package-name> (--path <path> | --git <source> --rev <rev> | --registry <url> --version <x.y.z>) [--alias <name>] [--dev] [--manifest-path <path>]\n"
       << "  remove <alias-or-package> [--dev] [--manifest-path <path>]\n"
-      << "  fetch [--manifest-path <path>]\n"
-      << "  lock [--manifest-path <path>] [--check]\n"
+      << "  fetch [--manifest-path <path>] [--locked|--offline|--frozen]\n"
+      << "  lock [--manifest-path <path>] [--check] [--offline]\n"
       << "  tree [--manifest-path <path>]\n"
-      << "  build [--manifest-path <path>] [--package <package-name>] [--bin <name>|--lib] [--profile <dev|release>] [--dry-run] [--styio-bin <path>]\n"
-      << "  run [--manifest-path <path>] [--package <package-name>] [--bin <name>] [--profile <dev|release>] [--dry-run] [--styio-bin <path>]\n"
-      << "  test [--manifest-path <path>] [--package <package-name>] [--test <name>] [--profile <dev|release>] [--dry-run] [--styio-bin <path>]\n"
+      << "  vendor [--manifest-path <path>] [--output <path>] [--locked|--offline|--frozen]\n"
+      << "  build [--manifest-path <path>] [--package <package-name>] [--bin <name>|--lib] [--profile <dev|release>] [--dry-run] [--styio-bin <path>] [--locked|--offline|--frozen]\n"
+      << "  run [--manifest-path <path>] [--package <package-name>] [--bin <name>] [--profile <dev|release>] [--dry-run] [--styio-bin <path>] [--locked|--offline|--frozen]\n"
+      << "  test [--manifest-path <path>] [--package <package-name>] [--test <name>] [--profile <dev|release>] [--dry-run] [--styio-bin <path>] [--locked|--offline|--frozen]\n"
       << "  pack [--manifest-path <path>] [--package <package-name>] [--output <path>]\n"
-      << "  publish\n"
-      << "  tool install\n";
+      << "  publish [--manifest-path <path>] [--package <package-name>] [--output <path>] [--registry <path-or-url>] [--registry-profile <name>] [--registry-policy-file <path>] [--registry-header <name:value>] [--dry-run]\n"
+      << "  tool install --styio-bin <path>\n"
+      << "  tool use --version <compiler-version> [--channel <channel>]\n"
+      << "  tool pin (--version <compiler-version> [--channel <channel>] | --clear) [--manifest-path <path>]\n";
   return spio::kExitSuccess;
 }
 
@@ -146,11 +195,11 @@ int PrintCommandUsage(std::string_view command)
   }
   else if (command == "check")
   {
-    std::cout << "usage: spio check [--manifest-path <path>] [--styio-bin <path>]\n";
+    std::cout << "usage: spio check [--manifest-path <path>] [--styio-bin <path>] [--locked|--offline|--frozen]\n";
   }
   else if (command == "add")
   {
-    std::cout << "usage: spio add <package-name> (--path <path> | --git <source> --rev <rev>) [--alias <name>] [--dev] [--manifest-path <path>]\n";
+    std::cout << "usage: spio add <package-name> (--path <path> | --git <source> --rev <rev> | --registry <url> --version <x.y.z>) [--alias <name>] [--dev] [--manifest-path <path>]\n";
   }
   else if (command == "remove")
   {
@@ -158,35 +207,46 @@ int PrintCommandUsage(std::string_view command)
   }
   else if (command == "fetch")
   {
-    std::cout << "usage: spio fetch [--manifest-path <path>]\n";
+    std::cout << "usage: spio fetch [--manifest-path <path>] [--locked|--offline|--frozen]\n";
   }
   else if (command == "lock")
   {
-    std::cout << "usage: spio lock [--manifest-path <path>] [--check]\n";
+    std::cout << "usage: spio lock [--manifest-path <path>] [--check] [--offline]\n";
   }
   else if (command == "tree")
   {
     std::cout << "usage: spio tree [--manifest-path <path>]\n";
   }
+  else if (command == "vendor")
+  {
+    std::cout << "usage: spio vendor [--manifest-path <path>] [--output <path>] [--locked|--offline|--frozen]\n";
+  }
   else if (command == "build")
   {
-    std::cout << "usage: spio build [--manifest-path <path>] [--package <package-name>] [--bin <name>|--lib] [--profile <dev|release>] [--dry-run] [--styio-bin <path>]\n";
+    std::cout << "usage: spio build [--manifest-path <path>] [--package <package-name>] [--bin <name>|--lib] [--profile <dev|release>] [--dry-run] [--styio-bin <path>] [--locked|--offline|--frozen]\n";
   }
   else if (command == "run")
   {
-    std::cout << "usage: spio run [--manifest-path <path>] [--package <package-name>] [--bin <name>] [--profile <dev|release>] [--dry-run] [--styio-bin <path>]\n";
+    std::cout << "usage: spio run [--manifest-path <path>] [--package <package-name>] [--bin <name>] [--profile <dev|release>] [--dry-run] [--styio-bin <path>] [--locked|--offline|--frozen]\n";
   }
   else if (command == "test")
   {
-    std::cout << "usage: spio test [--manifest-path <path>] [--package <package-name>] [--test <name>] [--profile <dev|release>] [--dry-run] [--styio-bin <path>]\n";
+    std::cout << "usage: spio test [--manifest-path <path>] [--package <package-name>] [--test <name>] [--profile <dev|release>] [--dry-run] [--styio-bin <path>] [--locked|--offline|--frozen]\n";
   }
   else if (command == "pack")
   {
     std::cout << "usage: spio pack [--manifest-path <path>] [--package <package-name>] [--output <path>]\n";
   }
+  else if (command == "publish")
+  {
+    std::cout << "usage: spio publish [--manifest-path <path>] [--package <package-name>] [--output <path>] [--registry <path-or-url>] [--registry-profile <name>] [--registry-policy-file <path>] [--registry-header <name:value>] [--dry-run]\n";
+  }
   else if (command == "tool")
   {
-    std::cout << "usage: spio tool install\n";
+    std::cout << "usage:\n";
+    std::cout << "  spio tool install --styio-bin <path>\n";
+    std::cout << "  spio tool use --version <compiler-version> [--channel <channel>]\n";
+    std::cout << "  spio tool pin (--version <compiler-version> [--channel <channel>] | --clear) [--manifest-path <path>]\n";
   }
   else
   {
@@ -227,6 +287,21 @@ std::string ReadFile(const fs::path &path)
   std::ostringstream buffer;
   buffer << in.rdbuf();
   return buffer.str();
+}
+
+bool IsHttpRegistryRoot(const std::string &value)
+{
+  return value.starts_with("http://") || value.starts_with("https://");
+}
+
+bool IsFileRegistryRoot(const std::string &value)
+{
+  return value.starts_with("file://");
+}
+
+fs::path FileRegistryUrlToPath(const std::string &value)
+{
+  return fs::path(value.substr(std::string("file://").size()));
 }
 
 ChildProcessResult RunChildProcess(const fs::path &binary, const std::vector<std::string> &args)
@@ -309,6 +384,108 @@ std::string TrimTrailingNewline(std::string text)
     text.pop_back();
   }
   return text;
+}
+
+bool ConsumeWorkflowFlag(const std::string &argument, WorkflowFlags &flags)
+{
+  if (argument == "--locked")
+  {
+    flags.locked = true;
+    return true;
+  }
+  if (argument == "--offline")
+  {
+    flags.offline = true;
+    return true;
+  }
+  if (argument == "--frozen")
+  {
+    flags.locked = true;
+    flags.offline = true;
+    return true;
+  }
+  return false;
+}
+
+spio::ResolveOptions BuildResolveOptions(
+    const fs::path &manifest_path,
+    const WorkflowFlags &flags,
+    const std::optional<fs::path> &vendor_root_override = std::nullopt)
+{
+  spio::ResolveOptions options;
+  options.offline = flags.offline;
+  if (vendor_root_override.has_value())
+  {
+    options.vendor_root = spio::CanonicalAbsolutePath(*vendor_root_override);
+  }
+  else
+  {
+    const fs::path default_vendor_root = spio::ProjectVendorRootForManifest(manifest_path);
+    if (fs::exists(default_vendor_root))
+    {
+      options.vendor_root = default_vendor_root;
+    }
+  }
+  return options;
+}
+
+std::optional<spio::CommandError> ValidateLockedPolicy(
+    const fs::path &manifest_path,
+    std::string_view command,
+    const WorkflowFlags &flags,
+    const spio::ResolveOptions &resolve_options)
+{
+  if (!flags.locked)
+  {
+    return std::nullopt;
+  }
+
+  const fs::path lockfile_path = manifest_path.parent_path() / "spio.lock";
+  if (!fs::exists(lockfile_path))
+  {
+    return spio::CommandError{
+        .category = "LockfileError",
+        .code = spio::kExitLock,
+        .message = "lockfile missing: " + lockfile_path.string(),
+        .command = std::string(command),
+    };
+  }
+
+  try
+  {
+    const spio::LockGenerationResult generated = spio::ResolveSingleVersionLockfile(manifest_path, resolve_options);
+    if (ReadFile(lockfile_path) != spio::SerializeLockfileCanonical(generated.lockfile))
+    {
+      return spio::CommandError{
+          .category = "LockfileError",
+          .code = spio::kExitLock,
+          .message = "lockfile is stale: " + lockfile_path.string(),
+          .command = std::string(command),
+      };
+    }
+  }
+  catch (const spio::ValidationError &err)
+  {
+    return spio::CommandError{"ManifestError", spio::kExitManifest, err.what(), std::string(command)};
+  }
+  catch (const spio::WorkspaceError &err)
+  {
+    return spio::CommandError{"WorkspaceError", spio::kExitWorkspace, err.what(), std::string(command)};
+  }
+  catch (const spio::ResolutionError &err)
+  {
+    return spio::CommandError{"ResolutionError", spio::kExitResolve, err.what(), std::string(command)};
+  }
+  catch (const spio::FetchError &err)
+  {
+    return spio::CommandError{"FetchError", spio::kExitFetch, err.what(), std::string(command)};
+  }
+  catch (const spio::CacheError &err)
+  {
+    return spio::CommandError{"CacheError", spio::kExitCache, err.what(), std::string(command)};
+  }
+
+  return std::nullopt;
 }
 
 int HandleNew(const std::vector<std::string> &args, bool as_json)
@@ -417,6 +594,7 @@ int HandleCheck(const std::vector<std::string> &args, bool as_json)
   }
   fs::path manifest_path = "spio.toml";
   std::optional<std::string> styio_bin;
+  WorkflowFlags workflow_flags;
   for (size_t index = 0; index < args.size(); ++index)
   {
     if (args[index] == "--manifest-path")
@@ -434,6 +612,10 @@ int HandleCheck(const std::vector<std::string> &args, bool as_json)
         return EmitError({"UsageError", spio::kExitUsage, "--styio-bin requires a value", "check"}, as_json);
       }
       styio_bin = args[index];
+    }
+    else if (ConsumeWorkflowFlag(args[index], workflow_flags))
+    {
+      continue;
     }
     else
     {
@@ -455,11 +637,17 @@ int HandleCheck(const std::vector<std::string> &args, bool as_json)
     return EmitError({"ManifestError", spio::kExitManifest, err.what(), "check"}, as_json);
   }
 
+  const spio::ResolveOptions resolve_options = BuildResolveOptions(manifest_path, workflow_flags);
+  if (const auto lock_policy_error = ValidateLockedPolicy(manifest_path, "check", workflow_flags, resolve_options); lock_policy_error.has_value())
+  {
+    return EmitError(*lock_policy_error, as_json);
+  }
+
   const fs::path lockfile_path = manifest_path.parent_path() / "spio.lock";
   spio::LockGenerationResult generated;
   try
   {
-    generated = spio::ResolveSingleVersionLockfile(manifest_path);
+    generated = spio::ResolveSingleVersionLockfile(manifest_path, resolve_options);
   }
   catch (const spio::ValidationError &err)
   {
@@ -503,7 +691,20 @@ int HandleCheck(const std::vector<std::string> &args, bool as_json)
   }
 
   json compatibility_payload = nullptr;
-  const std::optional<fs::path> compiler = spio::ResolveStyioBinary(styio_bin);
+  std::optional<fs::path> compiler;
+  try
+  {
+    compiler = spio::ResolveStyioBinary(styio_bin, manifest_path);
+  }
+  catch (const spio::ToolError &err)
+  {
+    return EmitError({"ToolError", spio::kExitToolInstall, err.what(), "check"}, as_json);
+  }
+  catch (const spio::CacheError &err)
+  {
+    return EmitError({"CacheError", spio::kExitCache, err.what(), "check"}, as_json);
+  }
+
   if (compiler.has_value())
   {
     try
@@ -527,6 +728,10 @@ int HandleCheck(const std::vector<std::string> &args, bool as_json)
     {
       return EmitError({"ContractError", spio::kExitContract, err.what(), "check"}, as_json);
     }
+    catch (const spio::ToolError &err)
+    {
+      return EmitError({"ToolError", spio::kExitToolInstall, err.what(), "check"}, as_json);
+    }
   }
 
   return EmitSuccess(
@@ -537,6 +742,8 @@ int HandleCheck(const std::vector<std::string> &args, bool as_json)
           {"lockfile_present", fs::exists(lockfile_path)},
           {"packages", generated.lockfile.packages.size()},
           {"compiler_checked", compiler.has_value()},
+          {"locked", workflow_flags.locked},
+          {"offline", workflow_flags.offline},
           {"styio", compatibility_payload},
       },
       as_json);
@@ -553,6 +760,7 @@ int HandlePlanCommand(std::string_view command_name, std::string_view intent, bo
   request.intent = std::string(intent);
   std::optional<std::string> styio_bin;
   bool dry_run = false;
+  WorkflowFlags workflow_flags;
   for (size_t index = 0; index < args.size(); ++index)
   {
     if (args[index] == "--manifest-path")
@@ -623,21 +831,45 @@ int HandlePlanCommand(std::string_view command_name, std::string_view intent, bo
       }
       styio_bin = args[index];
     }
+    else if (ConsumeWorkflowFlag(args[index], workflow_flags))
+    {
+      continue;
+    }
     else
     {
       return EmitError({"UsageError", spio::kExitUsage, "unexpected argument for " + std::string(command_name) + ": " + args[index], std::string(command_name)}, as_json);
     }
   }
 
+  const spio::ResolveOptions resolve_options = BuildResolveOptions(request.manifest_path, workflow_flags);
+  if (const auto lock_policy_error = ValidateLockedPolicy(request.manifest_path, command_name, workflow_flags, resolve_options); lock_policy_error.has_value())
+  {
+    return EmitError(*lock_policy_error, as_json);
+  }
+  request.offline = workflow_flags.offline;
+  request.vendor_root = resolve_options.vendor_root;
+
   std::optional<fs::path> compiler;
   json compatibility_payload = nullptr;
   if (!dry_run)
   {
-    compiler = spio::ResolveStyioBinary(styio_bin);
+    try
+    {
+      compiler = spio::ResolveStyioBinary(styio_bin, request.manifest_path);
+    }
+    catch (const spio::ToolError &err)
+    {
+      return EmitError({"ToolError", spio::kExitToolInstall, err.what(), std::string(command_name)}, as_json);
+    }
+    catch (const spio::CacheError &err)
+    {
+      return EmitError({"CacheError", spio::kExitCache, err.what(), std::string(command_name)}, as_json);
+    }
+
     if (!compiler.has_value())
     {
       return EmitError(
-          {"UsageError", spio::kExitUsage, std::string(command_name) + " requires --styio-bin <path> or SPIO_STYIO_BIN unless --dry-run is set", std::string(command_name)},
+          {"UsageError", spio::kExitUsage, std::string(command_name) + " requires --styio-bin <path>, SPIO_STYIO_BIN, a project toolchain pin, or a managed current compiler unless --dry-run is set", std::string(command_name)},
           as_json);
     }
 
@@ -669,6 +901,10 @@ int HandlePlanCommand(std::string_view command_name, std::string_view intent, bo
     catch (const spio::CompatibilityError &err)
     {
       return EmitError({"ContractError", spio::kExitContract, err.what(), std::string(command_name)}, as_json);
+    }
+    catch (const spio::ToolError &err)
+    {
+      return EmitError({"ToolError", spio::kExitToolInstall, err.what(), std::string(command_name)}, as_json);
     }
   }
 
@@ -725,6 +961,8 @@ int HandlePlanCommand(std::string_view command_name, std::string_view intent, bo
                       }},
             {"profile", plan.profile_name},
             {"intent", request.intent},
+            {"locked", workflow_flags.locked},
+            {"offline", workflow_flags.offline},
         },
         as_json);
   }
@@ -783,6 +1021,8 @@ int HandlePlanCommand(std::string_view command_name, std::string_view intent, bo
                     }},
           {"profile", plan.profile_name},
           {"intent", request.intent},
+          {"locked", workflow_flags.locked},
+          {"offline", workflow_flags.offline},
           {"styio", compatibility_payload},
       },
       as_json);
@@ -869,6 +1109,20 @@ int HandleAdd(const std::vector<std::string> &args, bool as_json)
       request.source = args[index];
       saw_source = true;
     }
+    else if (args[index] == "--registry")
+    {
+      if (++index >= args.size())
+      {
+        return EmitError({"UsageError", spio::kExitUsage, "--registry requires a value", "add"}, as_json);
+      }
+      if (saw_source)
+      {
+        return EmitError({"UsageError", spio::kExitUsage, "add accepts exactly one dependency source", "add"}, as_json);
+      }
+      request.use_registry = true;
+      request.source = args[index];
+      saw_source = true;
+    }
     else if (args[index] == "--rev")
     {
       if (++index >= args.size())
@@ -876,6 +1130,14 @@ int HandleAdd(const std::vector<std::string> &args, bool as_json)
         return EmitError({"UsageError", spio::kExitUsage, "--rev requires a value", "add"}, as_json);
       }
       request.rev = args[index];
+    }
+    else if (args[index] == "--version")
+    {
+      if (++index >= args.size())
+      {
+        return EmitError({"UsageError", spio::kExitUsage, "--version requires a value", "add"}, as_json);
+      }
+      request.version = args[index];
     }
     else
     {
@@ -885,7 +1147,9 @@ int HandleAdd(const std::vector<std::string> &args, bool as_json)
 
   if (!saw_source)
   {
-    return EmitError({"UsageError", spio::kExitUsage, "add requires either --path <path> or --git <source> --rev <rev>", "add"}, as_json);
+    return EmitError(
+        {"UsageError", spio::kExitUsage, "add requires --path <path>, --git <source> --rev <rev>, or --registry <url> --version <x.y.z>", "add"},
+        as_json);
   }
 
   try
@@ -901,6 +1165,7 @@ int HandleAdd(const std::vector<std::string> &args, bool as_json)
             {"package", result.package_name},
             {"section", spio::DependencySectionName(result.section)},
             {"packages", result.package_count},
+            {"source_kind", request.use_git ? "git" : (request.use_registry ? "registry" : "path")},
         },
         as_json);
   }
@@ -999,6 +1264,7 @@ int HandleFetch(const std::vector<std::string> &args, bool as_json)
   }
 
   fs::path manifest_path = "spio.toml";
+  WorkflowFlags workflow_flags;
   for (size_t index = 0; index < args.size(); ++index)
   {
     if (args[index] == "--manifest-path")
@@ -1009,15 +1275,25 @@ int HandleFetch(const std::vector<std::string> &args, bool as_json)
       }
       manifest_path = args[index];
     }
+    else if (ConsumeWorkflowFlag(args[index], workflow_flags))
+    {
+      continue;
+    }
     else
     {
       return EmitError({"UsageError", spio::kExitUsage, "unexpected argument for fetch: " + args[index], "fetch"}, as_json);
     }
   }
 
+  const spio::ResolveOptions resolve_options = BuildResolveOptions(manifest_path, workflow_flags);
+  if (const auto lock_policy_error = ValidateLockedPolicy(manifest_path, "fetch", workflow_flags, resolve_options); lock_policy_error.has_value())
+  {
+    return EmitError(*lock_policy_error, as_json);
+  }
+
   try
   {
-    const spio::FetchCommandResult result = spio::FetchDependencies(manifest_path);
+    const spio::FetchCommandResult result = spio::FetchDependencies(manifest_path, resolve_options);
     return EmitSuccess(
         {
             {"command", "fetch"},
@@ -1025,6 +1301,9 @@ int HandleFetch(const std::vector<std::string> &args, bool as_json)
             {"manifest_path", result.manifest_path.string()},
             {"packages", result.package_count},
             {"git_packages", result.git_package_count},
+            {"registry_packages", result.registry_package_count},
+            {"locked", workflow_flags.locked},
+            {"offline", workflow_flags.offline},
         },
         as_json);
   }
@@ -1059,6 +1338,7 @@ int HandleLock(const std::vector<std::string> &args, bool as_json)
 
   fs::path manifest_path = "spio.toml";
   bool check_only = false;
+  WorkflowFlags workflow_flags;
   for (size_t index = 0; index < args.size(); ++index)
   {
     if (args[index] == "--manifest-path")
@@ -1073,6 +1353,10 @@ int HandleLock(const std::vector<std::string> &args, bool as_json)
     {
       check_only = true;
     }
+    else if (args[index] == "--offline")
+    {
+      workflow_flags.offline = true;
+    }
     else
     {
       return EmitError({"UsageError", spio::kExitUsage, "unexpected argument for lock: " + args[index], "lock"}, as_json);
@@ -1085,9 +1369,10 @@ int HandleLock(const std::vector<std::string> &args, bool as_json)
   }
 
   spio::LockGenerationResult generated;
+  const spio::ResolveOptions resolve_options = BuildResolveOptions(manifest_path, workflow_flags);
   try
   {
-    generated = spio::ResolveSingleVersionLockfile(manifest_path);
+    generated = spio::ResolveSingleVersionLockfile(manifest_path, resolve_options);
   }
   catch (const spio::ValidationError &err)
   {
@@ -1138,6 +1423,7 @@ int HandleLock(const std::vector<std::string> &args, bool as_json)
             {"lockfile_path", generated.lockfile_path.string()},
             {"mode", "check"},
             {"packages", generated.lockfile.packages.size()},
+            {"offline", workflow_flags.offline},
         },
         as_json);
   }
@@ -1168,6 +1454,7 @@ int HandleLock(const std::vector<std::string> &args, bool as_json)
           {"lockfile_path", generated.lockfile_path.string()},
           {"mode", "write"},
           {"packages", generated.lockfile.packages.size()},
+          {"offline", workflow_flags.offline},
       },
       as_json);
 }
@@ -1247,6 +1534,14 @@ int HandleTree(const std::vector<std::string> &args, bool as_json)
       {
         item["rev"] = *package.rev;
       }
+      if (package.registry.has_value())
+      {
+        item["registry"] = *package.registry;
+      }
+      if (package.sha256.has_value())
+      {
+        item["sha256"] = *package.sha256;
+      }
       packages.push_back(std::move(item));
     }
 
@@ -1265,6 +1560,93 @@ int HandleTree(const std::vector<std::string> &args, bool as_json)
 
   std::cout << spio::RenderDependencyTreeText(graph);
   return spio::kExitSuccess;
+}
+
+int HandleVendor(const std::vector<std::string> &args, bool as_json)
+{
+  if (args.size() == 1 && args.front() == "--help")
+  {
+    return PrintCommandUsage("vendor");
+  }
+
+  spio::VendorRequest request;
+  WorkflowFlags workflow_flags;
+  for (size_t index = 0; index < args.size(); ++index)
+  {
+    if (args[index] == "--manifest-path")
+    {
+      if (++index >= args.size())
+      {
+        return EmitError({"UsageError", spio::kExitUsage, "--manifest-path requires a value", "vendor"}, as_json);
+      }
+      request.manifest_path = args[index];
+    }
+    else if (args[index] == "--output")
+    {
+      if (++index >= args.size())
+      {
+        return EmitError({"UsageError", spio::kExitUsage, "--output requires a value", "vendor"}, as_json);
+      }
+      request.output_path = fs::path(args[index]);
+    }
+    else if (ConsumeWorkflowFlag(args[index], workflow_flags))
+    {
+      continue;
+    }
+    else
+    {
+      return EmitError({"UsageError", spio::kExitUsage, "unexpected argument for vendor: " + args[index], "vendor"}, as_json);
+    }
+  }
+
+  const spio::ResolveOptions resolve_options = BuildResolveOptions(request.manifest_path, workflow_flags, request.output_path);
+  if (const auto lock_policy_error = ValidateLockedPolicy(request.manifest_path, "vendor", workflow_flags, resolve_options); lock_policy_error.has_value())
+  {
+    return EmitError(*lock_policy_error, as_json);
+  }
+  request.offline = workflow_flags.offline;
+
+  try
+  {
+    const spio::VendorResult result = spio::WriteVendorTree(request);
+    return EmitSuccess(
+        {
+            {"command", "vendor"},
+            {"message", "materialized vendored dependency snapshots under " + result.vendor_root.string()},
+            {"manifest_path", result.manifest_path.string()},
+            {"vendor_root", result.vendor_root.string()},
+            {"metadata_path", result.metadata_path.string()},
+            {"packages", result.package_count},
+            {"git_snapshots", result.git_snapshot_count},
+            {"locked", workflow_flags.locked},
+            {"offline", workflow_flags.offline},
+        },
+        as_json);
+  }
+  catch (const spio::ValidationError &err)
+  {
+    return EmitError({"ManifestError", spio::kExitManifest, err.what(), "vendor"}, as_json);
+  }
+  catch (const spio::WorkspaceError &err)
+  {
+    return EmitError({"WorkspaceError", spio::kExitWorkspace, err.what(), "vendor"}, as_json);
+  }
+  catch (const spio::ResolutionError &err)
+  {
+    return EmitError({"ResolutionError", spio::kExitResolve, err.what(), "vendor"}, as_json);
+  }
+  catch (const spio::FetchError &err)
+  {
+    return EmitError({"FetchError", spio::kExitFetch, err.what(), "vendor"}, as_json);
+  }
+  catch (const spio::CacheError &err)
+  {
+    return EmitError({"CacheError", spio::kExitCache, err.what(), "vendor"}, as_json);
+  }
+  catch (const spio::VendorError &err)
+  {
+    return EmitError({"VendorError", spio::kExitVendor, err.what(), "vendor"}, as_json);
+  }
 }
 
 int HandlePack(const std::vector<std::string> &args, bool as_json)
@@ -1335,6 +1717,549 @@ int HandlePack(const std::vector<std::string> &args, bool as_json)
   catch (const spio::PackError &err)
   {
     return EmitError({"PackError", spio::kExitPack, err.what(), "pack"}, as_json);
+  }
+}
+
+int HandlePublish(const std::vector<std::string> &args, bool as_json)
+{
+  if (args.size() == 1 && args.front() == "--help")
+  {
+    return PrintCommandUsage("publish");
+  }
+
+  spio::PublishRequest request;
+  std::optional<std::string> registry_root;
+  std::optional<std::string> registry_profile;
+  std::optional<fs::path> registry_policy_file;
+  std::vector<std::string> registry_headers;
+  bool dry_run = false;
+  for (size_t index = 0; index < args.size(); ++index)
+  {
+    if (args[index] == "--manifest-path")
+    {
+      if (++index >= args.size())
+      {
+        return EmitError({"UsageError", spio::kExitUsage, "--manifest-path requires a value", "publish"}, as_json);
+      }
+      request.manifest_path = args[index];
+    }
+    else if (args[index] == "--package")
+    {
+      if (++index >= args.size())
+      {
+        return EmitError({"UsageError", spio::kExitUsage, "--package requires a value", "publish"}, as_json);
+      }
+      request.package_name = args[index];
+    }
+    else if (args[index] == "--output")
+    {
+      if (++index >= args.size())
+      {
+        return EmitError({"UsageError", spio::kExitUsage, "--output requires a value", "publish"}, as_json);
+      }
+      request.output_path = args[index];
+    }
+    else if (args[index] == "--registry")
+    {
+      if (++index >= args.size())
+      {
+        return EmitError({"UsageError", spio::kExitUsage, "--registry requires a value", "publish"}, as_json);
+      }
+      registry_root = args[index];
+    }
+    else if (args[index] == "--registry-profile")
+    {
+      if (++index >= args.size())
+      {
+        return EmitError({"UsageError", spio::kExitUsage, "--registry-profile requires a value", "publish"}, as_json);
+      }
+      registry_profile = args[index];
+    }
+    else if (args[index] == "--registry-policy-file")
+    {
+      if (++index >= args.size())
+      {
+        return EmitError({"UsageError", spio::kExitUsage, "--registry-policy-file requires a value", "publish"}, as_json);
+      }
+      registry_policy_file = args[index];
+    }
+    else if (args[index] == "--registry-header")
+    {
+      if (++index >= args.size())
+      {
+        return EmitError({"UsageError", spio::kExitUsage, "--registry-header requires a value", "publish"}, as_json);
+      }
+      const std::optional<std::string> normalized = NormalizeRegistryHeader(args[index]);
+      if (!normalized.has_value())
+      {
+        return EmitError(
+            {"UsageError", spio::kExitUsage, "--registry-header must match <name:value> with non-empty name and value", "publish"},
+            as_json);
+      }
+      registry_headers.push_back(*normalized);
+    }
+    else if (args[index] == "--dry-run")
+    {
+      dry_run = true;
+    }
+    else
+    {
+      return EmitError({"UsageError", spio::kExitUsage, "unexpected argument for publish: " + args[index], "publish"}, as_json);
+    }
+  }
+
+  if (dry_run && !registry_headers.empty())
+  {
+    return EmitError(
+        {"UsageError", spio::kExitUsage, "--registry-header is not valid with --dry-run", "publish"},
+        as_json);
+  }
+  if (dry_run && registry_policy_file.has_value())
+  {
+    return EmitError(
+        {"UsageError", spio::kExitUsage, "--registry-policy-file is not valid with --dry-run", "publish"},
+        as_json);
+  }
+  if (dry_run && registry_profile.has_value())
+  {
+    return EmitError(
+        {"UsageError", spio::kExitUsage, "--registry-profile is not valid with --dry-run", "publish"},
+        as_json);
+  }
+  if (registry_profile.has_value() && registry_policy_file.has_value())
+  {
+    return EmitError(
+        {"UsageError", spio::kExitUsage, "--registry-profile cannot be combined with --registry-policy-file", "publish"},
+        as_json);
+  }
+
+  if (!dry_run)
+  {
+    if (!registry_root.has_value())
+    {
+      return EmitError(
+          {"UsageError", spio::kExitUsage, "publish requires --registry <path-or-url> unless --dry-run is set", "publish"},
+          as_json);
+    }
+
+    try
+    {
+      if (IsHttpRegistryRoot(*registry_root))
+      {
+        const spio::RegistryWriteSecurityDecision security = spio::ResolveRegistryWriteSecurity({
+            .registry_root = *registry_root,
+            .profile_name = registry_profile,
+            .policy_file = registry_policy_file,
+            .explicit_request_headers = registry_headers,
+        });
+        const spio::HttpRegistryPublishResult result = spio::PublishToHttpRegistry({
+            .publish_request = request,
+            .registry_root = security.registry_root,
+            .request_headers = security.request_headers,
+        });
+        json payload = {
+            {"command", "publish"},
+            {"mode", "publish"},
+            {"transport", "http"},
+            {"message", "published package into remote registry: " + result.registry_entry_url},
+            {"manifest_path", result.candidate.manifest_path.string()},
+            {"package_root", result.candidate.package_root.string()},
+            {"archive_path", result.candidate.archive_path.string()},
+            {"package", result.candidate.package_name},
+            {"version", result.candidate.package_version},
+            {"dependencies", result.candidate.dependency_count},
+            {"dev_dependencies", result.candidate.dev_dependency_count},
+            {"registry_root", result.registry_root},
+            {"registry_marker_url", result.registry_marker_url},
+            {"registry_blob_url", result.registry_blob_url},
+            {"registry_entry_url", result.registry_entry_url},
+            {"registry_security_provider", security.provider_name},
+            {"registry_write_security_mode", security.mode},
+            {"registry_header_count", security.request_headers.size()},
+            {"sha256", result.archive_sha256},
+            {"size_bytes", result.archive_size_bytes},
+            {"published_at", result.published_at_utc},
+        };
+        if (security.profile_name.has_value())
+        {
+          payload["registry_profile"] = *security.profile_name;
+        }
+        return EmitSuccess(payload, as_json);
+      }
+
+      const fs::path filesystem_registry_root =
+          IsFileRegistryRoot(*registry_root) ? FileRegistryUrlToPath(*registry_root) : fs::path(*registry_root);
+      if (registry_policy_file.has_value())
+      {
+        return EmitError(
+            {
+                "UsageError",
+                spio::kExitUsage,
+                "--registry-policy-file is only valid for http:// or https:// registry roots",
+                "publish",
+            },
+            as_json);
+      }
+      if (registry_profile.has_value())
+      {
+        return EmitError(
+            {
+                "UsageError",
+                spio::kExitUsage,
+                "--registry-profile is only valid for http:// or https:// registry roots",
+                "publish",
+            },
+            as_json);
+      }
+      if (!registry_headers.empty())
+      {
+        return EmitError(
+            {"UsageError", spio::kExitUsage, "--registry-header is only valid for http:// or https:// registry roots", "publish"},
+            as_json);
+      }
+      const spio::RegistryPublishResult result = spio::PublishToFilesystemRegistry({
+          .publish_request = request,
+          .registry_root = filesystem_registry_root,
+      });
+      return EmitSuccess(
+          {
+              {"command", "publish"},
+              {"mode", "publish"},
+              {"transport", "filesystem"},
+              {"message", "published package into local filesystem registry: " + result.registry_entry_path.string()},
+              {"manifest_path", result.candidate.manifest_path.string()},
+              {"package_root", result.candidate.package_root.string()},
+              {"archive_path", result.candidate.archive_path.string()},
+              {"package", result.candidate.package_name},
+              {"version", result.candidate.package_version},
+              {"dependencies", result.candidate.dependency_count},
+              {"dev_dependencies", result.candidate.dev_dependency_count},
+              {"registry_root", result.registry_root.string()},
+              {"registry_marker_path", result.registry_marker_path.string()},
+              {"registry_blob_path", result.registry_blob_path.string()},
+              {"registry_entry_path", result.registry_entry_path.string()},
+              {"sha256", result.archive_sha256},
+              {"size_bytes", result.archive_size_bytes},
+              {"published_at", result.published_at_utc},
+          },
+          as_json);
+    }
+    catch (const spio::ValidationError &err)
+    {
+      return EmitError({"ManifestError", spio::kExitManifest, err.what(), "publish"}, as_json);
+    }
+    catch (const spio::WorkspaceError &err)
+    {
+      return EmitError({"WorkspaceError", spio::kExitWorkspace, err.what(), "publish"}, as_json);
+    }
+    catch (const spio::PackError &err)
+    {
+      return EmitError({"PackError", spio::kExitPack, err.what(), "publish"}, as_json);
+    }
+    catch (const spio::PublishError &err)
+    {
+      return EmitError({"PublishError", spio::kExitPublish, err.what(), "publish"}, as_json);
+    }
+  }
+
+  try
+  {
+    const spio::PublishResult result = spio::PreparePublishCandidate(request);
+    return EmitSuccess(
+        {
+            {"command", "publish"},
+            {"mode", "dry-run"},
+            {"message", "prepared publish candidate: " + result.archive_path.string()},
+            {"manifest_path", result.manifest_path.string()},
+            {"package_root", result.package_root.string()},
+            {"archive_path", result.archive_path.string()},
+            {"package", result.package_name},
+            {"version", result.package_version},
+            {"dependencies", result.dependency_count},
+            {"dev_dependencies", result.dev_dependency_count},
+        },
+        as_json);
+  }
+  catch (const spio::ValidationError &err)
+  {
+    return EmitError({"ManifestError", spio::kExitManifest, err.what(), "publish"}, as_json);
+  }
+  catch (const spio::WorkspaceError &err)
+  {
+    return EmitError({"WorkspaceError", spio::kExitWorkspace, err.what(), "publish"}, as_json);
+  }
+  catch (const spio::PackError &err)
+  {
+    return EmitError({"PackError", spio::kExitPack, err.what(), "publish"}, as_json);
+  }
+  catch (const spio::PublishError &err)
+  {
+    return EmitError({"PublishError", spio::kExitPublish, err.what(), "publish"}, as_json);
+  }
+}
+
+int HandleToolInstall(const std::vector<std::string> &args, bool as_json)
+{
+  if (args.size() == 1 && args.front() == "--help")
+  {
+    std::cout << "usage: spio tool install --styio-bin <path>\n";
+    return spio::kExitSuccess;
+  }
+
+  std::optional<fs::path> styio_binary;
+  for (size_t index = 0; index < args.size(); ++index)
+  {
+    if (args[index] == "--styio-bin")
+    {
+      if (++index >= args.size())
+      {
+        return EmitError({"UsageError", spio::kExitUsage, "--styio-bin requires a value", "tool install"}, as_json);
+      }
+      styio_binary = args[index];
+    }
+    else
+    {
+      return EmitError({"UsageError", spio::kExitUsage, "unexpected argument for tool install: " + args[index], "tool install"}, as_json);
+    }
+  }
+
+  if (!styio_binary.has_value())
+  {
+    return EmitError({"UsageError", spio::kExitUsage, "tool install requires --styio-bin <path>", "tool install"}, as_json);
+  }
+
+  try
+  {
+    const spio::ToolInstallResult result = spio::InstallManagedStyio({.styio_binary = *styio_binary});
+    return EmitSuccess(
+        {
+            {"command", "tool install"},
+            {"message", "installed managed styio compiler: " + result.managed_binary_path.string()},
+            {"source_binary", result.source_binary.string()},
+            {"spio_home", result.spio_home.string()},
+            {"install_root", result.install_root.string()},
+            {"install_binary_path", result.install_binary_path.string()},
+            {"install_metadata_path", result.install_metadata_path.string()},
+            {"current_root", result.current_root.string()},
+            {"managed_binary_path", result.managed_binary_path.string()},
+            {"current_metadata_path", result.current_metadata_path.string()},
+            {"compiler_version", result.compiler_version},
+            {"channel", result.compiler_channel},
+            {"edition_max", result.compiler_edition_max},
+            {"integration_phase", result.integration_phase},
+            {"supported_compile_plan_versions", result.supported_compile_plan_versions},
+            {"capabilities", result.capabilities},
+        },
+        as_json);
+  }
+  catch (const spio::ToolError &err)
+  {
+    return EmitError({"ToolError", spio::kExitToolInstall, err.what(), "tool install"}, as_json);
+  }
+  catch (const spio::CompilerProbeError &err)
+  {
+    return EmitError({"CompilerSpawnError", spio::kExitCompilerSpawn, err.what(), "tool install"}, as_json);
+  }
+  catch (const spio::CompatibilityError &err)
+  {
+    return EmitError({"ContractError", spio::kExitContract, err.what(), "tool install"}, as_json);
+  }
+  catch (const spio::CacheError &err)
+  {
+    return EmitError({"CacheError", spio::kExitCache, err.what(), "tool install"}, as_json);
+  }
+}
+
+int HandleToolUse(const std::vector<std::string> &args, bool as_json)
+{
+  if (args.size() == 1 && args.front() == "--help")
+  {
+    std::cout << "usage: spio tool use --version <compiler-version> [--channel <channel>]\n";
+    return spio::kExitSuccess;
+  }
+
+  std::optional<std::string> compiler_version;
+  std::optional<std::string> compiler_channel;
+  for (size_t index = 0; index < args.size(); ++index)
+  {
+    if (args[index] == "--version")
+    {
+      if (++index >= args.size())
+      {
+        return EmitError({"UsageError", spio::kExitUsage, "--version requires a value", "tool use"}, as_json);
+      }
+      compiler_version = args[index];
+    }
+    else if (args[index] == "--channel")
+    {
+      if (++index >= args.size())
+      {
+        return EmitError({"UsageError", spio::kExitUsage, "--channel requires a value", "tool use"}, as_json);
+      }
+      compiler_channel = args[index];
+    }
+    else
+    {
+      return EmitError({"UsageError", spio::kExitUsage, "unexpected argument for tool use: " + args[index], "tool use"}, as_json);
+    }
+  }
+
+  if (!compiler_version.has_value())
+  {
+    return EmitError({"UsageError", spio::kExitUsage, "tool use requires --version <compiler-version>", "tool use"}, as_json);
+  }
+
+  try
+  {
+    const spio::ToolUseResult result = spio::UseManagedStyio({
+        .compiler_version = *compiler_version,
+        .compiler_channel = compiler_channel,
+    });
+    return EmitSuccess(
+        {
+            {"command", "tool use"},
+            {"message", "activated managed styio compiler: " + result.managed_binary_path.string()},
+            {"spio_home", result.spio_home.string()},
+            {"install_root", result.install_root.string()},
+            {"install_binary_path", result.install_binary_path.string()},
+            {"install_metadata_path", result.install_metadata_path.string()},
+            {"current_root", result.current_root.string()},
+            {"managed_binary_path", result.managed_binary_path.string()},
+            {"current_metadata_path", result.current_metadata_path.string()},
+            {"compiler_version", result.compiler_version},
+            {"channel", result.compiler_channel},
+            {"edition_max", result.compiler_edition_max},
+            {"integration_phase", result.integration_phase},
+            {"supported_compile_plan_versions", result.supported_compile_plan_versions},
+            {"capabilities", result.capabilities},
+        },
+        as_json);
+  }
+  catch (const spio::ToolError &err)
+  {
+    return EmitError({"ToolError", spio::kExitToolInstall, err.what(), "tool use"}, as_json);
+  }
+  catch (const spio::CompilerProbeError &err)
+  {
+    return EmitError({"CompilerSpawnError", spio::kExitCompilerSpawn, err.what(), "tool use"}, as_json);
+  }
+  catch (const spio::CompatibilityError &err)
+  {
+    return EmitError({"ContractError", spio::kExitContract, err.what(), "tool use"}, as_json);
+  }
+  catch (const spio::CacheError &err)
+  {
+    return EmitError({"CacheError", spio::kExitCache, err.what(), "tool use"}, as_json);
+  }
+}
+
+int HandleToolPin(const std::vector<std::string> &args, bool as_json)
+{
+  if (args.size() == 1 && args.front() == "--help")
+  {
+    std::cout << "usage: spio tool pin (--version <compiler-version> [--channel <channel>] | --clear) [--manifest-path <path>]\n";
+    return spio::kExitSuccess;
+  }
+
+  spio::ToolPinRequest request;
+  for (size_t index = 0; index < args.size(); ++index)
+  {
+    if (args[index] == "--manifest-path")
+    {
+      if (++index >= args.size())
+      {
+        return EmitError({"UsageError", spio::kExitUsage, "--manifest-path requires a value", "tool pin"}, as_json);
+      }
+      request.manifest_path = args[index];
+    }
+    else if (args[index] == "--version")
+    {
+      if (++index >= args.size())
+      {
+        return EmitError({"UsageError", spio::kExitUsage, "--version requires a value", "tool pin"}, as_json);
+      }
+      request.compiler_version = args[index];
+    }
+    else if (args[index] == "--channel")
+    {
+      if (++index >= args.size())
+      {
+        return EmitError({"UsageError", spio::kExitUsage, "--channel requires a value", "tool pin"}, as_json);
+      }
+      request.compiler_channel = args[index];
+    }
+    else if (args[index] == "--clear")
+    {
+      request.clear = true;
+    }
+    else
+    {
+      return EmitError({"UsageError", spio::kExitUsage, "unexpected argument for tool pin: " + args[index], "tool pin"}, as_json);
+    }
+  }
+
+  if (request.clear && request.compiler_version.has_value())
+  {
+    return EmitError({"UsageError", spio::kExitUsage, "tool pin cannot combine --clear and --version", "tool pin"}, as_json);
+  }
+  if (request.clear && request.compiler_channel.has_value())
+  {
+    return EmitError({"UsageError", spio::kExitUsage, "tool pin cannot combine --clear and --channel", "tool pin"}, as_json);
+  }
+  if (!request.clear && !request.compiler_version.has_value())
+  {
+    return EmitError({"UsageError", spio::kExitUsage, "tool pin requires --version <compiler-version> unless --clear is set", "tool pin"}, as_json);
+  }
+
+  try
+  {
+    const spio::ToolPinResult result = spio::PinManagedStyio(request);
+    if (result.cleared)
+    {
+      return EmitSuccess(
+          {
+              {"command", "tool pin"},
+              {"message", "cleared project toolchain pin: " + result.pin_path.string()},
+              {"manifest_path", result.manifest_path.string()},
+              {"pin_path", result.pin_path.string()},
+              {"mode", "clear"},
+          },
+          as_json);
+    }
+
+    return EmitSuccess(
+        {
+            {"command", "tool pin"},
+            {"message", "pinned project compiler to managed styio " + *result.compiler_channel + "/" + *result.compiler_version},
+            {"manifest_path", result.manifest_path.string()},
+            {"pin_path", result.pin_path.string()},
+            {"mode", "write"},
+            {"compiler_version", *result.compiler_version},
+            {"channel", *result.compiler_channel},
+            {"install_root", result.install_root->string()},
+            {"install_binary_path", result.install_binary_path->string()},
+        },
+        as_json);
+  }
+  catch (const spio::ValidationError &err)
+  {
+    return EmitError({"ManifestError", spio::kExitManifest, err.what(), "tool pin"}, as_json);
+  }
+  catch (const spio::ToolError &err)
+  {
+    return EmitError({"ToolError", spio::kExitToolInstall, err.what(), "tool pin"}, as_json);
+  }
+  catch (const spio::CompilerProbeError &err)
+  {
+    return EmitError({"CompilerSpawnError", spio::kExitCompilerSpawn, err.what(), "tool pin"}, as_json);
+  }
+  catch (const spio::CompatibilityError &err)
+  {
+    return EmitError({"ContractError", spio::kExitContract, err.what(), "tool pin"}, as_json);
+  }
+  catch (const spio::CacheError &err)
+  {
+    return EmitError({"CacheError", spio::kExitCache, err.what(), "tool pin"}, as_json);
   }
 }
 
@@ -1440,9 +2365,17 @@ int RunCli(const std::vector<std::string> &argv)
   {
     return HandleTree(args, global_json);
   }
+  if (command == "vendor")
+  {
+    return HandleVendor(args, global_json);
+  }
   if (command == "pack")
   {
     return HandlePack(args, global_json);
+  }
+  if (command == "publish")
+  {
+    return HandlePublish(args, global_json);
   }
   if (command == "tool")
   {
@@ -1450,17 +2383,26 @@ int RunCli(const std::vector<std::string> &argv)
     {
       return PrintCommandUsage("tool");
     }
-    if (args.size() == 1 && args.front() == "install")
+    if (!args.empty() && args.front() == "install")
     {
-      return EmitBootstrapNotImplemented("tool install", global_json);
+      return HandleToolInstall(
+          std::vector<std::string>(args.begin() + 1, args.end()),
+          global_json);
     }
-    return EmitError({"UsageError", kExitUsage, "tool requires the 'install' subcommand", "tool"}, global_json);
+    if (!args.empty() && args.front() == "use")
+    {
+      return HandleToolUse(
+          std::vector<std::string>(args.begin() + 1, args.end()),
+          global_json);
+    }
+    if (!args.empty() && args.front() == "pin")
+    {
+      return HandleToolPin(
+          std::vector<std::string>(args.begin() + 1, args.end()),
+          global_json);
+    }
+    return EmitError({"UsageError", kExitUsage, "tool requires the 'install', 'use', or 'pin' subcommand", "tool"}, global_json);
   }
-  if (command == "publish")
-  {
-    return EmitBootstrapNotImplemented(command, global_json);
-  }
-
   return EmitError({"UsageError", kExitUsage, "unknown command: " + command, command}, global_json);
 }
 
