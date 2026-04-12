@@ -1,0 +1,7 @@
+[spio]
+manifest-version = 1
+
+[workspace]
+members = ["packages/core", "packages/cli"]
+exclude = ["packages/old"]
+resolver = "1"

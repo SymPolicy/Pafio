@@ -1,0 +1,12 @@
+lock-version = 1
+
+[metadata]
+generated-by = "spio 0.1.0-dev"
+resolver = "single-version-v1"
+
+[[package]]
+id = "workspace:acme/demo@0.1.0"
+name = "acme/demo"
+version = "0.1.0"
+source-kind = "workspace"
+dependencies = []

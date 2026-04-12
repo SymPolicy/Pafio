@@ -1,0 +1,340 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://spio.dev/contracts/compile-plan/v1/compile-plan.schema.json",
+  "title": "spio compile-plan v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "plan_version",
+    "generated_by",
+    "intent",
+    "workspace_root",
+    "entry",
+    "toolchain",
+    "profile",
+    "packages",
+    "resolution",
+    "outputs",
+    "emit"
+  ],
+  "properties": {
+    "plan_version": {
+      "const": 1
+    },
+    "generated_by": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tool",
+        "version"
+      ],
+      "properties": {
+        "tool": {
+          "type": "string",
+          "const": "spio"
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "intent": {
+      "type": "string",
+      "enum": [
+        "check",
+        "build",
+        "run",
+        "test"
+      ]
+    },
+    "workspace_root": {
+      "$ref": "#/$defs/absolutePath"
+    },
+    "entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "package_id",
+        "target_kind",
+        "target_name",
+        "file"
+      ],
+      "properties": {
+        "package_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "target_kind": {
+          "type": "string",
+          "enum": [
+            "lib",
+            "bin",
+            "test"
+          ]
+        },
+        "target_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "file": {
+          "$ref": "#/$defs/absolutePath"
+        }
+      }
+    },
+    "toolchain": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "channel",
+        "edition",
+        "implicit_std",
+        "std_package_id"
+      ],
+      "properties": {
+        "channel": {
+          "type": "string",
+          "minLength": 1
+        },
+        "edition": {
+          "type": "string",
+          "minLength": 1
+        },
+        "implicit_std": {
+          "type": "boolean"
+        },
+        "std_package_id": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "opt_level",
+        "debug",
+        "lto"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "enum": [
+            "dev",
+            "release"
+          ]
+        },
+        "opt_level": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 3
+        },
+        "debug": {
+          "type": "boolean"
+        },
+        "lto": {
+          "type": "boolean"
+        }
+      }
+    },
+    "packages": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/package"
+      }
+    },
+    "resolution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "resolver",
+        "package_order"
+      ],
+      "properties": {
+        "resolver": {
+          "type": "string",
+          "const": "single-version-v1"
+        },
+        "package_order": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "outputs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "build_root",
+        "artifact_dir",
+        "diag_dir"
+      ],
+      "properties": {
+        "build_root": {
+          "$ref": "#/$defs/absolutePath"
+        },
+        "artifact_dir": {
+          "$ref": "#/$defs/absolutePath"
+        },
+        "diag_dir": {
+          "$ref": "#/$defs/absolutePath"
+        }
+      }
+    },
+    "emit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "error_format",
+        "ast",
+        "styio_ir",
+        "llvm_ir"
+      ],
+      "properties": {
+        "error_format": {
+          "type": "string",
+          "enum": [
+            "text",
+            "jsonl"
+          ]
+        },
+        "ast": {
+          "type": "boolean"
+        },
+        "styio_ir": {
+          "type": "boolean"
+        },
+        "llvm_ir": {
+          "type": "boolean"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "absolutePath": {
+      "type": "string",
+      "pattern": "^/"
+    },
+    "binTarget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "path"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "path": {
+          "$ref": "#/$defs/absolutePath"
+        }
+      }
+    },
+    "testTarget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "path"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "path": {
+          "$ref": "#/$defs/absolutePath"
+        }
+      }
+    },
+    "package": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "version",
+        "root_dir",
+        "manifest_path",
+        "source_kind",
+        "targets",
+        "dependency_aliases"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "root_dir": {
+          "$ref": "#/$defs/absolutePath"
+        },
+        "manifest_path": {
+          "$ref": "#/$defs/absolutePath"
+        },
+        "source_kind": {
+          "type": "string",
+          "enum": [
+            "workspace",
+            "path",
+            "git",
+            "registry",
+            "builtin"
+          ]
+        },
+        "targets": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "lib",
+            "bins"
+          ],
+          "properties": {
+            "lib": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "pattern": "^/|^$"
+            },
+            "bins": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/binTarget"
+              }
+            },
+            "tests": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/testTarget"
+              }
+            }
+          }
+        },
+        "dependency_aliases": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    }
+  }
+}

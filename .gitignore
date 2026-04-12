@@ -39,3 +39,25 @@
 
 # debug information files
 *.dwo
+
+.build/
+build/
+build-codex/
+.spio/
+tmp/
+dist/
+*.tmp
+*.log
+CMakeUserPresets.json
+CMakePresets.json
+CMakeCache.txt
+CMakeFiles/
+Testing/
+__pycache__/
+.pytest_cache/
+
+# Private security/auth extensions that must not ship in the open-source tree.
+src-private/
+tests-private/
+docs-private/
+scripts-private/
