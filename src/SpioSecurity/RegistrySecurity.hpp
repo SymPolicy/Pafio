@@ -41,6 +41,9 @@ struct RegistryWriteSecurityDecision
 using RegistryReadSecurityResolver = RegistryReadSecurityDecision (*)(const RegistryReadSecurityRequest &request);
 using RegistryWriteSecurityResolver = RegistryWriteSecurityDecision (*)(const RegistryWriteSecurityRequest &request);
 
+RegistryReadSecurityDecision ResolveDefaultRegistryReadSecurity(const RegistryReadSecurityRequest &request);
+RegistryWriteSecurityDecision ResolveDefaultRegistryWriteSecurity(const RegistryWriteSecurityRequest &request);
+
 RegistryReadSecurityResolver RegisterRegistryReadSecurityResolver(RegistryReadSecurityResolver resolver);
 RegistryWriteSecurityResolver RegisterRegistryWriteSecurityResolver(RegistryWriteSecurityResolver resolver);
 

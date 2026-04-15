@@ -2,7 +2,7 @@
 
 **Purpose:** Define which security-sensitive responsibilities stay out of the open-source `spio` tree and how closed-source implementations are injected without changing the public command or repository contracts.
 
-**Last updated:** 2026-04-12
+**Last updated:** 2026-04-13
 
 ## 1. Public Boundary
 
@@ -68,7 +68,59 @@ Closed-source implementations may override that behavior to:
 - inject request headers or signatures
 - enforce write-origin allowlists and environment-specific policy
 
-## 5. Recommended Private Layout
+## 5. Extension Pattern
+
+Private implementations should prefer wrapping the public default helpers instead of copying the tracked open-source logic:
+
+- [ResolveDefaultRegistryReadSecurity]($HOME/DevSpace/Unka-Malloc/styio-spio/src/SpioSecurity/RegistrySecurity.hpp)
+- [ResolveDefaultRegistryWriteSecurity]($HOME/DevSpace/Unka-Malloc/styio-spio/src/SpioSecurity/RegistrySecurity.hpp)
+
+Recommended rules:
+
+- keep one read resolver and one write resolver as the private entrypoints registered through `RegisterRegistryReadSecurityResolver` and `RegisterRegistryWriteSecurityResolver`
+- let the public default helper keep ownership of scheme normalization and anonymous fallback behavior
+- for write-side private hooks such as `--registry-profile`, `--registry-policy-file`, or explicit headers, consume or validate the private-only inputs first, then delegate to the default helper with a sanitized request that contains only the public baseline fields
+- do not add extra file or network I/O on the no-hook fast path; if the request is equivalent to the public default path, return the public default result directly
+- keep private diagnostics redacted and never emit resolved credentials, raw headers, account identifiers, or private policy file paths
+
+Example pattern for a private write resolver:
+
+```cpp
+static spio::RegistryWriteSecurityDecision PrivateWriteResolver(
+    const spio::RegistryWriteSecurityRequest &request)
+{
+  if (!request.profile_name.has_value() &&
+      !request.policy_file.has_value() &&
+      request.explicit_request_headers.empty())
+  {
+    return spio::ResolveDefaultRegistryWriteSecurity(request);
+  }
+
+  spio::RegistryWriteSecurityDecision decision =
+      spio::ResolveDefaultRegistryWriteSecurity({
+          .registry_root = request.registry_root,
+      });
+
+  if (!decision.registry_root.starts_with("https://"))
+  {
+    throw spio::PublishError("private write policy requires https");
+  }
+
+  decision.provider_name = "private-module";
+  decision.mode = "profile";
+  decision.profile_name = request.profile_name;
+  decision.request_headers = LoadPrivateHeaders(decision.registry_root, request);
+  decision.request_headers.insert(
+      decision.request_headers.end(),
+      request.explicit_request_headers.begin(),
+      request.explicit_request_headers.end());
+  return decision;
+}
+```
+
+The same pattern applies on the read side: call `ResolveDefaultRegistryReadSecurity`, then tighten trust rules or append credentials only when the private deployment actually requires it.
+
+## 6. Recommended Private Layout
 
 Use this local layout for closed-source extensions:
 
@@ -85,7 +137,7 @@ tests-private/
 
 The build automatically compiles `src-private/*.cpp` when present, and public test configuration may add `tests-private/CMakeLists.txt` when present.
 
-## 6. Public/Private Documentation Split
+## 7. Public/Private Documentation Split
 
 - public docs define the command surface, redacted output, and integration boundary
 - deployment-specific auth/account rules belong in private docs under `docs-private/`

@@ -15,6 +15,7 @@ add_executable(spio_native_tests
   native/ManifestTests.cpp
   native/PackTests.cpp
   native/PublishTests.cpp
+  native/SecurityTests.cpp
   native/ToolTests.cpp
   native/VendorTests.cpp
 )
