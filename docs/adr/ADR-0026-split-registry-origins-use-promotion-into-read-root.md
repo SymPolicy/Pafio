@@ -1,5 +1,6 @@
 # ADR-0026: Split Registry Origins Use Promotion Into a Read-Only Read Root
 
+**Last updated:** 2026-04-17  
 **Status:** Accepted  
 **Date:** 2026-04-12  
 **Purpose:** Record the decision to treat package publication and client download as separate operational concerns, with promotion from a writable upload root into a read-only serving root.

@@ -4,7 +4,7 @@
 
 **Audience:** `styio` maintainers implementing compiler-side interfaces, and `spio` maintainers validating published compiler compatibility.
 
-**Last updated:** 2026-04-12
+**Last updated:** 2026-04-17
 
 ## 1. Ownership and Boundary
 
@@ -63,7 +63,15 @@ Required JSON fields:
   - strict semver `x.y.z`
 - `channel`
   - required non-empty string
+- `active_integration_phase`
+  - required non-empty string
 - `supported_contracts`
+  - required object
+- `supported_contract_versions`
+  - required object
+- `supported_adapter_modes`
+  - required array of strings
+- `feature_flags`
   - required object
 - `supported_contracts.compile_plan`
   - required array
@@ -87,6 +95,8 @@ Current bootstrap compatibility also expects:
 Rules:
 
 - advertising a compile-plan version in `supported_contracts.compile_plan` means the binary accepts `styio --compile-plan <path>` for that version
+- `supported_contract_versions.machine_info = [1]` is the current published handshake floor
+- `supported_adapter_modes` must currently include `cli`
 - owning a schema file in source control does not count as support
 - unpublished local branches do not count as support
 
@@ -111,6 +121,7 @@ Required behavior when the plan is invalid or unsupported:
 - exit non-zero
 - emit stable diagnostics through stderr and, when possible, through the diagnostics output declared in the plan
 - reject unsupported plan versions explicitly instead of silently guessing behavior
+- invalid plan and CLI-conflict failures should remain machine-readable so downstream tools do not have to parse prose
 
 ## 3. Compile-Plan Consumer Contract
 
@@ -118,7 +129,7 @@ Required behavior when the plan is invalid or unsupported:
 
 The compiler must consume at least these top-level plan fields:
 
-- `schema_version`
+- `plan_version`
 - `intent`
 - `entry`
 - `toolchain`
@@ -133,12 +144,14 @@ The compiler must consume at least these top-level plan fields:
 Supported plan intents:
 
 - `build`
+- `check`
 - `run`
 - `test`
 
 Required compiler behavior:
 
 - `build` produces the entry target artifact set
+- `check` validates and lowers the selected target graph without executing the entry target
 - `run` produces the entry binary artifact set and may execute the selected entry according to the published compiler contract
 - `test` builds and executes the selected explicit test target according to the published compiler contract
 
@@ -151,7 +164,7 @@ The compiler must honor:
 - `entry.package_id`
 - `entry.target_kind`
 - `entry.target_name`
-- `entry.root_source`
+- `entry.file`
 
 The compiler must not re-discover a different default target when the plan already names one.
 
@@ -174,6 +187,8 @@ Minimum success postconditions:
 - `outputs.build_root` exists
 - `outputs.artifact_dir` exists
 - `outputs.diag_dir` exists
+- `outputs.build_root/receipt.json` exists and is valid JSON
+- `outputs.diag_dir/diagnostics.jsonl` exists, even when no diagnostics were emitted
 
 ## 4. Diagnostics Contract
 
@@ -233,6 +248,7 @@ The gate validates:
 - compile-plan advertisement when requested
 - direct `styio --compile-plan <path>` execution against a dry-run plan when requested
 - output-directory materialization for compile-plan execution
+- published `receipt.json` and `diagnostics.jsonl` artifacts for compile-plan execution
 
 ## 7. Delivery Checklist for the Styio Team
 

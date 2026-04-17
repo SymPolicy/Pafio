@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "last_updated": "2026-04-17",
+  "archive_root": "docs/archive",
+  "rollup_root": "docs/rollups",
+  "keep_window": {
+    "history": 1
+  },
+  "entries": []
+}

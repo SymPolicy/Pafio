@@ -11,6 +11,6 @@ required_capabilities = [
   "single_file_entry",
   "jsonl_diagnostics"
 ]
-supported_compile_plan_versions = []
-integration_phase = "bootstrap-only"
-notes = "Current bootstrap compatibility stops at manifest validation, handshake, and compiler metadata. Project build/run integration must wait for a published compile-plan contract."
+supported_compile_plan_versions = [1]
+integration_phase = "compile-plan-live"
+notes = "Published compatibility now requires compile-plan v1 so spio build/run/test can hand off live plans to released styio binaries."

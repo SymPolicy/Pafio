@@ -2,11 +2,14 @@
 
 **Purpose:** Hold executable verification and migration procedures for `spio`.
 
+**Last updated:** 2026-04-17
+
 ## Scope
 
 - verification matrix
 - repository split runbook
 - registry server runbook
+- artifact lifecycle runbook
 
 Private auth-bearing operational procedures must live under `docs-private/` and `scripts-private/`, not under this tracked directory.
 

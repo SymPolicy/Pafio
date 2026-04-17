@@ -2,9 +2,140 @@
 
 **Purpose:** Define the named gates, required commands, and pass conditions that close each `spio` implementation stream.
 
-**Last updated:** 2026-04-12
+**Last updated:** 2026-04-17
 
 ## Gate Matrix
+
+### `quality_no_binaries_gate`
+
+Objective:
+
+- reject tracked binary files in repository sources and delivery exports
+
+Commands:
+
+```text
+python3 ./scripts/check_no_binaries.py --repo-root . --mode tracked
+```
+
+Pass conditions:
+
+- tracked files contain no accidental binary content
+
+Defect:
+
+- this gate only checks source-tree binaries; archive integrity belongs to delivery checks
+
+### `quality_repo_hygiene_gate`
+
+Objective:
+
+- enforce generated/private-path hygiene and documentation linkage for gate entrypoints
+
+Commands:
+
+```text
+python3 ./scripts/repo-hygiene-check.py --repo-root . --mode tracked
+```
+
+Pass conditions:
+
+- tracked files contain no forbidden generated/private paths
+- `.gitignore` includes required generated/private patterns from `scripts/artifact-policy.json`
+- tracked docs/tests temp-build-style fixtures stay visible via explicit negate rules when needed
+- operations and governance docs reference gate entrypoints
+
+Defect:
+
+- it reports violations but does not auto-clean local files
+
+### `quality_docs_governance_gate`
+
+Objective:
+
+- enforce generated index freshness, docs lifecycle integrity, and required docs collection skeletons
+
+Commands:
+
+```text
+python3 ./scripts/docs-audit.py
+```
+
+Pass conditions:
+
+- required docs collections exist and contain `README.md` plus `INDEX.md`
+- generated docs indexes are current
+- docs lifecycle metadata and ledger are current
+- tracked docs include required `Purpose` and `Last updated` headers
+
+Defect:
+
+- it validates structure and freshness, not prose quality or architectural correctness
+
+### `performance_baseline_gate`
+
+Objective:
+
+- detect command-level performance regressions against a committed baseline
+
+Commands:
+
+```text
+python3 ./scripts/perf-gate.py
+```
+
+Pass conditions:
+
+- each benchmark median stays within the configured regression threshold
+
+Defect:
+
+- benchmark scope is intentionally CLI-focused and does not model end-to-end workload throughput
+
+### `delivery_package_gate`
+
+Objective:
+
+- validate exported delivery tree structure and run checks in the copied package
+
+Commands:
+
+```text
+python3 ./scripts/delivery-gate.py
+```
+
+Pass conditions:
+
+- exported tree contains required repository modules
+- exported tree excludes build/cache/tmp/private artifacts per `scripts/artifact-policy.json`
+- binary, hygiene, docs, and native checks pass inside the export
+
+Defect:
+
+- this gate validates repository delivery shape, not registry publish topology
+
+### `spio_submit_gate`
+
+Objective:
+
+- provide one enforceable submission entrypoint for quality, regression, performance, and delivery checks
+
+Commands:
+
+```text
+python3 ./scripts/submit-gate.py --profile pre-push
+python3 ./scripts/submit-gate.py --profile ci --json
+python3 ./scripts/submit-gate.py --profile release --styio-bin /absolute/path/to/styio --feature-config /absolute/path/to/submit-gate.features.json --json
+```
+
+Pass conditions:
+
+- `quality_no_binaries_gate`, `quality_repo_hygiene_gate`, `quality_docs_governance_gate`, `spio_manifest_lock_gate`, `spio_extractability_gate`, `performance_baseline_gate`, and `delivery_package_gate` are green
+- `styio` compatibility runs when release mode provides `--styio-bin`
+
+Defect:
+
+- release/styio/cloud checks stay disabled when feature config is missing or keeps defaults
 
 ### `spio_manifest_lock_gate`
 

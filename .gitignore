@@ -42,19 +42,62 @@
 
 .build/
 build/
+build-*/
 build-codex/
 .spio/
 tmp/
 dist/
+.DS_Store
 *.tmp
 *.log
+*.tar
+*.tar.gz
+*.tgz
+*.zip
+*.7z
+*.gz
+*.bz2
+*.xz
 CMakeUserPresets.json
 CMakePresets.json
 CMakeCache.txt
 CMakeFiles/
 Testing/
+cmake_test_discovery_*.json
+compile_commands.json
 __pycache__/
 .pytest_cache/
+.cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.nox/
+.venv/
+venv/
+node_modules/
+.idea/
+.vscode/
+.cursor/
+.clangd/
+
+# Allow intentionally tracked repro fixtures and docs assets even when names
+# overlap local temp/build conventions.
+!docs/**/build/
+!docs/**/build/**
+!docs/**/build-*/
+!docs/**/build-*/**
+!docs/**/tmp/
+!docs/**/tmp/**
+!docs/**/*.tmp
+!docs/**/*.log
+!tests/**/build/
+!tests/**/build/**
+!tests/**/build-*/
+!tests/**/build-*/**
+!tests/**/tmp/
+!tests/**/tmp/**
+!tests/**/*.tmp
+!tests/**/*.log
 
 # Private security/auth extensions that must not ship in the open-source tree.
 src-private/

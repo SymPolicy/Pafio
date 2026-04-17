@@ -2,7 +2,7 @@
 
 **Purpose:** Freeze the command surface, exit code ranges, and machine-readable output rules for the `spio` bootstrap phase so later implementations can evolve behind a stable interface.
 
-**Last updated:** 2026-04-12
+**Last updated:** 2026-04-17
 
 ## 1. Command Surface
 
@@ -21,11 +21,13 @@ The intended public command set is:
 - `spio build`
 - `spio run`
 - `spio check`
+- `spio project-graph`
 - `spio test`
 - `spio tree`
 - `spio vendor`
 - `spio pack`
 - `spio publish`
+- `spio tool status`
 - `spio tool install`
 - `spio tool use`
 - `spio tool pin`
@@ -49,6 +51,12 @@ Resolver-backed dependency tree rendering is part of the active command surface:
 
 ```text
 spio tree --manifest-path path/to/spio.toml
+```
+
+Published project graph payload emission is also part of the active command surface:
+
+```text
+spio project-graph --manifest-path path/to/spio.toml --json
 ```
 
 Project-local vendored snapshot materialization is also part of the active command surface:
@@ -81,6 +89,8 @@ spio publish --manifest-path path/to/spio.toml --registry https://packages.examp
 Managed local compiler installation is also part of the active command surface:
 
 ```text
+spio tool status --manifest-path path/to/spio.toml --json
+spio tool status --manifest-path path/to/spio.toml --styio-bin /path/to/styio --json
 spio tool install --styio-bin /path/to/styio
 spio tool use --version 0.0.5 --channel stable
 spio tool pin --version 0.0.5 --channel stable --manifest-path path/to/spio.toml
@@ -110,6 +120,34 @@ spio fetch --manifest-path path/to/spio.toml
 
 `--json` requests machine-readable diagnostics for command failures.
 
+## 2.1 Internal Machine-Readable Invocation Spellings
+
+`styio-view`、cross-repo gates、以及其它内部 consumers 当前应按这些 canonical spellings 调用：
+
+```text
+spio machine-info --json
+spio project-graph --manifest-path path/to/spio.toml --json
+spio tool status --manifest-path path/to/spio.toml --json
+spio --json build --manifest-path path/to/spio.toml ...
+spio --json run --manifest-path path/to/spio.toml ...
+spio --json test --manifest-path path/to/spio.toml ...
+spio --json fetch --manifest-path path/to/spio.toml ...
+spio --json vendor --manifest-path path/to/spio.toml ...
+spio --json pack --manifest-path path/to/spio.toml ...
+spio --json publish --manifest-path path/to/spio.toml --dry-run
+spio --json publish --manifest-path path/to/spio.toml --registry <path-or-url>
+spio --json tool install --styio-bin /path/to/styio
+spio --json tool use --version 0.0.5 --channel stable
+spio --json tool pin --version 0.0.5 --channel stable --manifest-path path/to/spio.toml
+spio --json tool pin --clear --manifest-path path/to/spio.toml
+```
+
+规则：
+
+- `machine-info`、`project-graph`、`tool status` 保留 command-local `--json` spelling
+- 其余 internal workflow/toolchain/deployment commands 统一使用 top-level `spio --json <command> ...`
+- 三仓 handoff 文档必须沿用这套 canonical spellings，不再混写 post-command `--json`
+
 ## 3. Machine Info
 
 `spio` must expose:
@@ -122,14 +160,21 @@ This is the package-manager-side self-description endpoint. It reports:
 
 - tool version
 - bootstrap status
+- active integration phase
 - supported manifest and lockfile versions
 - supported machine contract versions
+- supported adapter modes
+- feature flags
 
-Phase-2 rule:
+Current native rule:
 
-- `supported_contracts.compile_plan` must remain an empty list until `styio` publishes a real compile-plan consumer and the compatibility matrix allows that phase
-- owning `contracts/compile-plan/` schema files does not by itself authorize advertising active compile-plan support
-- local `spio build --dry-run`, `spio run --dry-run`, and `spio test --dry-run` plan emission also do not authorize advertising active compile-plan support
+- `supported_contracts.compile_plan` reports `[1]` only because the published compatibility matrix now enables compile-plan v1 against released `styio` binaries
+- `supported_contracts.project_graph` reports `[1]` because `spio` now owns and publishes a machine-readable project graph payload for `styio-view`
+- `supported_contracts.toolchain_state` reports `[1]` because `spio tool status --json` now publishes the managed compiler environment and project pin state for IDE consumers
+- `supported_contracts.workflow_success_payloads` reports `[1]` because non-dry-run `build/run/test --json` now return structured success payloads with receipt, diagnostics path, and captured stdout/stderr
+- `project_graph v1` now also carries package-distribution state for IDE deployment flows: package `publish_enabled`, dependency source metadata, a project-level `package_distribution` summary with registry roots and publish-blocking reasons, and `source_state` for vendored snapshots plus git/registry cache roots
+- owning `contracts/compile-plan/` schema files by itself still does not authorize advertising active compile-plan support
+- local dry-run plan emission is not sufficient on its own; the published compiler consumer and compatibility matrix remain the activation gate
 
 ## 4. Exit Codes
 
@@ -234,6 +279,10 @@ Optional keys:
 - resolver-backed `fetch` materializes registry marker metadata, version entries, immutable blobs, and extracted snapshots under `SPIO_HOME/registry/`
 - `spio tool install` installs only local self-contained `styio` executables in the current native core
 - `spio tool install` must validate the compiler through `styio --machine-info=json` plus the published compatibility matrix before writing managed state
+- `spio tool status --json` publishes `toolchain_state v1` for IDE environment-management consumers
+- `toolchain_state v1` includes at least `toolchain`, `project_pin`, `active_compiler`, `current_compiler`, `managed_toolchains`, and `notes`
+- `spio tool status --json` reports compiler machine-info whenever a binary can be probed, even if that compiler is not on the current compile-plan execution path
+- `spio tool status --styio-bin <path> --json` previews that explicit compiler as the active toolchain without mutating managed or project-local state
 - `spio tool install` writes managed compiler state under `SPIO_HOME/tools/styio/`
 - `spio tool use` switches the managed current compiler to an already installed versioned root under `SPIO_HOME/tools/styio/`
 - `spio tool use` must re-validate the selected managed compiler through `styio --machine-info=json` plus the published compatibility matrix before promoting it to current
@@ -255,6 +304,17 @@ Optional keys:
 - non-dry-run `spio build` may call `styio --compile-plan <path>` only when the published compatibility matrix enables compile-plan v1 for the current phase
 - non-dry-run `spio run` follows the same published compile-plan gate as `spio build`
 - non-dry-run `spio test` follows the same published compile-plan gate as `spio build`
+- `spio project-graph --json` publishes `project_graph v1` for IDE and environment-management consumers
+- `project_graph v1` includes at least `packages`, `dependencies`, `targets`, `toolchain`, `managed_toolchains`, `lock_state`, `vendor_state`, `notes`, `package_distribution`, and `source_state`
+- package records include `publish_enabled`
+- dependency records include source metadata such as `source_kind`, `package`, `path`, `git`, `rev`, `registry`, `version`, and `publish_blocking`
+- `package_distribution` includes per-package publish readiness plus aggregated registry roots for deployment surfaces
+- `source_state` includes `spio_home`, declared git/registry dependency counts, git cache roots, registry cache roots, and project-local vendor metadata presence
+- non-dry-run `spio build/run/test --json` publish `workflow_success_payloads v1`
+- `workflow_success_payloads v1` include at least the command metadata, build/artifact/diag roots, parsed `receipt.json` when present, `diagnostics.jsonl` path, and captured stdout/stderr
+- compiler-originated non-dry-run `spio build/run/test --json` failures must keep the stable error keys and may additionally include compile-plan roots, parsed `receipt.json`, `diagnostics.jsonl` path plus parsed entries, and captured stdout/stderr
+- supporting internal commands invoked through `spio --json fetch/vendor/pack/publish/tool install/tool use/tool pin` must also return one stable JSON success object on stdout
+- those supporting success JSON objects must include at least `command` and `message`, plus command-specific metadata such as `archive_path`, `package`, managed compiler paths, or pin paths
 - compile-plan generation currently supports only explicit `lib`, `bin`, and `test` targets
 - compile-plan generation may reject graphs that are otherwise resolvable when compile-plan v1 cannot represent them, such as cyclic graphs or mixed toolchain tuples
 

@@ -2,7 +2,7 @@
 
 **Purpose:** Provide the single entrypoint index for user-visible `spio` arguments, repository-maintainer script arguments, and public environment variables so parameter lists do not drift across code, scripts, and contract documents.
 
-**Last updated:** 2026-04-12
+**Last updated:** 2026-04-17
 
 ## 1. Ownership
 
@@ -49,6 +49,7 @@ spio [--help] [--version] [--json] <command> [command-args...]
 - `spio new <package-name> [directory] [--lib|--bin]`
 - `spio init [--name <package-name>] [--lib|--bin]`
 - `spio check [--manifest-path <path>] [--styio-bin <path>] [--locked|--offline|--frozen]`
+- `spio project-graph [--manifest-path <path>] [--styio-bin <path>] [--json]`
 - `spio add <package-name> (--path <path> | --git <source> --rev <rev> | --registry <url> --version <x.y.z>) [--alias <name>] [--dev] [--manifest-path <path>]`
 - `spio remove <alias-or-package> [--dev] [--manifest-path <path>]`
 - `spio fetch [--manifest-path <path>] [--locked|--offline|--frozen]`
@@ -60,6 +61,7 @@ spio [--help] [--version] [--json] <command> [command-args...]
 - `spio vendor [--manifest-path <path>] [--output <path>] [--locked|--offline|--frozen]`
 - `spio pack [--manifest-path <path>] [--package <package-name>] [--output <path>]`
 - `spio publish [--manifest-path <path>] [--package <package-name>] [--output <path>] [--registry <path-or-url>] [--registry-profile <name>] [--registry-policy-file <path>] [--registry-header <name:value>] [--dry-run]`
+- `spio tool status [--manifest-path <path>] [--styio-bin <path>] [--json]`
 - `spio tool install --styio-bin <path>`
 - `spio tool use --version <compiler-version> [--channel <channel>]`
 - `spio tool pin (--version <compiler-version> [--channel <channel>] | --clear) [--manifest-path <path>]`
@@ -166,6 +168,36 @@ Behavior summary:
 - may use `SPIO_HOME` when pinned git dependencies are present
 - may prefer project-local vendored snapshots under `.spio/vendor/` when present
 - if a compiler path is available, also performs the `styio --machine-info=json` handshake
+
+### `project-graph`
+
+Canonical form:
+
+```text
+spio project-graph [--manifest-path <path>] [--styio-bin <path>] [--json]
+```
+
+Arguments:
+
+- `--manifest-path <path>`
+  - optional
+  - path to the manifest file used as the project root
+  - defaults to `spio.toml`
+- `--styio-bin <path>`
+  - optional
+  - explicit compiler binary path used when probing the active compiler handshake for the graph payload
+
+Behavior summary:
+
+- emits a machine-readable `project_graph v1` payload owned by `spio`
+- resolves workspace members, packages, dependencies, targets, editor files, and project-local roots
+- publishes `toolchain`, `active_compiler`, `managed_toolchains`, `lock_state`, `vendor_state`, `package_distribution`, `source_state`, and `notes`
+- package records include `publish_enabled`
+- dependency records include source metadata such as `source_kind`, `package`, `path`, `git`, `rev`, `registry`, `version`, and `publish_blocking`
+- `package_distribution` summarizes publish readiness per package and aggregates registry roots referenced by the active graph
+- `source_state` publishes vendored snapshot metadata plus git/registry cache roots for IDE environment and deployment flows
+- prefers published compiler handshakes over filesystem guesses when an active compiler is available
+- must not fail only because a project pin references a missing managed compiler; that state is surfaced through `toolchain.detail`, `active_compiler = null`, and `notes`
 
 ### `add`
 
@@ -370,7 +402,8 @@ Behavior summary:
 - requires `--lib` or `--bin <name>` when the selected package target set is ambiguous
 - rejects cyclic graphs and mixed `edition` / `toolchain` tuples that `compile-plan v1` cannot represent
 - `--dry-run` does not require compiler probing and does not change `spio machine-info`
-- non-dry-run build is still gated by the published compatibility matrix; under the current bootstrap-only matrix it fails before compiler execution starts
+- non-dry-run build is gated by the published compatibility matrix and now succeeds against released `styio` compile-plan consumers
+- `--json` success for non-dry-run build emits `workflow_success_payloads v1`, including receipt/artifact roots, diagnostics path, and captured stdout/stderr
 
 ### `run`
 
@@ -418,6 +451,8 @@ Behavior summary:
 - may reuse project-local vendored snapshots under `.spio/vendor/`
 - emits `compile-plan v1` with `intent = "run"` to `.spio/build/<cache-key>/plan.json`
 - supports only explicit manifest `[[bin]]` targets in the current native core
+- non-dry-run run now succeeds against released `styio` compile-plan consumers when the published compatibility matrix allows it
+- `--json` success for non-dry-run run emits `workflow_success_payloads v1`, including receipt/artifact roots, diagnostics path, and captured stdout/stderr
 - rejects `--lib`
 - defaults to the unique binary target when the chosen package has exactly one `[[bin]]`
 - requires `--bin <name>` when the chosen package has multiple binaries
@@ -472,6 +507,8 @@ Behavior summary:
 - may reuse project-local vendored snapshots under `.spio/vendor/`
 - emits `compile-plan v1` with `intent = "test"` to `.spio/build/<cache-key>/plan.json`
 - supports only explicit manifest `[[test]]` targets in the current native core
+- non-dry-run test now succeeds against released `styio` compile-plan consumers when the published compatibility matrix allows it
+- `--json` success for non-dry-run test emits `workflow_success_payloads v1`, including receipt/artifact roots, diagnostics path, and captured stdout/stderr
 - rejects `--bin` and `--lib`
 - defaults to the unique test target when the chosen package has exactly one `[[test]]`
 - requires `--test <name>` when the chosen package has multiple tests
@@ -647,6 +684,36 @@ Behavior summary:
 - auth/account behavior is intentionally kept behind the private security-module boundary
 - republishing an existing package version into the same registry fails explicitly
 
+### `tool status`
+
+Canonical surface:
+
+```text
+spio tool status [--manifest-path <path>] [--styio-bin <path>] [--json]
+```
+
+Arguments:
+
+- `--manifest-path <path>`
+  - optional
+  - selected project manifest used to resolve the nearest project pin and workspace root
+  - when omitted, the current native core reports only managed compiler state
+- `--styio-bin <path>`
+  - optional
+  - explicit compiler binary path used for the active compiler preview in the returned payload
+  - when omitted, preview discovery continues through `SPIO_STYIO_BIN`, nearest project-local `spio-toolchain.toml`, and finally the managed current compiler
+- `--json`
+  - optional
+  - returns the published `toolchain_state v1` payload
+
+Behavior summary:
+
+- publishes the machine-readable toolchain and environment payload consumed by `styio-view`
+- returns `toolchain`, `project_pin`, `active_compiler`, `current_compiler`, `managed_toolchains`, and `notes`
+- reports the selected project pin even when the pinned managed compiler is missing
+- reports compiler machine-info whenever the resolved binary can answer `--machine-info=json`
+- does not fail only because a discovered compiler is not on the current compile-plan execution path
+
 ### `tool install`
 
 Canonical surface:
@@ -776,6 +843,213 @@ Behavior:
 
 - copies a clean subtree to a temporary directory
 - runs `scripts/native-check.sh` inside the copied tree
+
+### `scripts/check_no_binaries.py`
+
+Canonical form:
+
+```text
+./scripts/check_no_binaries.py [--repo-root <path>] [--mode auto|tracked|all] [--allow-glob <pattern> ...] [--policy <path>] [--no-policy-allowlist]
+```
+
+Arguments:
+
+- `--repo-root <path>`
+  - optional
+  - defaults to the repository root
+- `--mode auto|tracked|all`
+  - optional
+  - `auto` uses tracked files in git repositories and full-tree files in exported trees
+- `--allow-glob <pattern>`
+  - optional
+  - repeatable
+  - allows explicit binary paths when intentionally tracked
+- `--policy <path>`
+  - optional
+  - override artifact policy JSON path
+  - defaults to `scripts/artifact-policy.json`
+- `--no-policy-allowlist`
+  - optional
+  - disables policy-managed binary allowlist (`tracked_binary_allow_globs`)
+
+Behavior:
+
+- validates that selected files do not contain binary content
+- applies policy-managed binary allowlist unless disabled
+- exits non-zero on the first binary-violation set
+
+### `scripts/repo-hygiene-check.py`
+
+Canonical form:
+
+```text
+./scripts/repo-hygiene-check.py [--repo-root <path>] [--mode auto|tracked|all] [--skip-doc-check]
+```
+
+Arguments:
+
+- `--repo-root <path>`
+  - optional
+  - defaults to the repository root
+- `--mode auto|tracked|all`
+  - optional
+  - `tracked` checks only tracked files and `all` checks complete exported trees
+- `--skip-doc-check`
+  - optional
+  - skips verification that governance and operations docs reference gate entrypoints
+
+Behavior:
+
+- rejects forbidden generated/private paths
+- verifies required `.gitignore` patterns
+- validates gate-document references unless skipped
+
+### `scripts/docs-index.py`
+
+Canonical form:
+
+```text
+./scripts/docs-index.py --write
+./scripts/docs-index.py --check
+```
+
+Behavior:
+
+- rewrites generated `INDEX.md` files for approved docs collections
+- verifies that generated indexes are current
+- must be re-run after docs-tree changes that affect collection membership or summaries
+
+### `scripts/docs-lifecycle.py`
+
+Canonical form:
+
+```text
+./scripts/docs-lifecycle.py refresh
+./scripts/docs-lifecycle.py validate
+```
+
+Behavior:
+
+- `refresh` synchronizes `docs/archive/ARCHIVE-MANIFEST.json` and `docs/archive/ARCHIVE-LEDGER.md`
+- `validate` checks lifecycle directories, rollups, history naming, and archive-ledger freshness
+
+### `scripts/docs-audit.py`
+
+Canonical form:
+
+```text
+./scripts/docs-audit.py
+```
+
+Behavior:
+
+- validates required docs collections and entry files
+- checks `Purpose` / `Last updated` metadata on tracked docs
+- runs `scripts/docs-index.py --check`
+- runs `scripts/docs-lifecycle.py validate`
+
+### `scripts/perf-gate.py`
+
+Canonical form:
+
+```text
+./scripts/perf-gate.py [--json] [--runs <count>] [--warmup-runs <count>] [--threshold-percent <percent>] [--baseline <path>] [--update-baseline]
+```
+
+Arguments:
+
+- `--json`
+  - optional
+  - emits a machine-readable summary payload
+- `--runs <count>`
+  - optional
+  - measured runs per benchmark after warmup
+- `--warmup-runs <count>`
+  - optional
+  - warmup iterations discarded from measurement
+- `--threshold-percent <percent>`
+  - optional
+  - allowed median regression over baseline
+- `--baseline <path>`
+  - optional
+  - baseline file path
+- `--update-baseline`
+  - optional
+  - writes current measurements as baseline
+  - rejected in CI mode
+
+Behavior:
+
+- executes CLI benchmark set in isolated temporary project roots
+- compares benchmark medians against committed baseline
+- fails when any benchmark exceeds configured regression threshold
+
+### `scripts/delivery-gate.py`
+
+Canonical form:
+
+```text
+./scripts/delivery-gate.py [--json]
+```
+
+Arguments:
+
+- `--json`
+  - optional
+  - emits a machine-readable summary payload
+
+Behavior:
+
+- exports a clean delivery tree using `scripts/copy-to-external-repo.sh`
+- validates required/forbidden paths in the export
+- runs binary, hygiene, docs, and native checks inside the exported tree
+
+### `scripts/submit-gate.py`
+
+Canonical form:
+
+```text
+./scripts/submit-gate.py [--profile pre-push|ci|release] [--styio-bin <path>] [--feature-config <path>] [--json]
+```
+
+Arguments:
+
+- `--profile pre-push|ci|release`
+  - optional
+  - defaults to `pre-push`
+- `--styio-bin <path>`
+  - optional
+  - enables release-mode `styio` compatibility validation
+- `--feature-config <path>`
+  - optional
+  - JSON feature-flag file for release/styio/cloud checks
+  - defaults to `scripts/submit-gate.features.json`
+  - an example payload is tracked at `scripts/submit-gate.features.example.json`
+  - missing or invalid config keeps release/styio/cloud checks disabled and emits warnings
+- `--json`
+  - optional
+  - emits a machine-readable summary payload
+
+Behavior:
+
+- runs quality, regression, performance, and delivery gates in a fixed order
+- includes docs governance validation before native/performance/delivery checks
+- runs `styio` compatibility only when both release profile and feature flags enable it, with `--styio-bin` provided
+- emits warnings instead of failing when disabled release/styio/cloud checks are requested
+- exits non-zero on first failing gate
+
+### `scripts/install-git-hooks.sh`
+
+Canonical form:
+
+```text
+./scripts/install-git-hooks.sh
+```
+
+Behavior:
+
+- installs `.git/hooks/pre-push`
+- pre-push hook executes `python3 scripts/submit-gate.py --profile pre-push`
 
 ### `scripts/preflight-readiness-check.py`
 
@@ -948,6 +1222,31 @@ Arguments:
   - optional
   - copy destination
   - defaults to `$HOME/DevSpace/Unka-Malloc/styio-spio`
+
+Behavior:
+
+- reads rsync exclude patterns from `scripts/artifact-policy.json` through `scripts/artifact-policy-rsync-excludes.py`
+- keeps export filtering aligned with repository hygiene and delivery gates
+
+### `scripts/artifact-policy-rsync-excludes.py`
+
+Canonical form:
+
+```text
+./scripts/artifact-policy-rsync-excludes.py [--policy <path>]
+```
+
+Arguments:
+
+- `--policy <path>`
+  - optional
+  - override artifact policy JSON path
+  - defaults to `scripts/artifact-policy.json`
+
+Behavior:
+
+- emits newline-delimited `rsync --exclude` patterns
+- intended for machine consumption by `scripts/copy-to-external-repo.sh`
 
 ## 6. Public Environment Variables
 

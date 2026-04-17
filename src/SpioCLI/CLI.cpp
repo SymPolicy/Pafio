@@ -19,10 +19,13 @@
 
 #include <algorithm>
 #include <array>
+#include <cerrno>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <map>
 #include <optional>
+#include <set>
 #include <sstream>
 #include <string>
 #include <string_view>
@@ -30,7 +33,10 @@
 #include <vector>
 
 #include <nlohmann/json.hpp>
+#include <toml++/toml.h>
 
+#include <fcntl.h>
+#include <poll.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -53,6 +59,79 @@ struct WorkflowFlags
   bool locked = false;
   bool offline = false;
 };
+
+void CloseFd(int &fd)
+{
+  if (fd >= 0)
+  {
+    close(fd);
+    fd = -1;
+  }
+}
+
+bool SetNonBlocking(int fd)
+{
+  const int flags = fcntl(fd, F_GETFL, 0);
+  return flags >= 0 && fcntl(fd, F_SETFL, flags | O_NONBLOCK) == 0;
+}
+
+void DrainReadablePipe(int &fd, std::string &text)
+{
+  std::array<char, 4096> buffer{};
+  while (fd >= 0)
+  {
+    const ssize_t read_size = read(fd, buffer.data(), buffer.size());
+    if (read_size > 0)
+    {
+      text.append(buffer.data(), static_cast<size_t>(read_size));
+      continue;
+    }
+    if (read_size == 0)
+    {
+      CloseFd(fd);
+      return;
+    }
+    if (errno == EINTR)
+    {
+      continue;
+    }
+    if (errno == EAGAIN || errno == EWOULDBLOCK)
+    {
+      return;
+    }
+    CloseFd(fd);
+    return;
+  }
+}
+
+void ReapChildBestEffort(const pid_t child)
+{
+  int status = 0;
+  while (waitpid(child, &status, 0) < 0)
+  {
+    if (errno != EINTR)
+    {
+      return;
+    }
+  }
+}
+
+int WaitForChildExit(const pid_t child)
+{
+  int status = 0;
+  while (waitpid(child, &status, 0) < 0)
+  {
+    if (errno != EINTR)
+    {
+      return 1;
+    }
+  }
+  if (WIFEXITED(status))
+  {
+    return WEXITSTATUS(status);
+  }
+  return 1;
+}
 
 std::string TrimAsciiWhitespace(std::string value)
 {
@@ -94,15 +173,35 @@ json BuildMachineInfoPayload()
       {"tool", "spio"},
       {"version", spio::kVersion},
       {"bootstrap", true},
+      {"active_integration_phase", "compile-plan-live"},
       {"implementation_language", "c++"},
       {"supported_manifests", json::array({1})},
       {"supported_lockfiles", json::array({1})},
       {"supported_contracts", {
-                                 {"compile_plan", json::array()},
+                                 {"machine_info", json::array({1})},
+                                 {"compile_plan", json::array({1})},
+                                 {"project_graph", json::array({1})},
+                                 {"toolchain_state", json::array({1})},
+                                 {"workflow_success_payloads", json::array({1})},
                              }},
+      {"supported_contract_versions", {
+                                          {"machine_info", json::array({1})},
+                                          {"compile_plan", json::array({1})},
+                                          {"project_graph", json::array({1})},
+                                          {"toolchain_state", json::array({1})},
+                                          {"workflow_success_payloads", json::array({1})},
+                                      }},
+      {"supported_adapter_modes", json::array({"cli"})},
+      {"feature_flags", {
+                            {"live_compile_plan_handoff", true},
+                            {"project_graph_payload", true},
+                            {"toolchain_state_payload", true},
+                            {"workflow_success_payloads", true},
+                            {"runtime_event_payload", false},
+                        }},
       {"notes", json::array({
                     "native c++ phase-3 minimal resolver core",
-                    "compile-plan schema is owned but not yet active",
+                    "compile-plan v1 is active for published styio handoff",
                 })},
   };
 }
@@ -162,6 +261,7 @@ int PrintGlobalHelp()
       << "  new <package-name> [directory] [--lib|--bin]\n"
       << "  init [--name <package-name>] [--lib|--bin]\n"
       << "  check [--manifest-path <path>] [--styio-bin <path>] [--locked|--offline|--frozen]\n"
+      << "  project-graph [--manifest-path <path>] [--styio-bin <path>] [--json]\n"
       << "  add <package-name> (--path <path> | --git <source> --rev <rev> | --registry <url> --version <x.y.z>) [--alias <name>] [--dev] [--manifest-path <path>]\n"
       << "  remove <alias-or-package> [--dev] [--manifest-path <path>]\n"
       << "  fetch [--manifest-path <path>] [--locked|--offline|--frozen]\n"
@@ -173,6 +273,7 @@ int PrintGlobalHelp()
       << "  test [--manifest-path <path>] [--package <package-name>] [--test <name>] [--profile <dev|release>] [--dry-run] [--styio-bin <path>] [--locked|--offline|--frozen]\n"
       << "  pack [--manifest-path <path>] [--package <package-name>] [--output <path>]\n"
       << "  publish [--manifest-path <path>] [--package <package-name>] [--output <path>] [--registry <path-or-url>] [--registry-profile <name>] [--registry-policy-file <path>] [--registry-header <name:value>] [--dry-run]\n"
+      << "  tool status [--manifest-path <path>] [--styio-bin <path>] [--json]\n"
       << "  tool install --styio-bin <path>\n"
       << "  tool use --version <compiler-version> [--channel <channel>]\n"
       << "  tool pin (--version <compiler-version> [--channel <channel>] | --clear) [--manifest-path <path>]\n";
@@ -196,6 +297,10 @@ int PrintCommandUsage(std::string_view command)
   else if (command == "check")
   {
     std::cout << "usage: spio check [--manifest-path <path>] [--styio-bin <path>] [--locked|--offline|--frozen]\n";
+  }
+  else if (command == "project-graph")
+  {
+    std::cout << "usage: spio project-graph [--manifest-path <path>] [--styio-bin <path>] [--json]\n";
   }
   else if (command == "add")
   {
@@ -244,6 +349,7 @@ int PrintCommandUsage(std::string_view command)
   else if (command == "tool")
   {
     std::cout << "usage:\n";
+    std::cout << "  spio tool status [--manifest-path <path>] [--styio-bin <path>] [--json]\n";
     std::cout << "  spio tool install --styio-bin <path>\n";
     std::cout << "  spio tool use --version <compiler-version> [--channel <channel>]\n";
     std::cout << "  spio tool pin (--version <compiler-version> [--channel <channel>] | --clear) [--manifest-path <path>]\n";
@@ -347,33 +453,57 @@ ChildProcessResult RunChildProcess(const fs::path &binary, const std::vector<std
 
   close(stdout_pipe[1]);
   close(stderr_pipe[1]);
-
-  auto read_all = [](int fd) {
-    std::string text;
-    std::array<char, 4096> buffer{};
-    ssize_t read_size = 0;
-    while ((read_size = read(fd, buffer.data(), buffer.size())) > 0)
-    {
-      text.append(buffer.data(), static_cast<size_t>(read_size));
-    }
-    close(fd);
-    return text;
-  };
+  if (!SetNonBlocking(stdout_pipe[0]) || !SetNonBlocking(stderr_pipe[0]))
+  {
+    CloseFd(stdout_pipe[0]);
+    CloseFd(stderr_pipe[0]);
+    ReapChildBestEffort(child);
+    throw std::runtime_error("failed to configure child process pipes");
+  }
 
   ChildProcessResult result;
-  result.stdout_text = read_all(stdout_pipe[0]);
-  result.stderr_text = read_all(stderr_pipe[0]);
+  std::array<pollfd, 2> poll_fds{};
+  while (stdout_pipe[0] >= 0 || stderr_pipe[0] >= 0)
+  {
+    nfds_t poll_count = 0;
+    int stdout_index = -1;
+    int stderr_index = -1;
+    if (stdout_pipe[0] >= 0)
+    {
+      stdout_index = static_cast<int>(poll_count);
+      poll_fds[poll_count++] = pollfd{stdout_pipe[0], static_cast<short>(POLLIN | POLLHUP | POLLERR), 0};
+    }
+    if (stderr_pipe[0] >= 0)
+    {
+      stderr_index = static_cast<int>(poll_count);
+      poll_fds[poll_count++] = pollfd{stderr_pipe[0], static_cast<short>(POLLIN | POLLHUP | POLLERR), 0};
+    }
 
-  int status = 0;
-  waitpid(child, &status, 0);
-  if (WIFEXITED(status))
-  {
-    result.exit_code = WEXITSTATUS(status);
+    int ready = 0;
+    while ((ready = poll(poll_fds.data(), poll_count, -1)) < 0)
+    {
+      if (errno != EINTR)
+      {
+        CloseFd(stdout_pipe[0]);
+        CloseFd(stderr_pipe[0]);
+        ReapChildBestEffort(child);
+        throw std::runtime_error("failed to read child process output");
+      }
+    }
+    if (ready == 0)
+    {
+      continue;
+    }
+    if (stdout_index >= 0 && poll_fds[stdout_index].revents != 0)
+    {
+      DrainReadablePipe(stdout_pipe[0], result.stdout_text);
+    }
+    if (stderr_index >= 0 && poll_fds[stderr_index].revents != 0)
+    {
+      DrainReadablePipe(stderr_pipe[0], result.stderr_text);
+    }
   }
-  else
-  {
-    result.exit_code = 1;
-  }
+  result.exit_code = WaitForChildExit(child);
   return result;
 }
 
@@ -486,6 +616,1360 @@ std::optional<spio::CommandError> ValidateLockedPolicy(
   }
 
   return std::nullopt;
+}
+
+struct ParsedToolchainPinPreview
+{
+  std::optional<std::string> channel;
+  std::optional<std::string> version;
+};
+
+struct ToolchainPreview
+{
+  std::string source = "unavailable";
+  std::string detail = "No toolchain pin or managed compiler was resolved.";
+  std::optional<fs::path> pin_path;
+  std::optional<std::string> channel;
+  std::optional<std::string> version;
+  std::optional<fs::path> candidate_binary;
+};
+
+ParsedToolchainPinPreview ParseToolchainPinPreview(const fs::path &pin_path)
+{
+  ParsedToolchainPinPreview parsed;
+  if (!fs::exists(pin_path))
+  {
+    return parsed;
+  }
+
+  toml::table doc = toml::parse_file(pin_path.string());
+  const toml::table *styio_table = doc["styio"].as_table();
+  if (styio_table == nullptr)
+  {
+    return parsed;
+  }
+  if (const auto channel = styio_table->get_as<std::string>("channel"))
+  {
+    parsed.channel = channel->get();
+  }
+  if (const auto version = styio_table->get_as<std::string>("version"))
+  {
+    parsed.version = version->get();
+  }
+  return parsed;
+}
+
+ToolchainPreview BuildToolchainPreview(
+    const std::optional<fs::path> &manifest_path,
+    const std::optional<std::string> &explicit_styio_bin,
+    const std::optional<std::string> &manifest_channel)
+{
+  ToolchainPreview preview;
+
+  if (explicit_styio_bin.has_value() && !explicit_styio_bin->empty())
+  {
+    preview.source = "environment";
+    preview.detail = "CLI selected an explicit styio binary through --styio-bin.";
+    preview.candidate_binary = spio::CanonicalAbsolutePath(*explicit_styio_bin);
+    preview.channel = manifest_channel;
+    return preview;
+  }
+
+  if (const char *env = std::getenv("SPIO_STYIO_BIN"); env != nullptr && env[0] != '\0')
+  {
+    preview.source = "environment";
+    preview.detail = "SPIO_STYIO_BIN selects the active styio compiler.";
+    preview.candidate_binary = spio::CanonicalAbsolutePath(env);
+    preview.channel = manifest_channel;
+    return preview;
+  }
+
+  if (manifest_path.has_value())
+  {
+    if (const std::optional<fs::path> pin_path = spio::FindProjectToolchainPinPath(*manifest_path); pin_path.has_value())
+    {
+      preview.source = "project-pin";
+      preview.pin_path = *pin_path;
+      try
+      {
+        const ParsedToolchainPinPreview pin = ParseToolchainPinPreview(*pin_path);
+        preview.channel = pin.channel.has_value() ? pin.channel : manifest_channel;
+        preview.version = pin.version;
+        if (preview.channel.has_value() && preview.version.has_value())
+        {
+          const fs::path spio_home = spio::ResolveSpioHome();
+          const fs::path candidate = spio::ManagedStyioBinaryPath(
+              spio::ManagedStyioInstallRoot(spio_home, *preview.channel, *preview.version));
+          if (fs::exists(candidate))
+          {
+            preview.detail =
+                "Project toolchain pin resolved to managed styio " + *preview.channel + "/" + *preview.version + ".";
+            preview.candidate_binary = candidate;
+          }
+          else
+          {
+            preview.detail =
+                "Project toolchain pin requires a managed styio install that is not present: " +
+                *preview.channel + "/" + *preview.version + ".";
+          }
+        }
+        else
+        {
+          preview.detail = "Project toolchain pin is present but channel/version could not be fully resolved.";
+        }
+      }
+      catch (const std::exception &err)
+      {
+        preview.detail = std::string("Project toolchain pin could not be parsed: ") + err.what();
+      }
+      return preview;
+    }
+  }
+
+  try
+  {
+    if (const std::optional<fs::path> spio_home = spio::ResolveOptionalSpioHome(); spio_home.has_value())
+    {
+      const fs::path current_root = spio::ManagedStyioCurrentRoot(*spio_home);
+      const fs::path current_binary = spio::ManagedStyioBinaryPath(current_root);
+      const fs::path current_metadata = spio::ManagedStyioMetadataPath(current_root);
+      if (fs::exists(current_binary))
+      {
+        preview.source = "managed-current";
+        preview.detail = "Managed current styio compiler is available through SPIO_HOME.";
+        preview.candidate_binary = current_binary;
+        if (fs::exists(current_metadata))
+        {
+          try
+          {
+            const json metadata = json::parse(ReadFile(current_metadata));
+            if (metadata.contains("channel") && metadata["channel"].is_string())
+            {
+              preview.channel = metadata["channel"].get<std::string>();
+            }
+            if (metadata.contains("compiler_version") && metadata["compiler_version"].is_string())
+            {
+              preview.version = metadata["compiler_version"].get<std::string>();
+            }
+          }
+          catch (const std::exception &)
+          {
+          }
+        }
+        return preview;
+      }
+    }
+  }
+  catch (const std::exception &)
+  {
+  }
+
+  if (manifest_channel.has_value())
+  {
+    preview.source = "unknown";
+    preview.detail = "Manifest declares a toolchain channel but no project pin or managed compiler resolved.";
+    preview.channel = manifest_channel;
+    return preview;
+  }
+
+  return preview;
+}
+
+json BuildDependencyPayload(
+    const std::string &source_package_name,
+    const spio::Dependency &dependency,
+    bool is_dev_dependency)
+{
+  const auto source_kind_name = [&]() -> std::string {
+    switch (dependency.source_kind)
+    {
+      case spio::DependencySourceKind::kPath:
+        return "path";
+      case spio::DependencySourceKind::kGit:
+        return "git";
+      case spio::DependencySourceKind::kRegistry:
+        return "registry";
+    }
+    return "unknown";
+  };
+
+  std::string requirement;
+  bool is_workspace_reference = false;
+  json path_source = nullptr;
+  json git_source = nullptr;
+  json registry_root = nullptr;
+  switch (dependency.source_kind)
+  {
+    case spio::DependencySourceKind::kPath:
+      requirement = "path:" + dependency.source;
+      is_workspace_reference = true;
+      path_source = dependency.source;
+      break;
+    case spio::DependencySourceKind::kGit:
+      requirement = "git:" + dependency.source;
+      git_source = dependency.source;
+      if (dependency.rev.has_value())
+      {
+        requirement += "#" + *dependency.rev;
+      }
+      break;
+    case spio::DependencySourceKind::kRegistry:
+      requirement = "registry:" + dependency.source;
+      registry_root = dependency.source;
+      if (dependency.version.has_value())
+      {
+        requirement += "@" + *dependency.version;
+      }
+      break;
+  }
+
+  return {
+      {"source_package_name", source_package_name},
+      {"dependency_name", dependency.alias},
+      {"kind", is_dev_dependency ? "dev" : "runtime"},
+      {"requirement", requirement},
+      {"is_workspace_reference", is_workspace_reference},
+      {"source_kind", source_kind_name()},
+      {"package", dependency.package.has_value() ? json(*dependency.package) : json(nullptr)},
+      {"path", path_source},
+      {"git", git_source},
+      {"rev", dependency.rev.has_value() ? json(*dependency.rev) : json(nullptr)},
+      {"registry", registry_root},
+      {"version", dependency.version.has_value() ? json(*dependency.version) : json(nullptr)},
+      {"publish_blocking", dependency.source_kind != spio::DependencySourceKind::kRegistry},
+  };
+}
+
+std::string RegistryTransportName(const std::string &registry_root)
+{
+  if (registry_root.rfind("https://", 0U) == 0U)
+  {
+    return "https";
+  }
+  if (registry_root.rfind("http://", 0U) == 0U)
+  {
+    return "http";
+  }
+  if (registry_root.rfind("file://", 0U) == 0U)
+  {
+    return "file";
+  }
+  return "unknown";
+}
+
+void AppendUniqueReason(std::vector<std::string> &reasons, const std::string &reason)
+{
+  if (std::find(reasons.begin(), reasons.end(), reason) == reasons.end())
+  {
+    reasons.push_back(reason);
+  }
+}
+
+struct RegistrySourceAggregate
+{
+  std::string transport = "unknown";
+  size_t dependency_refs = 0U;
+  std::set<std::string> package_names;
+};
+
+json BuildPackageDistributionEntryPayload(
+    const fs::path &package_manifest_path,
+    const spio::PackageConfig &package,
+    std::map<std::string, RegistrySourceAggregate> &registry_sources)
+{
+  size_t runtime_registry_dependencies = 0U;
+  size_t runtime_path_dependencies = 0U;
+  size_t runtime_git_dependencies = 0U;
+  size_t dev_registry_dependencies = 0U;
+  size_t dev_path_dependencies = 0U;
+  size_t dev_git_dependencies = 0U;
+  std::vector<std::string> blocking_reasons;
+
+  if (!package.publish)
+  {
+    blocking_reasons.push_back("package publish = false");
+  }
+
+  auto accumulate_dependency = [&](const spio::Dependency &dependency, const std::string &section_name, bool is_dev_dependency) {
+    auto &registry_counter = is_dev_dependency ? dev_registry_dependencies : runtime_registry_dependencies;
+    auto &path_counter = is_dev_dependency ? dev_path_dependencies : runtime_path_dependencies;
+    auto &git_counter = is_dev_dependency ? dev_git_dependencies : runtime_git_dependencies;
+
+    switch (dependency.source_kind)
+    {
+      case spio::DependencySourceKind::kPath:
+        ++path_counter;
+        AppendUniqueReason(
+            blocking_reasons,
+            "dependency in [" + section_name + "] uses a local path or workspace source: " + dependency.alias);
+        return;
+      case spio::DependencySourceKind::kGit:
+        ++git_counter;
+        AppendUniqueReason(
+            blocking_reasons,
+            "dependency in [" + section_name + "] uses a git source: " + dependency.alias);
+        return;
+      case spio::DependencySourceKind::kRegistry:
+        ++registry_counter;
+        if (dependency.source.empty())
+        {
+          AppendUniqueReason(
+              blocking_reasons,
+              "registry dependency in [" + section_name + "] is missing registry = \"<url>\": " + dependency.alias);
+        }
+        else
+        {
+          RegistrySourceAggregate &aggregate = registry_sources[dependency.source];
+          aggregate.transport = RegistryTransportName(dependency.source);
+          ++aggregate.dependency_refs;
+          aggregate.package_names.insert(package.name);
+        }
+        if (!dependency.package.has_value() || dependency.package->empty())
+        {
+          AppendUniqueReason(
+              blocking_reasons,
+              "registry dependency in [" + section_name + "] is missing package = \"namespace/name\": " + dependency.alias);
+        }
+        if (!dependency.version.has_value() || dependency.version->empty())
+        {
+          AppendUniqueReason(
+              blocking_reasons,
+              "registry dependency in [" + section_name + "] is missing version = \"x.y.z\": " + dependency.alias);
+        }
+        return;
+    }
+  };
+
+  for (const spio::Dependency &dependency : package.dependencies)
+  {
+    accumulate_dependency(dependency, "dependencies", false);
+  }
+  for (const spio::Dependency &dependency : package.dev_dependencies)
+  {
+    accumulate_dependency(dependency, "dev-dependencies", true);
+  }
+
+  return {
+      {"package_name", package.name},
+      {"manifest_path", package_manifest_path.string()},
+      {"publish_enabled", package.publish},
+      {"publish_ready", package.publish && blocking_reasons.empty()},
+      {"blocking_reasons", blocking_reasons},
+      {"runtime_registry_dependencies", runtime_registry_dependencies},
+      {"runtime_path_dependencies", runtime_path_dependencies},
+      {"runtime_git_dependencies", runtime_git_dependencies},
+      {"dev_registry_dependencies", dev_registry_dependencies},
+      {"dev_path_dependencies", dev_path_dependencies},
+      {"dev_git_dependencies", dev_git_dependencies},
+  };
+}
+
+json BuildPackageDistributionPayload(
+    const std::vector<json> &package_distribution_packages,
+    const std::map<std::string, RegistrySourceAggregate> &registry_sources)
+{
+  size_t publishable_packages = 0U;
+  size_t blocked_packages = 0U;
+  for (const json &package : package_distribution_packages)
+  {
+    if (package.value("publish_ready", false))
+    {
+      ++publishable_packages;
+    }
+    else
+    {
+      ++blocked_packages;
+    }
+  }
+
+  json registry_source_list = json::array();
+  for (const auto &[registry_root, aggregate] : registry_sources)
+  {
+    registry_source_list.push_back({
+        {"registry_root", registry_root},
+        {"transport", aggregate.transport},
+        {"dependency_refs", aggregate.dependency_refs},
+        {"packages", std::vector<std::string>(aggregate.package_names.begin(), aggregate.package_names.end())},
+    });
+  }
+
+  return {
+      {"schema_version", 1},
+      {"packages", package_distribution_packages},
+      {"registry_sources", registry_source_list},
+      {"publishable_packages", publishable_packages},
+      {"blocked_packages", blocked_packages},
+  };
+}
+
+std::optional<size_t> ReadVendoredGitSnapshotCount(const fs::path &metadata_path)
+{
+  if (!fs::exists(metadata_path))
+  {
+    return std::nullopt;
+  }
+
+  try
+  {
+    const json metadata = json::parse(ReadFile(metadata_path));
+    if (!metadata.contains("git_snapshots") || !metadata.at("git_snapshots").is_array())
+    {
+      return std::nullopt;
+    }
+    return metadata.at("git_snapshots").size();
+  }
+  catch (const std::exception &)
+  {
+    return std::nullopt;
+  }
+}
+
+json BuildSourceStatePayload(
+    const fs::path &vendor_root,
+    const size_t declared_git_dependencies,
+    const size_t declared_registry_dependencies)
+{
+  const fs::path vendor_metadata_path = vendor_root / "spio-vendor.json";
+  const bool vendor_present = fs::exists(vendor_root);
+  const bool vendor_metadata_present = fs::exists(vendor_metadata_path);
+  const size_t vendored_git_snapshots =
+      ReadVendoredGitSnapshotCount(vendor_metadata_path).value_or(0U);
+
+  const std::optional<fs::path> spio_home = spio::ResolveOptionalSpioHome();
+  json git_cache = {
+      {"repos_root", nullptr},
+      {"checkouts_root", nullptr},
+      {"repos_present", false},
+      {"checkouts_present", false},
+  };
+  json registry_cache = {
+      {"cache_root", nullptr},
+      {"index_root", nullptr},
+      {"blob_root", nullptr},
+      {"checkout_root", nullptr},
+      {"index_present", false},
+      {"blobs_present", false},
+      {"checkouts_present", false},
+  };
+
+  if (spio_home.has_value())
+  {
+    const fs::path git_repos_root = spio::GitMirrorCacheRoot(*spio_home);
+    const fs::path git_checkouts_root = spio::GitCheckoutCacheRoot(*spio_home);
+    git_cache = {
+        {"repos_root", git_repos_root.string()},
+        {"checkouts_root", git_checkouts_root.string()},
+        {"repos_present", fs::exists(git_repos_root)},
+        {"checkouts_present", fs::exists(git_checkouts_root)},
+    };
+
+    const fs::path registry_cache_root = spio::RegistryCacheRoot(*spio_home);
+    const fs::path registry_index_root = spio::RegistryIndexCacheRoot(*spio_home);
+    const fs::path registry_blob_root = spio::RegistryBlobCacheRoot(*spio_home);
+    const fs::path registry_checkout_root = spio::RegistryCheckoutRoot(*spio_home);
+    registry_cache = {
+        {"cache_root", registry_cache_root.string()},
+        {"index_root", registry_index_root.string()},
+        {"blob_root", registry_blob_root.string()},
+        {"checkout_root", registry_checkout_root.string()},
+        {"index_present", fs::exists(registry_index_root)},
+        {"blobs_present", fs::exists(registry_blob_root)},
+        {"checkouts_present", fs::exists(registry_checkout_root)},
+    };
+  }
+
+  return {
+      {"schema_version", 1},
+      {"spio_home", spio_home.has_value() ? json(spio_home->string()) : json(nullptr)},
+      {"declared_git_dependencies", declared_git_dependencies},
+      {"declared_registry_dependencies", declared_registry_dependencies},
+      {"git_cache", git_cache},
+      {"registry_cache", registry_cache},
+      {"vendor", {
+                     {"vendor_root", vendor_root.string()},
+                     {"metadata_path", vendor_metadata_path.string()},
+                     {"vendor_present", vendor_present},
+                     {"metadata_present", vendor_metadata_present},
+                     {"git_snapshots", vendored_git_snapshots},
+                 }},
+  };
+}
+
+json BuildTargetPayload(
+    const std::string &package_name,
+    const fs::path &root_dir,
+    std::string_view kind,
+    const std::string &name,
+    const std::string &relative_path)
+{
+  const fs::path absolute_file_path = spio::CanonicalAbsolutePath(root_dir / relative_path);
+  return {
+      {"id", package_name + ":" + std::string(kind) + ":" + name},
+      {"package_name", package_name},
+      {"kind", std::string(kind)},
+      {"name", name},
+      {"file_path", absolute_file_path.string()},
+  };
+}
+
+json BuildCompilerHandshakePayload(
+    const fs::path &binary,
+    const spio::CompatibilityReport &report);
+
+json ProbeCompilerMachineInfo(const fs::path &binary)
+{
+  const ChildProcessResult result = RunChildProcess(binary, {"--machine-info=json"});
+  if (result.exit_code != 0)
+  {
+    throw std::runtime_error(
+        "compiler machine-info probe failed with exit code " + std::to_string(result.exit_code));
+  }
+
+  const json parsed = json::parse(result.stdout_text);
+  if (!parsed.is_object())
+  {
+    throw std::runtime_error("compiler machine-info did not produce a JSON object");
+  }
+  return parsed;
+}
+
+json BuildCompilerHandshakePayloadFromMachineInfo(
+    const fs::path &binary,
+    const json &machine_info,
+    const std::optional<spio::CompatibilityReport> &report = std::nullopt)
+{
+  json supported_contract_versions = json::object();
+  if (machine_info.contains("supported_contract_versions") &&
+      machine_info["supported_contract_versions"].is_object())
+  {
+    supported_contract_versions = machine_info["supported_contract_versions"];
+  }
+  else if (machine_info.contains("supported_contracts") &&
+           machine_info["supported_contracts"].is_object())
+  {
+    supported_contract_versions = machine_info["supported_contracts"];
+  }
+  else if (report.has_value())
+  {
+    supported_contract_versions = {
+        {"compile_plan", report->supported_compile_plan_versions},
+    };
+  }
+
+  json supported_adapter_modes = json::array();
+  if (machine_info.contains("supported_adapter_modes") &&
+      machine_info["supported_adapter_modes"].is_array())
+  {
+    supported_adapter_modes = machine_info["supported_adapter_modes"];
+  }
+
+  json feature_flags = json::object();
+  if (machine_info.contains("feature_flags") && machine_info["feature_flags"].is_object())
+  {
+    feature_flags = machine_info["feature_flags"];
+  }
+  else if (report.has_value())
+  {
+    feature_flags = {
+        {"compile_plan_consumer",
+         std::find(report->supported_compile_plan_versions.begin(),
+                   report->supported_compile_plan_versions.end(),
+                   1) != report->supported_compile_plan_versions.end()},
+    };
+  }
+
+  json capabilities = json::array();
+  if (machine_info.contains("capabilities") && machine_info["capabilities"].is_array())
+  {
+    capabilities = machine_info["capabilities"];
+  }
+  else if (report.has_value())
+  {
+    capabilities = report->capabilities;
+  }
+
+  const std::string default_compiler_version =
+      report.has_value() ? report->compiler_version : std::string("unknown");
+  const std::string default_channel =
+      report.has_value() ? report->compiler_channel : std::string("unknown");
+  const std::string default_integration_phase =
+      report.has_value() ? report->integration_phase : std::string("unknown");
+
+  return {
+      {"binary_path", binary.string()},
+      {"tool", machine_info.value("tool", std::string("styio"))},
+      {"compiler_version", machine_info.value("compiler_version", default_compiler_version)},
+      {"channel", machine_info.value("channel", default_channel)},
+      {"variant", machine_info.value("variant", std::string("unknown"))},
+      {"capabilities", capabilities},
+      {"supported_contract_versions", supported_contract_versions},
+      {"integration_phase",
+       machine_info.value(
+           "integration_phase",
+           machine_info.value("active_integration_phase", default_integration_phase))},
+      {"supported_adapter_modes", supported_adapter_modes},
+      {"feature_flags", feature_flags},
+  };
+}
+
+json BuildCompilerHandshakePayload(
+    const fs::path &binary,
+    const spio::CompatibilityReport &report)
+{
+  try
+  {
+    return BuildCompilerHandshakePayloadFromMachineInfo(
+        binary,
+        ProbeCompilerMachineInfo(binary),
+        report);
+  }
+  catch (const std::exception &)
+  {
+    return BuildCompilerHandshakePayloadFromMachineInfo(binary, json::object(), report);
+  }
+}
+
+json BuildManagedToolchainsPayload()
+{
+  json installed = json::array();
+  json payload = {
+      {"spio_home", nullptr},
+      {"current_binary", nullptr},
+      {"current_metadata_path", nullptr},
+      {"installed", installed},
+  };
+
+  const std::optional<fs::path> spio_home = spio::ResolveOptionalSpioHome();
+  if (!spio_home.has_value())
+  {
+    return payload;
+  }
+
+  payload["spio_home"] = spio_home->string();
+  const fs::path styio_root = spio::ManagedStyioRoot(*spio_home);
+  const fs::path current_root = spio::ManagedStyioCurrentRoot(*spio_home);
+  const fs::path current_binary = spio::ManagedStyioBinaryPath(current_root);
+  const fs::path current_metadata = spio::ManagedStyioMetadataPath(current_root);
+  if (fs::exists(current_binary))
+  {
+    payload["current_binary"] = current_binary.string();
+  }
+  if (fs::exists(current_metadata))
+  {
+    payload["current_metadata_path"] = current_metadata.string();
+  }
+
+  if (!fs::exists(styio_root))
+  {
+    return payload;
+  }
+
+  for (const fs::directory_entry &channel_entry : fs::directory_iterator(styio_root))
+  {
+    if (!channel_entry.is_directory())
+    {
+      continue;
+    }
+    const std::string channel = channel_entry.path().filename().string();
+    if (channel == "current")
+    {
+      continue;
+    }
+
+    for (const fs::directory_entry &version_entry : fs::directory_iterator(channel_entry.path()))
+    {
+      if (!version_entry.is_directory())
+      {
+        continue;
+      }
+      const fs::path install_root = version_entry.path();
+      const fs::path install_binary = spio::ManagedStyioBinaryPath(install_root);
+      const fs::path install_metadata = spio::ManagedStyioMetadataPath(install_root);
+      if (!fs::exists(install_binary))
+      {
+        continue;
+      }
+      installed.push_back({
+          {"channel", channel},
+          {"compiler_version", version_entry.path().filename().string()},
+          {"install_root", install_root.string()},
+          {"install_binary_path", install_binary.string()},
+          {"install_metadata_path", fs::exists(install_metadata) ? json(install_metadata.string()) : json(nullptr)},
+      });
+    }
+  }
+
+  payload["installed"] = std::move(installed);
+  return payload;
+}
+
+json BuildProjectPinStatePayload(const std::optional<fs::path> &manifest_path)
+{
+  if (!manifest_path.has_value())
+  {
+    return nullptr;
+  }
+
+  const std::optional<fs::path> pin_path = spio::FindProjectToolchainPinPath(*manifest_path);
+  if (!pin_path.has_value())
+  {
+    return nullptr;
+  }
+
+  json payload = {
+      {"path", pin_path->string()},
+      {"channel", nullptr},
+      {"version", nullptr},
+      {"install_root", nullptr},
+      {"install_binary_path", nullptr},
+      {"install_present", false},
+  };
+
+  try
+  {
+    const ParsedToolchainPinPreview parsed = ParseToolchainPinPreview(*pin_path);
+    if (parsed.channel.has_value())
+    {
+      payload["channel"] = *parsed.channel;
+    }
+    if (parsed.version.has_value())
+    {
+      payload["version"] = *parsed.version;
+    }
+    if (parsed.channel.has_value() && parsed.version.has_value())
+    {
+      const fs::path spio_home = spio::ResolveSpioHome();
+      const fs::path install_root =
+          spio::ManagedStyioInstallRoot(spio_home, *parsed.channel, *parsed.version);
+      const fs::path install_binary = spio::ManagedStyioBinaryPath(install_root);
+      payload["install_root"] = install_root.string();
+      payload["install_binary_path"] = install_binary.string();
+      payload["install_present"] = fs::exists(install_binary);
+    }
+  }
+  catch (const std::exception &)
+  {
+  }
+
+  return payload;
+}
+
+json BuildOptionalCompilerPayload(
+    const std::optional<fs::path> &binary,
+    std::optional<std::string> &out_error)
+{
+  out_error.reset();
+  if (!binary.has_value())
+  {
+    return nullptr;
+  }
+
+  try
+  {
+    const spio::CompatibilityReport report = spio::CheckCompilerCompatibility(*binary);
+    return BuildCompilerHandshakePayload(*binary, report);
+  }
+  catch (const std::exception &err)
+  {
+    try
+    {
+      return BuildCompilerHandshakePayloadFromMachineInfo(
+          *binary,
+          ProbeCompilerMachineInfo(*binary));
+    }
+    catch (const std::exception &probe_err)
+    {
+      out_error = std::string(err.what()) + "; machine-info probe failed: " + probe_err.what();
+      return nullptr;
+    }
+  }
+}
+
+json ReadJsonArtifactOrNull(const fs::path &path)
+{
+  if (!fs::exists(path))
+  {
+    return nullptr;
+  }
+
+  try
+  {
+    return json::parse(ReadFile(path));
+  }
+  catch (const std::exception &)
+  {
+    return nullptr;
+  }
+}
+
+json ReadJsonLinesArtifact(const fs::path &path)
+{
+  json lines = json::array();
+  if (!fs::exists(path))
+  {
+    return lines;
+  }
+
+  std::ifstream in(path);
+  std::string line;
+  while (std::getline(in, line))
+  {
+    const std::string trimmed = TrimAsciiWhitespace(line);
+    if (trimmed.empty())
+    {
+      continue;
+    }
+
+    try
+    {
+      lines.push_back(json::parse(trimmed));
+    }
+    catch (const std::exception &)
+    {
+      lines.push_back({
+          {"raw", trimmed},
+      });
+    }
+  }
+
+  return lines;
+}
+
+json BuildWorkflowSuccessPayload(
+    std::string_view command_name,
+    const spio::BuildPlanResult &plan,
+    const WorkflowFlags &workflow_flags,
+    const std::string &intent,
+    const json &compatibility_payload,
+    const ChildProcessResult &result)
+{
+  const fs::path receipt_path = plan.build_root / "receipt.json";
+  const fs::path diagnostics_path = plan.diag_dir / "diagnostics.jsonl";
+  return {
+      {"command", std::string(command_name)},
+      {"mode", "execute"},
+      {"workflow_payload_version", 1},
+      {"message", "completed compiler " + std::string(command_name) + " via compile-plan: " + plan.plan_path.string()},
+      {"manifest_path", plan.manifest_path.string()},
+      {"workspace_root", plan.workspace_root.string()},
+      {"plan_path", plan.plan_path.string()},
+      {"build_root", plan.build_root.string()},
+      {"artifact_dir", plan.artifact_dir.string()},
+      {"diag_dir", plan.diag_dir.string()},
+      {"cache_key", plan.cache_key},
+      {"packages", plan.package_count},
+      {"entry", {
+                    {"package", plan.entry_package_name},
+                    {"package_id", plan.entry_package_id},
+                    {"target_kind", plan.entry_target_kind},
+                    {"target_name", plan.entry_target_name},
+                }},
+      {"profile", plan.profile_name},
+      {"intent", intent},
+      {"locked", workflow_flags.locked},
+      {"offline", workflow_flags.offline},
+      {"styio", compatibility_payload},
+      {"receipt_path", receipt_path.string()},
+      {"receipt", ReadJsonArtifactOrNull(receipt_path)},
+      {"diagnostics_path", diagnostics_path.string()},
+      {"diagnostics", ReadJsonLinesArtifact(diagnostics_path)},
+      {"stdout", result.stdout_text},
+      {"stderr", result.stderr_text},
+  };
+}
+
+json BuildWorkflowFailurePayload(
+    std::string_view command_name,
+    const fs::path &compiler,
+    const spio::BuildPlanResult &plan,
+    const WorkflowFlags &workflow_flags,
+    const std::string &intent,
+    const json &compatibility_payload,
+    const ChildProcessResult &result,
+    const std::string &message)
+{
+  const fs::path receipt_path = plan.build_root / "receipt.json";
+  const fs::path diagnostics_path = plan.diag_dir / "diagnostics.jsonl";
+  return {
+      {"category", "CompilerError"},
+      {"code", spio::kExitCompiler},
+      {"message", message},
+      {"command", std::string(command_name)},
+      {"child_program", compiler.string()},
+      {"child_exit_code", result.exit_code},
+      {"mode", "execute"},
+      {"manifest_path", plan.manifest_path.string()},
+      {"workspace_root", plan.workspace_root.string()},
+      {"plan_path", plan.plan_path.string()},
+      {"build_root", plan.build_root.string()},
+      {"artifact_dir", plan.artifact_dir.string()},
+      {"diag_dir", plan.diag_dir.string()},
+      {"cache_key", plan.cache_key},
+      {"packages", plan.package_count},
+      {"entry", {
+                    {"package", plan.entry_package_name},
+                    {"package_id", plan.entry_package_id},
+                    {"target_kind", plan.entry_target_kind},
+                    {"target_name", plan.entry_target_name},
+                }},
+      {"profile", plan.profile_name},
+      {"intent", intent},
+      {"locked", workflow_flags.locked},
+      {"offline", workflow_flags.offline},
+      {"styio", compatibility_payload},
+      {"receipt_path", receipt_path.string()},
+      {"receipt", ReadJsonArtifactOrNull(receipt_path)},
+      {"diagnostics_path", diagnostics_path.string()},
+      {"diagnostics", ReadJsonLinesArtifact(diagnostics_path)},
+      {"stdout", result.stdout_text},
+      {"stderr", result.stderr_text},
+  };
+}
+
+int EmitWorkflowFailure(const json &payload, bool as_json)
+{
+  if (as_json)
+  {
+    std::cerr << payload.dump() << '\n';
+    return payload.value("code", spio::kExitCompiler);
+  }
+
+  if (payload.contains("stdout") && payload["stdout"].is_string())
+  {
+    const std::string stdout_text = payload["stdout"].get<std::string>();
+    if (!stdout_text.empty())
+    {
+      std::cout << stdout_text;
+    }
+  }
+  if (payload.contains("stderr") && payload["stderr"].is_string())
+  {
+    const std::string stderr_text = payload["stderr"].get<std::string>();
+    if (!stderr_text.empty())
+    {
+      std::cerr << stderr_text;
+    }
+  }
+
+  const std::string category = payload.value("category", "CompilerError");
+  const int code = payload.value("code", spio::kExitCompiler);
+  const std::string command = payload.value("command", "build");
+  const std::string message = payload.value("message", "compiler failed");
+  std::cerr << "[" << category << ":" << code << "] " << command << ": " << message << '\n';
+
+  if (payload.contains("diagnostics_path") && payload["diagnostics_path"].is_string())
+  {
+    std::cerr << "diagnostics: " << payload["diagnostics_path"].get<std::string>() << '\n';
+  }
+  if (payload.contains("receipt") && !payload["receipt"].is_null() &&
+      payload.contains("receipt_path") && payload["receipt_path"].is_string())
+  {
+    std::cerr << "receipt: " << payload["receipt_path"].get<std::string>() << '\n';
+  }
+  return code;
+}
+
+int HandleProjectGraph(const std::vector<std::string> &args, bool as_json)
+{
+  if (args.size() == 1 && args.front() == "--help")
+  {
+    return PrintCommandUsage("project-graph");
+  }
+
+  fs::path manifest_path = "spio.toml";
+  std::optional<std::string> styio_bin;
+  for (size_t index = 0; index < args.size(); ++index)
+  {
+    if (args[index] == "--manifest-path")
+    {
+      if (++index >= args.size())
+      {
+        return EmitError({"UsageError", spio::kExitUsage, "--manifest-path requires a value", "project-graph"}, as_json);
+      }
+      manifest_path = args[index];
+    }
+    else if (args[index] == "--styio-bin")
+    {
+      if (++index >= args.size())
+      {
+        return EmitError({"UsageError", spio::kExitUsage, "--styio-bin requires a value", "project-graph"}, as_json);
+      }
+      styio_bin = args[index];
+    }
+    else if (args[index] == "--json")
+    {
+      continue;
+    }
+    else
+    {
+      return EmitError({"UsageError", spio::kExitUsage, "unexpected argument for project-graph: " + args[index], "project-graph"}, as_json);
+    }
+  }
+
+  manifest_path = spio::CanonicalAbsolutePath(manifest_path);
+  if (!fs::exists(manifest_path))
+  {
+    return EmitError({"ManifestError", spio::kExitManifest, "manifest not found: " + manifest_path.string(), "project-graph"}, as_json);
+  }
+
+  const fs::path workspace_root = spio::CanonicalAbsolutePath(manifest_path.parent_path());
+  const fs::path lockfile_path = spio::CanonicalAbsolutePath(workspace_root / "spio.lock");
+  const fs::path vendor_root = spio::ProjectVendorRootForManifest(manifest_path);
+  const fs::path build_root = spio::ProjectStateRootForManifest(manifest_path) / "build";
+  const fs::path styio_toml = spio::CanonicalAbsolutePath(workspace_root / "styio.toml");
+  const fs::path dot_styio_toml = spio::CanonicalAbsolutePath(workspace_root / ".styio.toml");
+
+  spio::ManifestDocument root_manifest;
+  try
+  {
+    root_manifest = spio::LoadManifest(manifest_path);
+  }
+  catch (const spio::ValidationError &err)
+  {
+    return EmitError({"ManifestError", spio::kExitManifest, err.what(), "project-graph"}, as_json);
+  }
+
+  json packages = json::array();
+  json dependencies = json::array();
+  json targets = json::array();
+  std::vector<json> package_distribution_packages;
+  std::map<std::string, RegistrySourceAggregate> registry_sources;
+  size_t declared_git_dependencies = 0U;
+  size_t declared_registry_dependencies = 0U;
+  std::set<std::string> editor_files;
+  std::vector<std::string> workspace_members;
+  std::vector<std::string> notes;
+
+  const auto append_package = [&](const fs::path &package_manifest_path, bool is_workspace_member) {
+    const spio::ManifestDocument manifest = spio::LoadManifest(package_manifest_path);
+    if (!manifest.package.has_value())
+    {
+      return;
+    }
+
+    const spio::PackageConfig &package = *manifest.package;
+    const fs::path package_root = spio::CanonicalAbsolutePath(package_manifest_path.parent_path());
+    json package_targets = json::array();
+    json package_dependencies = json::array();
+
+    if (package.lib.has_value())
+    {
+      const json target = BuildTargetPayload(package.name, package_root, "lib", package.name, package.lib->path);
+      package_targets.push_back(target);
+      targets.push_back(target);
+      editor_files.insert(target.at("file_path").get<std::string>());
+    }
+    for (const spio::BinTarget &bin : package.bins)
+    {
+      const json target = BuildTargetPayload(package.name, package_root, "bin", bin.name, bin.path);
+      package_targets.push_back(target);
+      targets.push_back(target);
+      editor_files.insert(target.at("file_path").get<std::string>());
+    }
+    for (const spio::TestTarget &test : package.tests)
+    {
+      const json target = BuildTargetPayload(package.name, package_root, "test", test.name, test.path);
+      package_targets.push_back(target);
+      targets.push_back(target);
+      editor_files.insert(target.at("file_path").get<std::string>());
+    }
+
+    for (const spio::Dependency &dependency : package.dependencies)
+    {
+      if (dependency.source_kind == spio::DependencySourceKind::kGit)
+      {
+        ++declared_git_dependencies;
+      }
+      else if (dependency.source_kind == spio::DependencySourceKind::kRegistry)
+      {
+        ++declared_registry_dependencies;
+      }
+      const json dep = BuildDependencyPayload(package.name, dependency, false);
+      package_dependencies.push_back(dep);
+      dependencies.push_back(dep);
+    }
+    for (const spio::Dependency &dependency : package.dev_dependencies)
+    {
+      if (dependency.source_kind == spio::DependencySourceKind::kGit)
+      {
+        ++declared_git_dependencies;
+      }
+      else if (dependency.source_kind == spio::DependencySourceKind::kRegistry)
+      {
+        ++declared_registry_dependencies;
+      }
+      const json dep = BuildDependencyPayload(package.name, dependency, true);
+      package_dependencies.push_back(dep);
+      dependencies.push_back(dep);
+    }
+
+    packages.push_back({
+        {"package_name", package.name},
+        {"version", package.version},
+        {"root_path", package_root.string()},
+        {"manifest_path", package_manifest_path.string()},
+        {"targets", package_targets},
+        {"dependencies", package_dependencies},
+        {"is_workspace_member", is_workspace_member},
+        {"publish_enabled", package.publish},
+    });
+    package_distribution_packages.push_back(
+        BuildPackageDistributionEntryPayload(
+            package_manifest_path,
+            package,
+            registry_sources));
+  };
+
+  try
+  {
+    append_package(manifest_path, false);
+    if (root_manifest.workspace.has_value())
+    {
+      workspace_members = root_manifest.workspace->members;
+      for (const std::string &member : root_manifest.workspace->members)
+      {
+        const fs::path member_manifest_path = spio::CanonicalAbsolutePath(workspace_root / member / "spio.toml");
+        if (!fs::exists(member_manifest_path))
+        {
+          throw spio::WorkspaceError("workspace member manifest not found: " + member_manifest_path.string());
+        }
+        append_package(member_manifest_path, true);
+      }
+    }
+  }
+  catch (const spio::ValidationError &err)
+  {
+    return EmitError({"ManifestError", spio::kExitManifest, err.what(), "project-graph"}, as_json);
+  }
+  catch (const spio::WorkspaceError &err)
+  {
+    return EmitError({"WorkspaceError", spio::kExitWorkspace, err.what(), "project-graph"}, as_json);
+  }
+
+  std::string lock_state = "missing";
+  if (fs::exists(lockfile_path))
+  {
+    lock_state = "unknown";
+    try
+    {
+      const spio::ResolveOptions resolve_options = BuildResolveOptions(
+          manifest_path,
+          WorkflowFlags{
+              .locked = false,
+              .offline = true,
+          });
+      const spio::LockGenerationResult generated = spio::ResolveSingleVersionLockfile(manifest_path, resolve_options);
+      lock_state = ReadFile(lockfile_path) == spio::SerializeLockfileCanonical(generated.lockfile) ? "fresh" : "stale";
+    }
+    catch (const std::exception &err)
+    {
+      notes.push_back(std::string("lock freshness could not be resolved offline: ") + err.what());
+    }
+  }
+
+  const std::optional<std::string> manifest_channel =
+      root_manifest.package.has_value() ? std::optional<std::string>(root_manifest.package->toolchain.channel) : std::nullopt;
+  ToolchainPreview toolchain = BuildToolchainPreview(std::optional<fs::path>(manifest_path), styio_bin, manifest_channel);
+  json active_compiler = nullptr;
+  if (toolchain.candidate_binary.has_value())
+  {
+    try
+    {
+      const spio::CompatibilityReport report = spio::CheckCompilerCompatibility(*toolchain.candidate_binary);
+      active_compiler = BuildCompilerHandshakePayload(*toolchain.candidate_binary, report);
+      if (!toolchain.channel.has_value())
+      {
+        toolchain.channel = report.compiler_channel;
+      }
+      if (!toolchain.version.has_value())
+      {
+        toolchain.version = report.compiler_version;
+      }
+    }
+    catch (const std::exception &err)
+    {
+      notes.push_back(std::string("active compiler compatibility check failed: ") + err.what());
+    }
+  }
+  else if (toolchain.source != "unavailable")
+  {
+    notes.push_back(std::string("active compiler is unresolved: ") + toolchain.detail);
+  }
+
+  std::vector<std::string> editor_file_list(editor_files.begin(), editor_files.end());
+  if (editor_file_list.empty())
+  {
+    editor_file_list.push_back(spio::CanonicalAbsolutePath(workspace_root / "src" / "main.styio").string());
+  }
+
+  const bool has_root_package = root_manifest.package.has_value();
+  const bool has_workspace = root_manifest.workspace.has_value() && !root_manifest.workspace->members.empty();
+  const std::string project_kind = has_workspace ? (has_root_package ? "combined-root" : "workspace") : "package";
+  const std::string title = has_root_package ? root_manifest.package->name : "Workspace Project";
+
+  return EmitSuccess(
+      {
+          {"command", "project-graph"},
+          {"schema_version", 1},
+          {"id", manifest_path.string()},
+          {"title", title},
+          {"kind", project_kind},
+          {"workspace_root", workspace_root.string()},
+          {"workspace_members", workspace_members},
+          {"manifest_path", manifest_path.string()},
+          {"lockfile_path", lockfile_path.string()},
+          {"toolchain_pin_path", toolchain.pin_path.has_value() ? json(toolchain.pin_path->string()) : json(nullptr)},
+          {"styio_config_path",
+           fs::exists(styio_toml) ? json(styio_toml.string())
+                                  : (fs::exists(dot_styio_toml) ? json(dot_styio_toml.string()) : json(nullptr))},
+          {"vendor_root", vendor_root.string()},
+          {"build_root", build_root.string()},
+          {"packages", packages},
+          {"dependencies", dependencies},
+          {"targets", targets},
+          {"editor_files", editor_file_list},
+          {"toolchain", {
+                            {"source", toolchain.source},
+                            {"detail", toolchain.detail},
+                            {"pin_path", toolchain.pin_path.has_value() ? json(toolchain.pin_path->string()) : json(nullptr)},
+                            {"channel", toolchain.channel.has_value() ? json(*toolchain.channel) : json(nullptr)},
+                            {"version", toolchain.version.has_value() ? json(*toolchain.version) : json(nullptr)},
+                        }},
+          {"lock_state", lock_state},
+          {"vendor_state", fs::exists(vendor_root) ? "present" : "missing"},
+          {"active_compiler", active_compiler},
+          {"managed_toolchains", BuildManagedToolchainsPayload()},
+          {"package_distribution", BuildPackageDistributionPayload(package_distribution_packages, registry_sources)},
+          {"source_state", BuildSourceStatePayload(vendor_root, declared_git_dependencies, declared_registry_dependencies)},
+          {"notes", notes},
+      },
+      as_json);
+}
+
+int HandleToolStatus(const std::vector<std::string> &args, bool as_json)
+{
+  if (args.size() == 1 && args.front() == "--help")
+  {
+    std::cout << "usage: spio tool status [--manifest-path <path>] [--styio-bin <path>] [--json]\n";
+    return spio::kExitSuccess;
+  }
+
+  std::optional<fs::path> manifest_path;
+  std::optional<fs::path> workspace_root;
+  std::optional<std::string> manifest_channel;
+  std::optional<std::string> styio_bin;
+  for (size_t index = 0; index < args.size(); ++index)
+  {
+    if (args[index] == "--manifest-path")
+    {
+      if (++index >= args.size())
+      {
+        return EmitError({"UsageError", spio::kExitUsage, "--manifest-path requires a value", "tool status"}, as_json);
+      }
+      manifest_path = spio::CanonicalAbsolutePath(args[index]);
+    }
+    else if (args[index] == "--styio-bin")
+    {
+      if (++index >= args.size())
+      {
+        return EmitError({"UsageError", spio::kExitUsage, "--styio-bin requires a value", "tool status"}, as_json);
+      }
+      styio_bin = args[index];
+    }
+    else if (args[index] == "--json")
+    {
+      continue;
+    }
+    else
+    {
+      return EmitError({"UsageError", spio::kExitUsage, "unexpected argument for tool status: " + args[index], "tool status"}, as_json);
+    }
+  }
+
+  if (manifest_path.has_value())
+  {
+    if (!fs::exists(*manifest_path))
+    {
+      return EmitError({"ManifestError", spio::kExitManifest, "manifest not found: " + manifest_path->string(), "tool status"}, as_json);
+    }
+
+    workspace_root = spio::CanonicalAbsolutePath(manifest_path->parent_path());
+    try
+    {
+      const spio::ManifestDocument manifest = spio::LoadManifest(*manifest_path);
+      if (manifest.package.has_value())
+      {
+        manifest_channel = manifest.package->toolchain.channel;
+      }
+    }
+    catch (const spio::ValidationError &err)
+    {
+      return EmitError({"ManifestError", spio::kExitManifest, err.what(), "tool status"}, as_json);
+    }
+    catch (const spio::WorkspaceError &err)
+    {
+      return EmitError({"WorkspaceError", spio::kExitWorkspace, err.what(), "tool status"}, as_json);
+    }
+  }
+
+  ToolchainPreview toolchain = BuildToolchainPreview(manifest_path, styio_bin, manifest_channel);
+  json project_pin = BuildProjectPinStatePayload(manifest_path);
+  json managed_toolchains = BuildManagedToolchainsPayload();
+
+  std::vector<std::string> notes;
+  std::optional<std::string> active_compiler_error;
+  json active_compiler = BuildOptionalCompilerPayload(toolchain.candidate_binary, active_compiler_error);
+  if (active_compiler_error.has_value())
+  {
+    notes.push_back(std::string("active compiler compatibility check failed: ") + *active_compiler_error);
+  }
+  else if (!toolchain.candidate_binary.has_value() && toolchain.source != "unavailable")
+  {
+    notes.push_back(std::string("active compiler is unresolved: ") + toolchain.detail);
+  }
+
+  std::optional<fs::path> current_binary;
+  if (const std::optional<fs::path> spio_home = spio::ResolveOptionalSpioHome(); spio_home.has_value())
+  {
+    const fs::path candidate = spio::ManagedStyioBinaryPath(spio::ManagedStyioCurrentRoot(*spio_home));
+    if (fs::exists(candidate))
+    {
+      current_binary = candidate;
+    }
+  }
+
+  std::optional<std::string> current_compiler_error;
+  json current_compiler = BuildOptionalCompilerPayload(current_binary, current_compiler_error);
+  if (current_compiler_error.has_value())
+  {
+    notes.push_back(std::string("managed current compiler compatibility check failed: ") + *current_compiler_error);
+  }
+
+  return EmitSuccess(
+      {
+          {"command", "tool status"},
+          {"schema_version", 1},
+          {"message", "resolved spio toolchain environment state"},
+          {"manifest_path", manifest_path.has_value() ? json(manifest_path->string()) : json(nullptr)},
+          {"workspace_root", workspace_root.has_value() ? json(workspace_root->string()) : json(nullptr)},
+          {"toolchain", {
+                            {"source", toolchain.source},
+                            {"detail", toolchain.detail},
+                            {"pin_path", toolchain.pin_path.has_value() ? json(toolchain.pin_path->string()) : json(nullptr)},
+                            {"channel", toolchain.channel.has_value() ? json(*toolchain.channel) : json(nullptr)},
+                            {"version", toolchain.version.has_value() ? json(*toolchain.version) : json(nullptr)},
+                            {"candidate_binary_path",
+                             toolchain.candidate_binary.has_value() ? json(toolchain.candidate_binary->string()) : json(nullptr)},
+                        }},
+          {"project_pin", project_pin},
+          {"active_compiler", active_compiler},
+          {"active_compiler_error", active_compiler_error.has_value() ? json(*active_compiler_error) : json(nullptr)},
+          {"current_compiler", current_compiler},
+          {"current_compiler_error", current_compiler_error.has_value() ? json(*current_compiler_error) : json(nullptr)},
+          {"managed_toolchains", managed_toolchains},
+          {"notes", notes},
+      },
+      as_json);
 }
 
 int HandleNew(const std::vector<std::string> &args, bool as_json)
@@ -967,9 +2451,10 @@ int HandlePlanCommand(std::string_view command_name, std::string_view intent, bo
         as_json);
   }
 
+  ChildProcessResult result;
   try
   {
-    const ChildProcessResult result = RunChildProcess(*compiler, {"--compile-plan", plan.plan_path.string()});
+    result = RunChildProcess(*compiler, {"--compile-plan", plan.plan_path.string()});
     if (result.exit_code == 127)
     {
       return EmitError(
@@ -979,8 +2464,18 @@ int HandlePlanCommand(std::string_view command_name, std::string_view intent, bo
     if (result.exit_code != 0)
     {
       const std::string detail = TrimTrailingNewline(result.stderr_text.empty() ? result.stdout_text : result.stderr_text);
-      return EmitError(
-          {"CompilerError", spio::kExitCompiler, "compiler failed for compile-plan " + plan.plan_path.string() + (detail.empty() ? "" : ": " + detail), std::string(command_name)},
+      const std::string message =
+          "compiler failed for compile-plan " + plan.plan_path.string() + (detail.empty() ? "" : ": " + detail);
+      return EmitWorkflowFailure(
+          BuildWorkflowFailurePayload(
+              command_name,
+              *compiler,
+              plan,
+              workflow_flags,
+              request.intent,
+              compatibility_payload,
+              result,
+              message),
           as_json);
     }
     if (!as_json)
@@ -1001,30 +2496,13 @@ int HandlePlanCommand(std::string_view command_name, std::string_view intent, bo
   }
 
   return EmitSuccess(
-      {
-          {"command", std::string(command_name)},
-          {"mode", "execute"},
-          {"message", "completed compiler " + std::string(command_name) + " via compile-plan: " + plan.plan_path.string()},
-          {"manifest_path", plan.manifest_path.string()},
-          {"workspace_root", plan.workspace_root.string()},
-          {"plan_path", plan.plan_path.string()},
-          {"build_root", plan.build_root.string()},
-          {"artifact_dir", plan.artifact_dir.string()},
-          {"diag_dir", plan.diag_dir.string()},
-          {"cache_key", plan.cache_key},
-          {"packages", plan.package_count},
-          {"entry", {
-                        {"package", plan.entry_package_name},
-                        {"package_id", plan.entry_package_id},
-                        {"target_kind", plan.entry_target_kind},
-                        {"target_name", plan.entry_target_name},
-                    }},
-          {"profile", plan.profile_name},
-          {"intent", request.intent},
-          {"locked", workflow_flags.locked},
-          {"offline", workflow_flags.offline},
-          {"styio", compatibility_payload},
-      },
+      BuildWorkflowSuccessPayload(
+          command_name,
+          plan,
+          workflow_flags,
+          request.intent,
+          compatibility_payload,
+          result),
       as_json);
 }
 
@@ -2333,6 +3811,10 @@ int RunCli(const std::vector<std::string> &argv)
   {
     return HandleCheck(args, global_json);
   }
+  if (command == "project-graph")
+  {
+    return HandleProjectGraph(args, global_json);
+  }
   if (command == "add")
   {
     return HandleAdd(args, global_json);
@@ -2389,6 +3871,12 @@ int RunCli(const std::vector<std::string> &argv)
           std::vector<std::string>(args.begin() + 1, args.end()),
           global_json);
     }
+    if (!args.empty() && args.front() == "status")
+    {
+      return HandleToolStatus(
+          std::vector<std::string>(args.begin() + 1, args.end()),
+          global_json);
+    }
     if (!args.empty() && args.front() == "use")
     {
       return HandleToolUse(
@@ -2401,7 +3889,7 @@ int RunCli(const std::vector<std::string> &argv)
           std::vector<std::string>(args.begin() + 1, args.end()),
           global_json);
     }
-    return EmitError({"UsageError", kExitUsage, "tool requires the 'install', 'use', or 'pin' subcommand", "tool"}, global_json);
+    return EmitError({"UsageError", kExitUsage, "tool requires the 'status', 'install', 'use', or 'pin' subcommand", "tool"}, global_json);
   }
   return EmitError({"UsageError", kExitUsage, "unknown command: " + command, command}, global_json);
 }

@@ -49,7 +49,7 @@ struct SelectedTarget
 
 void ValidateIntent(std::string_view intent)
 {
-  if (intent != "build" && intent != "run" && intent != "test")
+  if (intent != "check" && intent != "build" && intent != "run" && intent != "test")
   {
     throw spio::PlanError("unsupported compile-plan intent for the current native core: " + std::string(intent));
   }
@@ -343,9 +343,35 @@ SelectedTarget ResolveEntryTarget(const spio::BuildPlanRequest &request, const s
         .file = file,
     };
   }
+  if (request.intent == "check" && !has_lib && bin_count == 0U && test_count == 1U)
+  {
+    const spio::TestTarget &test = package.package.tests.front();
+    const fs::path file = AbsoluteTargetPath(package, test.path);
+    RequireExistingSourceFile(file, "test");
+    return {
+        .package = &package,
+        .kind = "test",
+        .name = test.name,
+        .file = file,
+    };
+  }
+
+  std::string selection_hint = "--lib or --bin <name>";
+  if (request.intent == "run")
+  {
+    selection_hint = "--bin <name>";
+  }
+  else if (request.intent == "test")
+  {
+    selection_hint = "--test <name>";
+  }
+  else if (request.intent == "check")
+  {
+    selection_hint = "--lib, --bin <name>, or --test <name>";
+  }
 
   throw spio::PlanError(
-      "build target is ambiguous for package '" + package.package.name + "'; select --lib or --bin <name>");
+      request.intent + " target is ambiguous for package '" + package.package.name + "'; select " + selection_hint);
 }
 
 ProfileConfig ResolveProfile(std::string_view profile_name)

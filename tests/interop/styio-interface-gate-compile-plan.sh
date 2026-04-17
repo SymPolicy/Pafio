@@ -11,7 +11,7 @@ cat >"$FAKE_STYIO" <<'EOF'
 set -euo pipefail
 
 if [ "${1:-}" = "--machine-info=json" ]; then
-  printf '%s\n' '{"tool":"styio","compiler_version":"0.0.5","channel":"stable","supported_contracts":{"compile_plan":[1]},"capabilities":["machine_info_json","single_file_entry","jsonl_diagnostics"],"edition_max":"2026"}'
+  printf '%s\n' '{"tool":"styio","compiler_version":"0.0.5","channel":"stable","active_integration_phase":"compile-plan-live","supported_contracts":{"machine_info":[1],"jsonl_diagnostics":[1],"compile_plan":[1],"runtime_events":[]},"supported_contract_versions":{"machine_info":[1],"jsonl_diagnostics":[1],"compile_plan":[1],"runtime_events":[]},"supported_adapter_modes":["cli"],"feature_flags":{"single_file_entry":true,"jsonl_diagnostics":true,"compile_plan_consumer":true,"project_execution_via_compile_plan":true,"runtime_event_stream":false},"capabilities":["machine_info_json","single_file_entry","jsonl_diagnostics"],"edition_max":"2026"}'
   exit 0
 fi
 
@@ -26,7 +26,19 @@ outputs = plan["outputs"]
 for key in ("build_root", "artifact_dir", "diag_dir"):
     pathlib.Path(outputs[key]).mkdir(parents=True, exist_ok=True)
 (pathlib.Path(outputs["artifact_dir"]) / "interop.artifact").write_text("ok\n")
-(pathlib.Path(outputs["diag_dir"]) / "compile.jsonl").write_text("")
+receipt = {
+    "schema_version": 1,
+    "tool": "styio",
+    "compiler_version": "0.0.5",
+    "channel": "stable",
+    "plan_version": plan["plan_version"],
+    "intent": plan["intent"],
+    "executed": False,
+    "outputs": outputs,
+    "artifacts": [str(pathlib.Path(outputs["artifact_dir"]) / "interop.artifact")],
+}
+(pathlib.Path(outputs["build_root"]) / "receipt.json").write_text(json.dumps(receipt))
+(pathlib.Path(outputs["diag_dir"]) / "diagnostics.jsonl").write_text("")
 PY
   exit 0
 fi

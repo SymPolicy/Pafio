@@ -14,6 +14,7 @@ add_executable(spio_native_tests
   native/LockTests.cpp
   native/ManifestTests.cpp
   native/PackTests.cpp
+  native/ProjectGraphTests.cpp
   native/PublishTests.cpp
   native/SecurityTests.cpp
   native/ToolTests.cpp
@@ -71,6 +72,11 @@ add_test(
 add_test(
   NAME spio_cli_build_help
   COMMAND bash -c "\"$<TARGET_FILE:spio>\" build --help | grep -q '^usage: spio build \\[--manifest-path <path>\\] \\[--package <package-name>\\] \\[--bin <name>\\|--lib\\] \\[--profile <dev\\|release>\\] \\[--dry-run\\] \\[--styio-bin <path>\\] \\[--locked\\|--offline\\|--frozen\\]$'"
+)
+
+add_test(
+  NAME spio_cli_project_graph_help
+  COMMAND bash -c "\"$<TARGET_FILE:spio>\" project-graph --help | grep -q '^usage: spio project-graph \\[--manifest-path <path>\\] \\[--styio-bin <path>\\] \\[--json\\]$'"
 )
 
 add_test(

@@ -6,16 +6,15 @@ TARGET="${1:-$HOME/DevSpace/Unka-Malloc/styio-spio}"
 
 mkdir -p "$TARGET"
 
+EXCLUDE_ARGS=()
+while IFS= read -r pattern; do
+  [[ -z "$pattern" ]] && continue
+  EXCLUDE_ARGS+=(--exclude "$pattern")
+done < <(python3 "$ROOT/scripts/artifact-policy-rsync-excludes.py")
+
 rsync -a \
   --delete \
-  --exclude '.git/' \
-  --exclude '.build/' \
-  --exclude 'build/' \
-  --exclude 'build-codex/' \
-  --exclude '.spio/' \
-  --exclude '__pycache__/' \
-  --exclude '.pytest_cache/' \
-  --exclude 'Testing/' \
+  "${EXCLUDE_ARGS[@]}" \
   "$ROOT"/ "$TARGET"/
 
 echo "copied spio subtree to: $TARGET"
