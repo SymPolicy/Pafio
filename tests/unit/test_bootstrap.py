@@ -97,6 +97,7 @@ class BootstrapCliTests(unittest.TestCase):
         self.assertTrue(payload["feature_flags"]["project_graph_payload"])
         self.assertTrue(payload["feature_flags"]["toolchain_state_payload"])
         self.assertTrue(payload["feature_flags"]["workflow_success_payloads"])
+        self.assertTrue(payload["feature_flags"]["runtime_event_payload"])
 
     def test_build_dry_run_writes_compile_plan(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:

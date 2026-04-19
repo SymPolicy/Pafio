@@ -388,6 +388,34 @@ TEST(ToolStatusTests, ReportsManagedStateAndProjectPinResolution)
       CanonicalAbsolutePath(install_v4.install_binary_path).string());
 }
 
+TEST(ToolStatusTests, SupportsCommandLocalJsonFlag)
+{
+  const fs::path root = MakeTempDir("tool-status-command-local-json");
+  const ScopedEnvVar spio_home("SPIO_HOME", (root / ".spio-home").string());
+  const fs::path styio_v5 = root / "styio-0.0.5";
+  WriteFakeStyio(styio_v5, "0.0.5");
+  (void) spio::InstallManagedStyio({.styio_binary = styio_v5});
+
+  const fs::path manifest_path = root / "project/spio.toml";
+  WriteSingleBinManifest(manifest_path);
+
+  testing::internal::CaptureStdout();
+  const int exit_code = spio::RunCli({
+      "tool",
+      "status",
+      "--json",
+      "--manifest-path",
+      manifest_path.string(),
+  });
+  const std::string stdout_text = testing::internal::GetCapturedStdout();
+
+  ASSERT_EQ(exit_code, spio::kExitSuccess);
+  const json payload = json::parse(stdout_text);
+  EXPECT_EQ(payload.at("command").get<std::string>(), "tool status");
+  EXPECT_EQ(payload.at("schema_version").get<int>(), 1);
+  EXPECT_EQ(payload.at("toolchain").at("source").get<std::string>(), "managed-current");
+}
+
 TEST(ToolStatusTests, ReportsMissingPinnedInstallWithoutFailing)
 {
   const fs::path root = MakeTempDir("tool-status-missing-pin");

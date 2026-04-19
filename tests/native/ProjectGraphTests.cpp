@@ -176,6 +176,47 @@ TEST(ProjectGraphTests, EmitsStructuredGraphPayloadForCombinedRoot)
   EXPECT_EQ(payload.at("source_state").at("vendor").at("metadata_present").get<bool>(), false);
 }
 
+TEST(ProjectGraphTests, SupportsCommandLocalJsonFlag)
+{
+  const fs::path root = MakeTempDir("command-local-json");
+  const fs::path fake_styio = root / "fake-styio";
+  WriteLiveFakeStyio(fake_styio);
+
+  WriteFile(
+      root / "spio.toml",
+      "[spio]\n"
+      "manifest-version = 1\n\n"
+      "[package]\n"
+      "name = \"acme/app\"\n"
+      "version = \"0.1.0\"\n"
+      "edition = \"2026\"\n"
+      "publish = false\n\n"
+      "[toolchain]\n"
+      "channel = \"stable\"\n"
+      "implicit-std = true\n\n"
+      "[[bin]]\n"
+      "name = \"app\"\n"
+      "path = \"src/main.styio\"\n");
+  WriteFile(root / "src/main.styio", ">_(\"app\")\n");
+
+  testing::internal::CaptureStdout();
+  const int exit_code = spio::RunCli({
+      "project-graph",
+      "--json",
+      "--manifest-path",
+      (root / "spio.toml").string(),
+      "--styio-bin",
+      fake_styio.string(),
+  });
+  const std::string stdout_text = testing::internal::GetCapturedStdout();
+
+  ASSERT_EQ(exit_code, spio::kExitSuccess);
+  const json payload = json::parse(stdout_text);
+  EXPECT_EQ(payload.at("command").get<std::string>(), "project-graph");
+  EXPECT_EQ(payload.at("schema_version").get<int>(), 1);
+  EXPECT_EQ(payload.at("manifest_path").get<std::string>(), (root / "spio.toml").string());
+}
+
 TEST(ProjectGraphTests, ReportsProjectPinWithoutCrashingWhenManagedInstallIsMissing)
 {
   const fs::path root = MakeTempDir("missing-managed-pin");

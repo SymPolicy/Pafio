@@ -2,7 +2,7 @@
 
 **Purpose:** Hold repository-local helper scripts used to validate extractability, contract hygiene, and black-box test setup for `spio`.
 
-**Last updated:** 2026-04-15
+**Last updated:** 2026-04-18
 
 ## Current Public Scripts
 
@@ -11,6 +11,7 @@
 - contract fixture validation
 - black-box integration runner setup
 - compiler handoff and interface acceptance gate
+- canonical sample-workflow gate that runs managed-toolchain switch, workspace `--package`, vendored-offline, and registry-hosted-source matrices against published `styio` + `spio` binaries
 - registry server publish/fetch acceptance gate
 - registry promotion from writable origin storage to read-side serving root
 - copy subtree into an external standalone repository target

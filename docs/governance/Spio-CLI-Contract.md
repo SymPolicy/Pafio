@@ -171,7 +171,8 @@ Current native rule:
 - `supported_contracts.compile_plan` reports `[1]` only because the published compatibility matrix now enables compile-plan v1 against released `styio` binaries
 - `supported_contracts.project_graph` reports `[1]` because `spio` now owns and publishes a machine-readable project graph payload for `styio-view`
 - `supported_contracts.toolchain_state` reports `[1]` because `spio tool status --json` now publishes the managed compiler environment and project pin state for IDE consumers
-- `supported_contracts.workflow_success_payloads` reports `[1]` because non-dry-run `build/run/test --json` now return structured success payloads with receipt, diagnostics path, and captured stdout/stderr
+- `supported_contracts.workflow_success_payloads` reports `[1]` because non-dry-run `build/run/test --json` now return structured success payloads with receipt, diagnostics path, runtime event metadata, and captured stdout/stderr
+- `feature_flags.runtime_event_payload` reports `true` because published workflow payloads already carry parsed runtime-event replay plus `runtime_events_path`
 - `project_graph v1` now also carries package-distribution state for IDE deployment flows: package `publish_enabled`, dependency source metadata, a project-level `package_distribution` summary with registry roots and publish-blocking reasons, and `source_state` for vendored snapshots plus git/registry cache roots
 - owning `contracts/compile-plan/` schema files by itself still does not authorize advertising active compile-plan support
 - local dry-run plan emission is not sufficient on its own; the published compiler consumer and compatibility matrix remain the activation gate
@@ -311,7 +312,7 @@ Optional keys:
 - `package_distribution` includes per-package publish readiness plus aggregated registry roots for deployment surfaces
 - `source_state` includes `spio_home`, declared git/registry dependency counts, git cache roots, registry cache roots, and project-local vendor metadata presence
 - non-dry-run `spio build/run/test --json` publish `workflow_success_payloads v1`
-- `workflow_success_payloads v1` include at least the command metadata, build/artifact/diag roots, parsed `receipt.json` when present, `diagnostics.jsonl` path, and captured stdout/stderr
+- `workflow_success_payloads v1` include at least the command metadata, build/artifact/diag roots, parsed `receipt.json` when present, `diagnostics.jsonl` path plus parsed entries, `runtime_events_path`, `runtime_session_id`, parsed runtime events, and captured stdout/stderr
 - compiler-originated non-dry-run `spio build/run/test --json` failures must keep the stable error keys and may additionally include compile-plan roots, parsed `receipt.json`, `diagnostics.jsonl` path plus parsed entries, and captured stdout/stderr
 - supporting internal commands invoked through `spio --json fetch/vendor/pack/publish/tool install/tool use/tool pin` must also return one stable JSON success object on stdout
 - those supporting success JSON objects must include at least `command` and `message`, plus command-specific metadata such as `archive_path`, `package`, managed compiler paths, or pin paths

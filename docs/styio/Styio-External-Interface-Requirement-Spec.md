@@ -77,6 +77,10 @@ Required JSON fields:
   - required array
   - array items must be integers
   - empty array is valid during metadata-only phases
+- `supported_contracts.runtime_events`
+  - required array
+  - array items must be integers
+  - `[1]` means the compiler publishes the current runtime-event artifact family
 - `capabilities`
   - required array of strings
 - `edition_max`
@@ -188,7 +192,11 @@ Minimum success postconditions:
 - `outputs.artifact_dir` exists
 - `outputs.diag_dir` exists
 - `outputs.build_root/receipt.json` exists and is valid JSON
+- `outputs.build_root/runtime-events.jsonl` exists
 - `outputs.diag_dir/diagnostics.jsonl` exists, even when no diagnostics were emitted
+- `receipt.json` includes `session_id`
+- `receipt.json.outputs.runtime_events_path` points at `build_root/runtime-events.jsonl`
+- the current baseline runtime-event artifact includes at least `compile.*`, `run.*`, `thread.*`, `unit.*`, `unit.test.*`, `state.*`, `transition.fired`, `log.emitted`, and `diagnostic.emitted`
 
 ## 4. Diagnostics Contract
 

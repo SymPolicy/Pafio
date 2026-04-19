@@ -197,7 +197,7 @@ json BuildMachineInfoPayload()
                             {"project_graph_payload", true},
                             {"toolchain_state_payload", true},
                             {"workflow_success_payloads", true},
-                            {"runtime_event_payload", false},
+                            {"runtime_event_payload", true},
                         }},
       {"notes", json::array({
                     "native c++ phase-3 minimal resolver core",
@@ -1445,6 +1445,18 @@ json BuildWorkflowSuccessPayload(
 {
   const fs::path receipt_path = plan.build_root / "receipt.json";
   const fs::path diagnostics_path = plan.diag_dir / "diagnostics.jsonl";
+  const fs::path runtime_events_path = plan.build_root / "runtime-events.jsonl";
+  const json receipt = ReadJsonArtifactOrNull(receipt_path);
+  const json runtime_events = ReadJsonLinesArtifact(runtime_events_path);
+  std::string runtime_session_id;
+  if (receipt.is_object())
+  {
+    const auto session_id = receipt.find("session_id");
+    if (session_id != receipt.end() && session_id->is_string())
+    {
+      runtime_session_id = session_id->get<std::string>();
+    }
+  }
   return {
       {"command", std::string(command_name)},
       {"mode", "execute"},
@@ -1470,9 +1482,12 @@ json BuildWorkflowSuccessPayload(
       {"offline", workflow_flags.offline},
       {"styio", compatibility_payload},
       {"receipt_path", receipt_path.string()},
-      {"receipt", ReadJsonArtifactOrNull(receipt_path)},
+      {"receipt", receipt},
       {"diagnostics_path", diagnostics_path.string()},
       {"diagnostics", ReadJsonLinesArtifact(diagnostics_path)},
+      {"runtime_events_path", runtime_events_path.string()},
+      {"runtime_events", runtime_events},
+      {"runtime_session_id", runtime_session_id},
       {"stdout", result.stdout_text},
       {"stderr", result.stderr_text},
   };
@@ -1490,6 +1505,18 @@ json BuildWorkflowFailurePayload(
 {
   const fs::path receipt_path = plan.build_root / "receipt.json";
   const fs::path diagnostics_path = plan.diag_dir / "diagnostics.jsonl";
+  const fs::path runtime_events_path = plan.build_root / "runtime-events.jsonl";
+  const json receipt = ReadJsonArtifactOrNull(receipt_path);
+  const json runtime_events = ReadJsonLinesArtifact(runtime_events_path);
+  std::string runtime_session_id;
+  if (receipt.is_object())
+  {
+    const auto session_id = receipt.find("session_id");
+    if (session_id != receipt.end() && session_id->is_string())
+    {
+      runtime_session_id = session_id->get<std::string>();
+    }
+  }
   return {
       {"category", "CompilerError"},
       {"code", spio::kExitCompiler},
@@ -1518,9 +1545,12 @@ json BuildWorkflowFailurePayload(
       {"offline", workflow_flags.offline},
       {"styio", compatibility_payload},
       {"receipt_path", receipt_path.string()},
-      {"receipt", ReadJsonArtifactOrNull(receipt_path)},
+      {"receipt", receipt},
       {"diagnostics_path", diagnostics_path.string()},
       {"diagnostics", ReadJsonLinesArtifact(diagnostics_path)},
+      {"runtime_events_path", runtime_events_path.string()},
+      {"runtime_events", runtime_events},
+      {"runtime_session_id", runtime_session_id},
       {"stdout", result.stdout_text},
       {"stderr", result.stderr_text},
   };
@@ -1576,6 +1606,7 @@ int HandleProjectGraph(const std::vector<std::string> &args, bool as_json)
     return PrintCommandUsage("project-graph");
   }
 
+  bool command_json = as_json;
   fs::path manifest_path = "spio.toml";
   std::optional<std::string> styio_bin;
   for (size_t index = 0; index < args.size(); ++index)
@@ -1598,18 +1629,19 @@ int HandleProjectGraph(const std::vector<std::string> &args, bool as_json)
     }
     else if (args[index] == "--json")
     {
+      command_json = true;
       continue;
     }
     else
     {
-      return EmitError({"UsageError", spio::kExitUsage, "unexpected argument for project-graph: " + args[index], "project-graph"}, as_json);
+      return EmitError({"UsageError", spio::kExitUsage, "unexpected argument for project-graph: " + args[index], "project-graph"}, command_json);
     }
   }
 
   manifest_path = spio::CanonicalAbsolutePath(manifest_path);
   if (!fs::exists(manifest_path))
   {
-    return EmitError({"ManifestError", spio::kExitManifest, "manifest not found: " + manifest_path.string(), "project-graph"}, as_json);
+    return EmitError({"ManifestError", spio::kExitManifest, "manifest not found: " + manifest_path.string(), "project-graph"}, command_json);
   }
 
   const fs::path workspace_root = spio::CanonicalAbsolutePath(manifest_path.parent_path());
@@ -1626,7 +1658,7 @@ int HandleProjectGraph(const std::vector<std::string> &args, bool as_json)
   }
   catch (const spio::ValidationError &err)
   {
-    return EmitError({"ManifestError", spio::kExitManifest, err.what(), "project-graph"}, as_json);
+    return EmitError({"ManifestError", spio::kExitManifest, err.what(), "project-graph"}, command_json);
   }
 
   json packages = json::array();
@@ -1739,11 +1771,11 @@ int HandleProjectGraph(const std::vector<std::string> &args, bool as_json)
   }
   catch (const spio::ValidationError &err)
   {
-    return EmitError({"ManifestError", spio::kExitManifest, err.what(), "project-graph"}, as_json);
+    return EmitError({"ManifestError", spio::kExitManifest, err.what(), "project-graph"}, command_json);
   }
   catch (const spio::WorkspaceError &err)
   {
-    return EmitError({"WorkspaceError", spio::kExitWorkspace, err.what(), "project-graph"}, as_json);
+    return EmitError({"WorkspaceError", spio::kExitWorkspace, err.what(), "project-graph"}, command_json);
   }
 
   std::string lock_state = "missing";
@@ -1843,7 +1875,7 @@ int HandleProjectGraph(const std::vector<std::string> &args, bool as_json)
           {"source_state", BuildSourceStatePayload(vendor_root, declared_git_dependencies, declared_registry_dependencies)},
           {"notes", notes},
       },
-      as_json);
+      command_json);
 }
 
 int HandleToolStatus(const std::vector<std::string> &args, bool as_json)
@@ -1854,6 +1886,7 @@ int HandleToolStatus(const std::vector<std::string> &args, bool as_json)
     return spio::kExitSuccess;
   }
 
+  bool command_json = as_json;
   std::optional<fs::path> manifest_path;
   std::optional<fs::path> workspace_root;
   std::optional<std::string> manifest_channel;
@@ -1878,11 +1911,12 @@ int HandleToolStatus(const std::vector<std::string> &args, bool as_json)
     }
     else if (args[index] == "--json")
     {
+      command_json = true;
       continue;
     }
     else
     {
-      return EmitError({"UsageError", spio::kExitUsage, "unexpected argument for tool status: " + args[index], "tool status"}, as_json);
+      return EmitError({"UsageError", spio::kExitUsage, "unexpected argument for tool status: " + args[index], "tool status"}, command_json);
     }
   }
 
@@ -1890,7 +1924,7 @@ int HandleToolStatus(const std::vector<std::string> &args, bool as_json)
   {
     if (!fs::exists(*manifest_path))
     {
-      return EmitError({"ManifestError", spio::kExitManifest, "manifest not found: " + manifest_path->string(), "tool status"}, as_json);
+      return EmitError({"ManifestError", spio::kExitManifest, "manifest not found: " + manifest_path->string(), "tool status"}, command_json);
     }
 
     workspace_root = spio::CanonicalAbsolutePath(manifest_path->parent_path());
@@ -1904,11 +1938,11 @@ int HandleToolStatus(const std::vector<std::string> &args, bool as_json)
     }
     catch (const spio::ValidationError &err)
     {
-      return EmitError({"ManifestError", spio::kExitManifest, err.what(), "tool status"}, as_json);
+      return EmitError({"ManifestError", spio::kExitManifest, err.what(), "tool status"}, command_json);
     }
     catch (const spio::WorkspaceError &err)
     {
-      return EmitError({"WorkspaceError", spio::kExitWorkspace, err.what(), "tool status"}, as_json);
+      return EmitError({"WorkspaceError", spio::kExitWorkspace, err.what(), "tool status"}, command_json);
     }
   }
 
@@ -1969,7 +2003,7 @@ int HandleToolStatus(const std::vector<std::string> &args, bool as_json)
           {"managed_toolchains", managed_toolchains},
           {"notes", notes},
       },
-      as_json);
+      command_json);
 }
 
 int HandleNew(const std::vector<std::string> &args, bool as_json)
