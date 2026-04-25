@@ -2,7 +2,7 @@
 
 **Purpose:** Provide the daily-work entrypoint for `spio` docs tree, repo hygiene, docs gate, and delivery-facing workflow documentation.
 
-**Last updated:** 2026-04-24
+**Last updated:** 2026-04-26
 
 ## Mission
 
@@ -29,6 +29,10 @@ without redefining planning, registry, compiler, or service contract semantics.
 15. `scripts/delivery-gate.sh`
 16. `scripts/ecosystem-cli-doc-gate.py`
 17. `scripts/install-spio.sh`
+18. `scripts/repo-hygiene-check.py`
+19. `scripts/submit-gate.py`
+20. `scripts/perf-gate.py`
+21. `scripts/delivery-gate.py`
 
 ## Daily Workflow
 
@@ -48,6 +52,7 @@ without redefining planning, registry, compiler, or service contract semantics.
 14. Keep [../specs/TECHNOLOGY-COMPONENT-INVENTORY.md](../specs/TECHNOLOGY-COMPONENT-INVENTORY.md) aligned with `audit` whenever the technology stack, internal components, open-source components, dependency manifests, Apache-2.0 evidence, or commercial-risk boundaries change.
 15. For registry-management documentation changes, require explicit coverage of publish, verify, mirror handoff, offline behavior, cache reuse, and public/private security boundary before closing docs/audit work.
 16. Maintain GitHub merge gates through Rulesets rather than legacy classic branch protection; audit effective branch rules when required status-check governance changes.
+17. Keep `docs/governance/Spio-Entry-Argument-Index.md`, `docs/governance/Docs-Maintenance-Model.md`, and `docs/operations/Spio-Verification-Matrix.md` aligned whenever delivery scripts or submit gates change.
 
 ## Change Classes
 
@@ -60,7 +65,11 @@ without redefining planning, registry, compiler, or service contract semantics.
 ```bash
 ./scripts/docs-gate.sh
 ./scripts/audit-gate.sh
+python3 scripts/submit-gate.py --profile ci --json
+python3 scripts/perf-gate.py
+python3 scripts/repo-hygiene-check.py --mode tracked
 python3 scripts/repo-hygiene-gate.py --mode tracked
+python3 scripts/delivery-gate.py --json
 ./scripts/delivery-gate.sh --mode checkpoint --skip-health
 ```
 

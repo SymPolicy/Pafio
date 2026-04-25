@@ -6,6 +6,36 @@
 
 ## Gate Matrix
 
+### `spio_repository_delivery_gate`
+
+Objective:
+
+- validate repository hygiene, documentation ownership, and release delivery entrypoints before PR submission
+
+Commands:
+
+```text
+python3 scripts/docs-audit.py
+python3 scripts/submit-gate.py --profile ci --json
+python3 scripts/perf-gate.py
+python3 scripts/repo-hygiene-check.py --mode tracked
+python3 scripts/delivery-gate.py --json
+./scripts/delivery-gate.sh --mode push --base origin/nightly
+```
+
+Pass conditions:
+
+- `scripts/docs-audit.py` reports no documentation ownership drift
+- `scripts/submit-gate.py` completes the CI profile without quality failures
+- `scripts/perf-gate.py` keeps configured performance smoke checks within budget
+- `scripts/repo-hygiene-check.py` reports no tracked hygiene or policy drift
+- `scripts/delivery-gate.py` validates the extractable delivery tree
+- `scripts/delivery-gate.sh` runs the consolidated push gate stack for the branch under submission
+
+Defect:
+
+- the push base must be selected for the target branch policy under review
+
 ### `spio_manifest_lock_gate`
 
 Objective:

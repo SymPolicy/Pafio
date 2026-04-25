@@ -136,6 +136,7 @@ Must not:
 - Named gate commands live only in `docs/operations/Spio-Verification-Matrix.md`.
 - The split runbook may reference preflight and copy commands, but must not become a second verification matrix.
 - Workstream files may name gates, but gate pass commands must stay in operations.
+- Documentation automation entrypoints `scripts/docs-index.py`, `scripts/docs-lifecycle.py`, and `scripts/docs-audit.py` must stay indexed in `Spio-Entry-Argument-Index.md`.
 - `styio` knowledge docs may describe published compiler behavior, but they must not define `spio` compatibility policy.
 - registry docs may specialize client or server responsibilities, but they must not redefine the shared registry object layout.
 - security docs may define private-boundary rules, but they must not carry deployment secrets or environment-owned credentials.
@@ -147,6 +148,7 @@ When a change happens:
 
 - CLI or exit-code change: update governance first, then tests, then planning/operations references if needed
 - argument or helper-script parameter change: update `Spio-Entry-Argument-Index.md` first, then the owning contract/script/tests
+- delivery gate change: update operations for `scripts/submit-gate.py`, `scripts/perf-gate.py`, `scripts/repo-hygiene-check.py`, and `scripts/delivery-gate.sh` before changing CI wiring
 - new public workflow-boundary or implementation-scope decision: add or update an ADR in `docs/adr/` with the same change
 - compatibility change: update governance plus `contracts/compat/*`, then verification coverage
 - gate command change: update operations first, then any summaries that link to the gate

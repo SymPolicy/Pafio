@@ -1224,6 +1224,144 @@ Behavior:
 - copies a clean subtree to a temporary directory
 - runs `scripts/native-check.sh` inside the copied tree
 
+### `scripts/docs-index.py`
+
+Canonical form:
+
+```text
+python3 scripts/docs-index.py
+```
+
+Behavior:
+
+- validates documentation index ownership and generated doc-entry consistency
+
+### `scripts/docs-lifecycle.py`
+
+Canonical form:
+
+```text
+python3 scripts/docs-lifecycle.py
+```
+
+Behavior:
+
+- validates documentation lifecycle metadata and stale-document policy
+
+### `scripts/docs-audit.py`
+
+Canonical form:
+
+```text
+python3 scripts/docs-audit.py
+```
+
+Behavior:
+
+- runs the repository documentation ownership audit used by delivery gates
+
+### `scripts/submit-gate.py`
+
+Canonical form:
+
+```text
+python3 scripts/submit-gate.py [--profile <profile>] [--json]
+```
+
+Arguments:
+
+- `--profile <profile>`
+  - optional
+  - selects the submit-gate profile, with `ci` used by repository checks
+- `--json`
+  - optional
+  - emits a machine-readable step summary
+
+Behavior:
+
+- runs the submit-time quality gate bundle for the selected profile
+
+### `scripts/perf-gate.py`
+
+Canonical form:
+
+```text
+python3 scripts/perf-gate.py
+```
+
+Behavior:
+
+- runs the configured performance smoke gate for submission readiness
+
+### `scripts/repo-hygiene-check.py`
+
+Canonical form:
+
+```text
+python3 scripts/repo-hygiene-check.py [--repo-root <path>] [--mode <auto|tracked|all>] [--skip-doc-check]
+```
+
+Arguments:
+
+- `--repo-root <path>`
+  - optional
+  - repository or exported tree root to scan
+- `--mode <auto|tracked|all>`
+  - optional
+  - selects tracked-file, filesystem, or automatic scan mode
+- `--skip-doc-check`
+  - optional
+  - skips documentation reference validation
+
+Behavior:
+
+- validates artifact policy, `.gitignore` coverage, and required delivery documentation references
+
+### `scripts/delivery-gate.py`
+
+Canonical form:
+
+```text
+python3 scripts/delivery-gate.py [--json]
+```
+
+Arguments:
+
+- `--json`
+  - optional
+  - emits a machine-readable delivery-tree validation summary
+
+Behavior:
+
+- copies the repository into an extractable delivery tree and runs delivery hygiene, docs, and native checks there
+
+### `scripts/delivery-gate.sh`
+
+Canonical form:
+
+```text
+./scripts/delivery-gate.sh [--mode <checkpoint|push>] [--base <rev>] [--audit-bin <path>] [--skip-health]
+```
+
+Arguments:
+
+- `--mode <checkpoint|push>`
+  - optional
+  - selects the checkpoint or push-ready verification bundle
+- `--base <rev>`
+  - optional
+  - comparison base for push-mode hygiene validation
+- `--audit-bin <path>`
+  - optional
+  - released `audit` entrypoint used by the local audit step
+- `--skip-health`
+  - optional
+  - skips health checks that are already covered by a prior full run
+
+Behavior:
+
+- orchestrates repository hygiene, documentation, audit, native, and delivery-specific checks for branch submission
+
 ### `scripts/preflight-readiness-check.py`
 
 Canonical form:

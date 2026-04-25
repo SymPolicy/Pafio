@@ -5,6 +5,8 @@
 .cache/
 .mypy_cache/
 .ruff_cache/
+.tox/
+.nox/
 .venv/
 venv/
 node_modules/
@@ -57,6 +59,14 @@ build-*/
 .spio/
 tmp/
 dist/
+*.tar
+*.tar.gz
+*.tgz
+*.zip
+*.7z
+*.gz
+*.bz2
+*.xz
 *.tmp
 *.log
 CMakeUserPresets.json
