@@ -28,14 +28,14 @@ jobs:
         uses: actions/checkout@v5
         with:
           repository: Unka-Malloc/styio-nightly
-          ref: ${{ github.ref_name }}
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.ref_type == 'branch' && github.ref_name || 'nightly' }}
           path: styio-nightly
 
       - name: Checkout styio-view sibling repository
         uses: actions/checkout@v5
         with:
           repository: Unka-Malloc/styio-view
-          ref: ${{ github.ref_name }}
+          ref: ai-dev
           path: styio-view
 
       - name: Set up standardized Python
