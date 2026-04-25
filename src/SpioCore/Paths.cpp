@@ -108,6 +108,21 @@ fs::path ManagedStyioMetadataPath(const fs::path &root)
   return CanonicalAbsolutePath(root / "install.json");
 }
 
+fs::path GitCacheRoot(const fs::path &spio_home)
+{
+  return CanonicalAbsolutePath(CanonicalAbsolutePath(spio_home) / "git");
+}
+
+fs::path GitMirrorCacheRoot(const fs::path &spio_home)
+{
+  return CanonicalAbsolutePath(GitCacheRoot(spio_home) / "repos");
+}
+
+fs::path GitCheckoutCacheRoot(const fs::path &spio_home)
+{
+  return CanonicalAbsolutePath(GitCacheRoot(spio_home) / "checkouts");
+}
+
 fs::path RegistryCacheRoot(const fs::path &spio_home)
 {
   return CanonicalAbsolutePath(CanonicalAbsolutePath(spio_home) / "registry");

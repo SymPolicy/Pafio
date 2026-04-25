@@ -4,6 +4,7 @@
 #include "SpioCore/Sha256.hpp"
 
 #include <array>
+#include <cerrno>
 #include <cstdint>
 #include <ctime>
 #include <filesystem>
@@ -17,6 +18,8 @@
 
 #include <nlohmann/json.hpp>
 
+#include <fcntl.h>
+#include <poll.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -39,6 +42,79 @@ struct HttpResponse
   int status_code = 0;
   std::string body;
 };
+
+void CloseFd(int &fd)
+{
+  if (fd >= 0)
+  {
+    close(fd);
+    fd = -1;
+  }
+}
+
+bool SetNonBlocking(int fd)
+{
+  const int flags = fcntl(fd, F_GETFL, 0);
+  return flags >= 0 && fcntl(fd, F_SETFL, flags | O_NONBLOCK) == 0;
+}
+
+void DrainReadablePipe(int &fd, std::string &text)
+{
+  std::array<char, 4096> buffer{};
+  while (fd >= 0)
+  {
+    const ssize_t read_size = read(fd, buffer.data(), buffer.size());
+    if (read_size > 0)
+    {
+      text.append(buffer.data(), static_cast<size_t>(read_size));
+      continue;
+    }
+    if (read_size == 0)
+    {
+      CloseFd(fd);
+      return;
+    }
+    if (errno == EINTR)
+    {
+      continue;
+    }
+    if (errno == EAGAIN || errno == EWOULDBLOCK)
+    {
+      return;
+    }
+    CloseFd(fd);
+    return;
+  }
+}
+
+void ReapChildBestEffort(const pid_t child)
+{
+  int status = 0;
+  while (waitpid(child, &status, 0) < 0)
+  {
+    if (errno != EINTR)
+    {
+      return;
+    }
+  }
+}
+
+int WaitForChildExit(const pid_t child)
+{
+  int status = 0;
+  while (waitpid(child, &status, 0) < 0)
+  {
+    if (errno != EINTR)
+    {
+      return 1;
+    }
+  }
+  if (WIFEXITED(status))
+  {
+    return WEXITSTATUS(status);
+  }
+  return 1;
+}
 
 ChildProcessResult RunChildProcess(const std::string &binary, const std::vector<std::string> &args)
 {
@@ -83,33 +159,57 @@ ChildProcessResult RunChildProcess(const std::string &binary, const std::vector<
 
   close(stdout_pipe[1]);
   close(stderr_pipe[1]);
-
-  auto read_all = [](const int fd) {
-    std::string text;
-    std::array<char, 4096> buffer{};
-    ssize_t read_size = 0;
-    while ((read_size = read(fd, buffer.data(), buffer.size())) > 0)
-    {
-      text.append(buffer.data(), static_cast<size_t>(read_size));
-    }
-    close(fd);
-    return text;
-  };
+  if (!SetNonBlocking(stdout_pipe[0]) || !SetNonBlocking(stderr_pipe[0]))
+  {
+    CloseFd(stdout_pipe[0]);
+    CloseFd(stderr_pipe[0]);
+    ReapChildBestEffort(child);
+    throw spio::PublishError("failed to configure remote registry publish pipes");
+  }
 
   ChildProcessResult result;
-  result.stdout_text = read_all(stdout_pipe[0]);
-  result.stderr_text = read_all(stderr_pipe[0]);
+  std::array<pollfd, 2> poll_fds{};
+  while (stdout_pipe[0] >= 0 || stderr_pipe[0] >= 0)
+  {
+    nfds_t poll_count = 0;
+    int stdout_index = -1;
+    int stderr_index = -1;
+    if (stdout_pipe[0] >= 0)
+    {
+      stdout_index = static_cast<int>(poll_count);
+      poll_fds[poll_count++] = pollfd{stdout_pipe[0], static_cast<short>(POLLIN | POLLHUP | POLLERR), 0};
+    }
+    if (stderr_pipe[0] >= 0)
+    {
+      stderr_index = static_cast<int>(poll_count);
+      poll_fds[poll_count++] = pollfd{stderr_pipe[0], static_cast<short>(POLLIN | POLLHUP | POLLERR), 0};
+    }
 
-  int status = 0;
-  waitpid(child, &status, 0);
-  if (WIFEXITED(status))
-  {
-    result.exit_code = WEXITSTATUS(status);
+    int ready = 0;
+    while ((ready = poll(poll_fds.data(), poll_count, -1)) < 0)
+    {
+      if (errno != EINTR)
+      {
+        CloseFd(stdout_pipe[0]);
+        CloseFd(stderr_pipe[0]);
+        ReapChildBestEffort(child);
+        throw spio::PublishError("failed to read remote registry publish output");
+      }
+    }
+    if (ready == 0)
+    {
+      continue;
+    }
+    if (stdout_index >= 0 && poll_fds[stdout_index].revents != 0)
+    {
+      DrainReadablePipe(stdout_pipe[0], result.stdout_text);
+    }
+    if (stderr_index >= 0 && poll_fds[stderr_index].revents != 0)
+    {
+      DrainReadablePipe(stderr_pipe[0], result.stderr_text);
+    }
   }
-  else
-  {
-    result.exit_code = 1;
-  }
+  result.exit_code = WaitForChildExit(child);
   return result;
 }
 

@@ -24,6 +24,9 @@ std::filesystem::path ManagedStyioInstallRoot(
 std::filesystem::path ManagedStyioCurrentRoot(const std::filesystem::path &spio_home);
 std::filesystem::path ManagedStyioBinaryPath(const std::filesystem::path &root);
 std::filesystem::path ManagedStyioMetadataPath(const std::filesystem::path &root);
+std::filesystem::path GitCacheRoot(const std::filesystem::path &spio_home);
+std::filesystem::path GitMirrorCacheRoot(const std::filesystem::path &spio_home);
+std::filesystem::path GitCheckoutCacheRoot(const std::filesystem::path &spio_home);
 std::filesystem::path RegistryCacheRoot(const std::filesystem::path &spio_home);
 std::filesystem::path RegistryIndexCacheRoot(const std::filesystem::path &spio_home);
 std::filesystem::path RegistryBlobCacheRoot(const std::filesystem::path &spio_home);

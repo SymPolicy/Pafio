@@ -2,6 +2,8 @@
 
 **Purpose:** Hold the `styio` knowledge pack and public interface expectations required by `spio` developers.
 
+**Last updated:** 2026-04-17
+
 ## Scope
 
 - what `spio` maintainers must know about `styio`

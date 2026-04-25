@@ -5,6 +5,11 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 BUILD_DIR="${SPIO_BUILD_DIR:-$ROOT/build-codex}"
 BIN="$BUILD_DIR/bin/spio"
 
+if [[ "${1:-}" == "hosted" && "${2:-}" == "serve" ]]; then
+  shift 2
+  exec python3 "$ROOT/scripts/spio-hosted-serve.py" --spio-bin "$0" "$@"
+fi
+
 if [[ ! -x "$BIN" ]]; then
   cmake -S "$ROOT" -B "$BUILD_DIR"
   cmake --build "$BUILD_DIR" --target spio

@@ -19,6 +19,11 @@
 ## Acceptance Gates
 
 - `spio_manifest_lock_gate`
+- `quality_no_binaries_gate`
+- `quality_repo_hygiene_gate`
+- `performance_baseline_gate`
+- `delivery_package_gate`
+- `spio_submit_gate`
 - `contract_schema_gate`
 - `spio_resolver_gate`
 - `spio_cli_gate`

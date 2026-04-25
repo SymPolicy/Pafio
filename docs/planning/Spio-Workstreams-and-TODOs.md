@@ -189,6 +189,7 @@ TODOs:
 - negotiate plan support against published `styio`
 - generate plan files only after compatibility checks pass
 - never bypass process boundary integration
+- replace or harden the current child-process runner so compiler probes and `--compile-plan` execution cannot deadlock when stdout/stderr are both active
 
 Blocks:
 
@@ -208,6 +209,7 @@ Gate:
 Defect:
 
 - largest external dependency; work here must wait for compiler publication rather than local assumptions
+- the current `RunChildProcess` helper in `src/SpioCLI/CLI.cpp` drains `stdout` and `stderr` sequentially, so compiler probes and compile-plan execution can hang if both pipes fill under the same child process
 
 ## Workstream G. Test and Verification Infrastructure
 
@@ -227,6 +229,7 @@ TODOs:
 - add integration fixtures using external compiler binaries only
 - map each stream to a named gate
 - keep migration and extractability checks runnable from a copied subtree
+- keep shared ignore rules narrow enough that intentionally tracked repro fixtures or verification assets are not hidden by default
 
 Blocks:
 
@@ -243,6 +246,7 @@ Gate:
 Defect:
 
 - test infrastructure can become stale if commands are renamed without synchronized fixture updates
+- broader ignore baselines improve cleanup hygiene, but they also create a maintenance risk if future tracked verification assets are placed under `tmp/`, `build-*`, or other names that now match default ignore rules
 
 ## Workstream H. Repository Split Runbook
 

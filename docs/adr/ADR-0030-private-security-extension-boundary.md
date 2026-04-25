@@ -1,5 +1,9 @@
 # ADR-0030: Security-Sensitive Registry Auth and Trust Logic Moves Behind a Private Extension Boundary
 
+**Purpose:** Record the accepted boundary that keeps auth, account, and trust implementation hooks in private extension roots while preserving stable public contracts in the tracked tree.
+
+**Last updated:** 2026-04-17
+
 ## Status
 
 Accepted. 2026-04-12.

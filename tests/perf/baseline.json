@@ -1,0 +1,43 @@
+{
+  "benchmarks": [
+    {
+      "median_ms": 500.0,
+      "name": "machine_info_json",
+      "p95_ms": 500.0,
+      "runs": 5
+    },
+    {
+      "median_ms": 500.0,
+      "name": "help",
+      "p95_ms": 500.0,
+      "runs": 5
+    },
+    {
+      "median_ms": 1000.0,
+      "name": "check_single_package",
+      "p95_ms": 1000.0,
+      "runs": 5
+    },
+    {
+      "median_ms": 1000.0,
+      "name": "lock_check_single_package",
+      "p95_ms": 1000.0,
+      "runs": 5
+    },
+    {
+      "median_ms": 1000.0,
+      "name": "tree_single_package",
+      "p95_ms": 1000.0,
+      "runs": 5
+    },
+    {
+      "median_ms": 1500.0,
+      "name": "build_dry_run_single_package",
+      "p95_ms": 1500.0,
+      "runs": 5
+    }
+  ],
+  "runs": 5,
+  "threshold_percent": 15.0,
+  "version": 1
+}

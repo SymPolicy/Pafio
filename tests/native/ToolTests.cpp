@@ -4,6 +4,7 @@
 #include "SpioTool/Install.hpp"
 
 #include <cstdlib>
+#include <csignal>
 #include <filesystem>
 #include <fstream>
 #include <optional>
@@ -12,6 +13,9 @@
 
 #include <gtest/gtest.h>
 #include <nlohmann/json.hpp>
+
+#include <sys/wait.h>
+#include <unistd.h>
 
 namespace fs = std::filesystem;
 using json = nlohmann::json;
@@ -90,23 +94,51 @@ void WriteExecutable(const fs::path &path, const std::string &content)
       fs::perm_options::add);
 }
 
-void WriteFakeStyio(const fs::path &path, const std::string &version, const std::string &channel = "stable", const std::string &edition_max = "2026")
+void WriteFakeStyio(
+    const fs::path &path,
+    const std::string &version,
+    const std::string &channel = "stable",
+    const std::string &edition_max = "2026",
+    bool compile_plan_consumer = true,
+    int stderr_noise_lines = 0)
 {
-  WriteExecutable(
-      path,
+  std::string script =
       "#!/bin/sh\n"
       "if [ \"$1\" = \"--machine-info=json\" ]; then\n"
       "  printf '%s\\n' '{\"tool\":\"styio\",\"compiler_version\":\"" +
           version +
           "\",\"channel\":\"" +
           channel +
-          "\",\"supported_contracts\":{\"compile_plan\":[]},\"capabilities\":[\"machine_info_json\",\"single_file_entry\",\"jsonl_diagnostics\"],\"edition_max\":\"" +
+          "\",\"variant\":\"full\",\"active_integration_phase\":\"" +
+          std::string(compile_plan_consumer ? "compile-plan-live" : "bootstrap-single-file") +
+          "\",\"supported_contracts\":{\"machine_info\":[1],\"jsonl_diagnostics\":[1],\"compile_plan\":" +
+          std::string(compile_plan_consumer ? "[1]" : "[]") +
+          ",\"runtime_events\":[]},\"supported_contract_versions\":{\"machine_info\":[1],\"jsonl_diagnostics\":[1],\"compile_plan\":" +
+          std::string(compile_plan_consumer ? "[1]" : "[]") +
+          ",\"runtime_events\":[]},\"supported_adapter_modes\":[\"cli\"],\"feature_flags\":{\"single_file_entry\":true,\"jsonl_diagnostics\":true,\"compile_plan_consumer\":" +
+          std::string(compile_plan_consumer ? "true" : "false") +
+          ",\"project_execution_via_compile_plan\":" +
+          std::string(compile_plan_consumer ? "true" : "false") +
+          ",\"runtime_event_stream\":false},\"capabilities\":[\"machine_info_json\",\"single_file_entry\",\"jsonl_diagnostics\"],\"edition_max\":\"" +
           edition_max +
-          "\"}'\n"
-          "  exit 0\n"
-          "fi\n"
-          "echo unexpected invocation >&2\n"
-          "exit 64\n");
+          "\"}'\n";
+  if (stderr_noise_lines > 0)
+  {
+    script +=
+        "  i=0\n"
+        "  while [ \"$i\" -lt " +
+        std::to_string(stderr_noise_lines) +
+        " ]; do\n"
+        "    printf '%s\\n' 'machine-info-noise-machine-info-noise-machine-info-noise-machine-info-noise' >&2\n"
+        "    i=$((i + 1))\n"
+        "  done\n";
+  }
+  script +=
+      "  exit 0\n"
+      "fi\n"
+      "echo unexpected invocation >&2\n"
+      "exit 64\n";
+  WriteExecutable(path, script);
 }
 
 void WriteSingleBinManifest(const fs::path &manifest_path, const std::string &package_name = "acme/app")
@@ -173,6 +205,71 @@ TEST(ToolInstallTests, InstallsManagedCompilerAndWritesMetadata)
   EXPECT_EQ(metadata.at("managed_binary").get<std::string>(), CanonicalAbsolutePath(managed_binary).string());
 }
 
+TEST(ToolInstallTests, HandlesLargeCompilerProbeStderrWithoutHanging)
+{
+  const fs::path root = MakeTempDir("tool-install-noisy-probe");
+  const ScopedEnvVar spio_home("SPIO_HOME", (root / ".spio-home").string());
+  const fs::path noisy_styio = root / "styio-noisy";
+  WriteFakeStyio(noisy_styio, "0.0.5", "stable", "2026", true, 2048);
+
+  const pid_t child = fork();
+  ASSERT_GE(child, 0);
+  if (child == 0)
+  {
+    testing::internal::CaptureStdout();
+    const int exit_code = spio::RunCli({
+        "--json",
+        "tool",
+        "install",
+        "--styio-bin",
+        noisy_styio.string(),
+    });
+    const std::string stdout_text = testing::internal::GetCapturedStdout();
+    if (exit_code != spio::kExitSuccess)
+    {
+      _exit(20);
+    }
+
+    try
+    {
+      const json payload = json::parse(stdout_text);
+      if (payload.at("compiler_version").get<std::string>() != "0.0.5")
+      {
+        _exit(21);
+      }
+    }
+    catch (const std::exception &)
+    {
+      _exit(22);
+    }
+    _exit(0);
+  }
+
+  int status = 0;
+  bool completed = false;
+  for (int attempt = 0; attempt < 50; ++attempt)
+  {
+    const pid_t waited = waitpid(child, &status, WNOHANG);
+    ASSERT_NE(waited, -1);
+    if (waited == child)
+    {
+      completed = true;
+      break;
+    }
+    usleep(100000);
+  }
+
+  if (!completed)
+  {
+    kill(child, SIGKILL);
+    (void) waitpid(child, &status, 0);
+    FAIL() << "tool install hung while probing compiler stdout/stderr";
+  }
+
+  ASSERT_TRUE(WIFEXITED(status));
+  EXPECT_EQ(WEXITSTATUS(status), 0);
+}
+
 TEST(ToolInstallTests, CheckFallsBackToManagedCompilerWhenNoExplicitPathIsProvided)
 {
   const fs::path root = MakeTempDir("check-managed-fallback");
@@ -230,6 +327,241 @@ TEST(ToolInstallTests, EnvironmentVariableTakesPrecedenceOverManagedCompiler)
   const std::optional<fs::path> resolved = spio::ResolveStyioBinary(std::nullopt);
   ASSERT_TRUE(resolved.has_value());
   EXPECT_EQ(*resolved, CanonicalAbsolutePath(explicit_styio));
+}
+
+TEST(ToolStatusTests, ReportsManagedStateAndProjectPinResolution)
+{
+  const fs::path root = MakeTempDir("tool-status-project-pin");
+  const ScopedEnvVar spio_home("SPIO_HOME", (root / ".spio-home").string());
+
+  const fs::path styio_v4 = root / "styio-0.0.4";
+  const fs::path styio_v5 = root / "styio-0.0.5";
+  WriteFakeStyio(styio_v4, "0.0.4");
+  WriteFakeStyio(styio_v5, "0.0.5");
+
+  const spio::ToolInstallResult install_v4 = spio::InstallManagedStyio({.styio_binary = styio_v4});
+  const spio::ToolInstallResult install_v5 = spio::InstallManagedStyio({.styio_binary = styio_v5});
+
+  const fs::path manifest_path = root / "project/spio.toml";
+  WriteSingleBinManifest(manifest_path);
+  ASSERT_EQ(
+      spio::RunCli({
+          "tool",
+          "pin",
+          "--manifest-path",
+          manifest_path.string(),
+          "--version",
+          "0.0.4",
+      }),
+      spio::kExitSuccess);
+
+  testing::internal::CaptureStdout();
+  const int exit_code = spio::RunCli({
+      "--json",
+      "tool",
+      "status",
+      "--manifest-path",
+      manifest_path.string(),
+  });
+  const std::string stdout_text = testing::internal::GetCapturedStdout();
+
+  ASSERT_EQ(exit_code, spio::kExitSuccess);
+  const json payload = json::parse(stdout_text);
+  EXPECT_EQ(payload.at("command").get<std::string>(), "tool status");
+  EXPECT_EQ(payload.at("schema_version").get<int>(), 1);
+  EXPECT_EQ(payload.at("toolchain").at("source").get<std::string>(), "project-pin");
+  EXPECT_EQ(payload.at("toolchain").at("version").get<std::string>(), "0.0.4");
+  ASSERT_TRUE(payload.at("project_pin").is_object());
+  EXPECT_EQ(payload.at("project_pin").at("path").get<std::string>(), (root / "project/spio-toolchain.toml").string());
+  EXPECT_EQ(payload.at("project_pin").at("version").get<std::string>(), "0.0.4");
+  EXPECT_EQ(payload.at("project_pin").at("install_present").get<bool>(), true);
+  ASSERT_TRUE(payload.at("active_compiler").is_object());
+  EXPECT_EQ(payload.at("active_compiler").at("compiler_version").get<std::string>(), "0.0.4");
+  ASSERT_TRUE(payload.at("current_compiler").is_object());
+  EXPECT_EQ(payload.at("current_compiler").at("compiler_version").get<std::string>(), "0.0.5");
+  ASSERT_TRUE(payload.at("managed_toolchains").is_object());
+  EXPECT_EQ(payload.at("managed_toolchains").at("current_binary").get<std::string>(), install_v5.managed_binary_path.string());
+  ASSERT_EQ(payload.at("managed_toolchains").at("installed").size(), 2U);
+  EXPECT_EQ(payload.at("notes").size(), 0U);
+  EXPECT_EQ(
+      payload.at("project_pin").at("install_binary_path").get<std::string>(),
+      CanonicalAbsolutePath(install_v4.install_binary_path).string());
+}
+
+TEST(ToolStatusTests, SupportsCommandLocalJsonFlag)
+{
+  const fs::path root = MakeTempDir("tool-status-command-local-json");
+  const ScopedEnvVar spio_home("SPIO_HOME", (root / ".spio-home").string());
+  const fs::path styio_v5 = root / "styio-0.0.5";
+  WriteFakeStyio(styio_v5, "0.0.5");
+  (void) spio::InstallManagedStyio({.styio_binary = styio_v5});
+
+  const fs::path manifest_path = root / "project/spio.toml";
+  WriteSingleBinManifest(manifest_path);
+
+  testing::internal::CaptureStdout();
+  const int exit_code = spio::RunCli({
+      "tool",
+      "status",
+      "--json",
+      "--manifest-path",
+      manifest_path.string(),
+  });
+  const std::string stdout_text = testing::internal::GetCapturedStdout();
+
+  ASSERT_EQ(exit_code, spio::kExitSuccess);
+  const json payload = json::parse(stdout_text);
+  EXPECT_EQ(payload.at("command").get<std::string>(), "tool status");
+  EXPECT_EQ(payload.at("schema_version").get<int>(), 1);
+  EXPECT_EQ(payload.at("toolchain").at("source").get<std::string>(), "managed-current");
+}
+
+TEST(ToolStatusTests, ReportsMissingPinnedInstallWithoutFailing)
+{
+  const fs::path root = MakeTempDir("tool-status-missing-pin");
+  const ScopedEnvVar spio_home("SPIO_HOME", (root / ".spio-home").string());
+
+  const fs::path manifest_path = root / "project/spio.toml";
+  WriteSingleBinManifest(manifest_path);
+  WriteFile(
+      root / "project/spio-toolchain.toml",
+      "[styio]\n"
+      "channel = \"stable\"\n"
+      "version = \"0.0.5\"\n");
+
+  testing::internal::CaptureStdout();
+  const int exit_code = spio::RunCli({
+      "--json",
+      "tool",
+      "status",
+      "--manifest-path",
+      manifest_path.string(),
+  });
+  const std::string stdout_text = testing::internal::GetCapturedStdout();
+
+  ASSERT_EQ(exit_code, spio::kExitSuccess);
+  const json payload = json::parse(stdout_text);
+  EXPECT_EQ(payload.at("toolchain").at("source").get<std::string>(), "project-pin");
+  EXPECT_TRUE(payload.at("active_compiler").is_null());
+  EXPECT_TRUE(payload.at("current_compiler").is_null());
+  ASSERT_TRUE(payload.at("project_pin").is_object());
+  EXPECT_EQ(payload.at("project_pin").at("install_present").get<bool>(), false);
+  ASSERT_FALSE(payload.at("notes").empty());
+  EXPECT_NE(
+      payload.at("notes")[0].get<std::string>().find("active compiler is unresolved"),
+      std::string::npos);
+}
+
+TEST(ToolStatusTests, ExplicitStyioBinOverridesProjectPinPreview)
+{
+  const fs::path root = MakeTempDir("tool-status-explicit-styio");
+  const ScopedEnvVar spio_home("SPIO_HOME", (root / ".spio-home").string());
+
+  const fs::path managed_styio = root / "styio-0.0.4";
+  const fs::path explicit_styio = root / "styio-0.0.6";
+  WriteFakeStyio(managed_styio, "0.0.4");
+  WriteFakeStyio(explicit_styio, "0.0.6");
+
+  (void) spio::InstallManagedStyio({.styio_binary = managed_styio});
+
+  const fs::path manifest_path = root / "project/spio.toml";
+  WriteSingleBinManifest(manifest_path);
+  WriteFile(
+      root / "project/spio-toolchain.toml",
+      "[styio]\n"
+      "channel = \"stable\"\n"
+      "version = \"0.0.4\"\n");
+
+  testing::internal::CaptureStdout();
+  const int exit_code = spio::RunCli({
+      "--json",
+      "tool",
+      "status",
+      "--manifest-path",
+      manifest_path.string(),
+      "--styio-bin",
+      explicit_styio.string(),
+  });
+  const std::string stdout_text = testing::internal::GetCapturedStdout();
+
+  ASSERT_EQ(exit_code, spio::kExitSuccess);
+  const json payload = json::parse(stdout_text);
+  EXPECT_EQ(payload.at("toolchain").at("source").get<std::string>(), "environment");
+  EXPECT_EQ(payload.at("toolchain").at("candidate_binary_path").get<std::string>(), CanonicalAbsolutePath(explicit_styio).string());
+  ASSERT_TRUE(payload.at("active_compiler").is_object());
+  EXPECT_EQ(payload.at("active_compiler").at("compiler_version").get<std::string>(), "0.0.6");
+  ASSERT_TRUE(payload.at("project_pin").is_object());
+  EXPECT_EQ(payload.at("project_pin").at("version").get<std::string>(), "0.0.4");
+}
+
+TEST(ToolStatusTests, HandlesLargeCompilerProbeStderrWithoutHanging)
+{
+  const fs::path root = MakeTempDir("tool-status-noisy-probe");
+  const ScopedEnvVar spio_home("SPIO_HOME", (root / ".spio-home").string());
+
+  const fs::path noisy_styio = root / "styio-noisy";
+  WriteFakeStyio(noisy_styio, "0.0.6", "stable", "2026", true, 2048);
+
+  const pid_t child = fork();
+  ASSERT_GE(child, 0);
+  if (child == 0)
+  {
+    testing::internal::CaptureStdout();
+    const int exit_code = spio::RunCli({
+        "--json",
+        "tool",
+        "status",
+        "--styio-bin",
+        noisy_styio.string(),
+    });
+    const std::string stdout_text = testing::internal::GetCapturedStdout();
+    if (exit_code != spio::kExitSuccess)
+    {
+      _exit(10);
+    }
+
+    try
+    {
+      const json payload = json::parse(stdout_text);
+      if (!payload.contains("active_compiler") || !payload.at("active_compiler").is_object())
+      {
+        _exit(11);
+      }
+      if (payload.at("active_compiler").at("compiler_version").get<std::string>() != "0.0.6")
+      {
+        _exit(12);
+      }
+    }
+    catch (const std::exception &)
+    {
+      _exit(13);
+    }
+    _exit(0);
+  }
+
+  int status = 0;
+  bool completed = false;
+  for (int attempt = 0; attempt < 50; ++attempt)
+  {
+    const pid_t waited = waitpid(child, &status, WNOHANG);
+    ASSERT_NE(waited, -1);
+    if (waited == child)
+    {
+      completed = true;
+      break;
+    }
+    usleep(100000);
+  }
+
+  if (!completed)
+  {
+    kill(child, SIGKILL);
+    (void) waitpid(child, &status, 0);
+    FAIL() << "tool status hung while probing compiler stdout/stderr";
+  }
+
+  ASSERT_TRUE(WIFEXITED(status));
+  EXPECT_EQ(WEXITSTATUS(status), 0);
 }
 
 TEST(ToolInstallTests, ToolUseSwitchesManagedCurrentVersion)
@@ -296,7 +628,7 @@ TEST(ToolInstallTests, RejectsCompilerOutsidePublishedCompatibilityMatrix)
   const fs::path root = MakeTempDir("rejects-incompatible");
   const ScopedEnvVar spio_home("SPIO_HOME", (root / ".spio-home").string());
   const fs::path fake_styio = root / "fake-styio";
-  WriteFakeStyio(fake_styio, "0.1.2");
+  WriteFakeStyio(fake_styio, "0.1.2", "stable", "2026", false);
 
   testing::internal::CaptureStderr();
   const int exit_code = spio::RunCli({

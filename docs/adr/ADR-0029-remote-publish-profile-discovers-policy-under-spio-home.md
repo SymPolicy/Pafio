@@ -1,5 +1,9 @@
 # ADR-0029: Remote Publish Profiles Discover Write-Origin Policy Under `SPIO_HOME`
 
+**Purpose:** Record the accepted discovery rule for remote publish policy profiles under `SPIO_HOME`, keeping reusable write-origin hooks out of tracked project manifests.
+
+**Last updated:** 2026-04-17
+
 - Status: Accepted
 - Date: 2026-04-12
 

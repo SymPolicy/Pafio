@@ -2,7 +2,23 @@
 
 **Purpose:** Provide the full delivery map for `spio` from bootstrap scaffold to split-ready package manager, while preserving strict decoupling from `styio`.
 
-**Last updated:** 2026-04-09
+**Last updated:** 2026-04-17
+
+## 0. Ecosystem Alignment
+
+This file remains the repo-local execution plan for `spio`, but the cross-repo milestone authority now lives in [Styio-Ecosystem-Delivery-Master-Plan.md](./Styio-Ecosystem-Delivery-Master-Plan.md), mirrored from `styio-nightly`.
+
+Use the mapping below whenever a `spio` phase changes a three-repo checkpoint or completion definition:
+
+| `spio` phase | Ecosystem milestone | Meaning |
+|--------------|---------------------|---------|
+| Phase 0 | `M0` | governance, extractability, docs and checkpoint discipline lock |
+| Phases 1 + 4 | `M1` | published compiler handshake, compile-plan contract, compat round-trip |
+| Phases 2 + 3 + 5 + 6 core path | `M2` | live package-manager, environment, registry, and workflow closure |
+| payload publication for IDE consumers | `M3` | project graph, toolchain, source, workflow, deploy-preflight truth for `styio-view` |
+| registry/distribution/module/agent depth | `M4` | runtime/AI/module/theme dependent payload expansion |
+| hosted/mobile/cloud support | `M5` | environment and distribution support beyond local desktop |
+| split-ready, release-grade hardening | `M6` | final product-grade package-manager and sample-matrix closure |
 
 ## 1. Scope
 
@@ -27,7 +43,7 @@
 - `spio` must remain movable as a self-contained subtree and later as its own repository.
 - `spio` may talk to `styio` only through process boundaries and versioned machine contracts.
 - `spio` releases trail the `styio` releases they support.
-- `spio` must not assume compile-plan support until `styio` publishes it.
+- `spio` must not assume any unpublished compile-plan, runtime-event, or machine-handshake behavior beyond what `styio` has already published.
 - source, cache, build output, test temp data, and integration fixtures must remain isolated.
 - `spio` implementation work after the bootstrap freeze should converge on a native `C++20` + `CMake` codebase, aligned with `styio`'s operational toolchain but not coupled to compiler internals.
 
