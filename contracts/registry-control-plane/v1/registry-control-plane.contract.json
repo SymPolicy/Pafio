@@ -1,0 +1,291 @@
+{
+  "schema_version": 1,
+  "contract_name": "spio registry control plane",
+  "contract_version": "v1",
+  "base_path": "/api/spio-registry-control/v1",
+  "operations": [
+    {
+      "id": "registryStatus",
+      "method": "GET",
+      "path": "/status",
+      "request_shape": "NoRequestBody",
+      "success_shape": "StatusEnvelope",
+      "failure_shape": "FailureEnvelope"
+    },
+    {
+      "id": "publishRelease",
+      "method": "POST",
+      "path": "/publish",
+      "request_shape": "PublishRequest",
+      "success_shape": "PublishEnvelope",
+      "failure_shape": "FailureEnvelope"
+    },
+    {
+      "id": "verifyRegistry",
+      "method": "POST",
+      "path": "/verify",
+      "request_shape": "EmptyObject",
+      "success_shape": "VerifyEnvelope",
+      "failure_shape": "FailureEnvelope"
+    }
+  ],
+  "shapes": {
+    "NoRequestBody": {
+      "kind": "none"
+    },
+    "EmptyObject": {
+      "kind": "object",
+      "required": {},
+      "optional": {}
+    },
+    "FailurePayload": {
+      "kind": "object",
+      "required": {
+        "category": {
+          "type": "string",
+          "min_length": 1
+        },
+        "detail": {
+          "type": "string",
+          "min_length": 1
+        }
+      },
+      "optional": {}
+    },
+    "FailureEnvelope": {
+      "kind": "object",
+      "required": {
+        "returncode": {
+          "type": "integer"
+        },
+        "message": {
+          "type": "string",
+          "min_length": 1
+        },
+        "stdout": {
+          "type": "string"
+        },
+        "stderr": {
+          "type": "string"
+        },
+        "error_payload": {
+          "ref": "FailurePayload"
+        }
+      },
+      "optional": {}
+    },
+    "StatusPayload": {
+      "kind": "object",
+      "required": {
+        "registry_root": {
+          "type": "string",
+          "min_length": 1
+        },
+        "key_dir": {
+          "type": "string",
+          "min_length": 1
+        },
+        "registry_name": {
+          "type": "string",
+          "min_length": 1
+        },
+        "root_initialized": {
+          "type": "boolean"
+        },
+        "config_present": {
+          "type": "boolean"
+        },
+        "root_metadata_present": {
+          "type": "boolean"
+        },
+        "publish_endpoint": {
+          "type": "string",
+          "min_length": 1
+        },
+        "verify_endpoint": {
+          "type": "string",
+          "min_length": 1
+        }
+      },
+      "optional": {}
+    },
+    "StatusEnvelope": {
+      "kind": "object",
+      "required": {
+        "returncode": {
+          "type": "integer"
+        },
+        "message": {
+          "type": "string",
+          "min_length": 1
+        },
+        "stdout": {
+          "type": "string"
+        },
+        "stderr": {
+          "type": "string"
+        },
+        "payload": {
+          "ref": "StatusPayload"
+        }
+      },
+      "optional": {}
+    },
+    "PublishRequest": {
+      "kind": "object",
+      "required": {},
+      "optional": {
+        "archive_path": {
+          "type": "string",
+          "min_length": 1
+        },
+        "manifest_path": {
+          "type": "string",
+          "min_length": 1
+        },
+        "package": {
+          "type": "string",
+          "min_length": 1
+        },
+        "output_path": {
+          "type": "string",
+          "min_length": 1
+        },
+        "publisher_id": {
+          "type": "string",
+          "min_length": 1
+        }
+      }
+    },
+    "PublishPayload": {
+      "kind": "object",
+      "required": {
+        "registry_root": {
+          "type": "string",
+          "min_length": 1
+        },
+        "created_root": {
+          "type": "boolean"
+        },
+        "package": {
+          "type": "string",
+          "min_length": 1
+        },
+        "version": {
+          "type": "string",
+          "min_length": 1
+        },
+        "publisher_id": {
+          "type": "string",
+          "min_length": 1
+        },
+        "published_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "archive_path": {
+          "type": "string",
+          "min_length": 1
+        },
+        "archive_sha256": {
+          "type": "string",
+          "min_length": 64
+        },
+        "archive_size_bytes": {
+          "type": "integer"
+        },
+        "artifact_path": {
+          "type": "string",
+          "min_length": 1
+        },
+        "index_path": {
+          "type": "string",
+          "min_length": 1
+        },
+        "log_leaf_path": {
+          "type": "string",
+          "min_length": 1
+        },
+        "sequence": {
+          "type": "integer"
+        },
+        "dependencies": {
+          "type": "integer"
+        },
+        "dev_dependencies": {
+          "type": "integer"
+        }
+      },
+      "optional": {}
+    },
+    "PublishEnvelope": {
+      "kind": "object",
+      "required": {
+        "returncode": {
+          "type": "integer"
+        },
+        "message": {
+          "type": "string",
+          "min_length": 1
+        },
+        "stdout": {
+          "type": "string"
+        },
+        "stderr": {
+          "type": "string"
+        },
+        "payload": {
+          "ref": "PublishPayload"
+        }
+      },
+      "optional": {}
+    },
+    "VerifyPayload": {
+      "kind": "object",
+      "required": {
+        "ok": {
+          "type": "boolean"
+        },
+        "root": {
+          "type": "string",
+          "min_length": 1
+        },
+        "namespaces": {
+          "type": "integer"
+        },
+        "index_files": {
+          "type": "integer"
+        },
+        "releases": {
+          "type": "integer"
+        },
+        "tree_size": {
+          "type": "integer"
+        }
+      },
+      "optional": {}
+    },
+    "VerifyEnvelope": {
+      "kind": "object",
+      "required": {
+        "returncode": {
+          "type": "integer"
+        },
+        "message": {
+          "type": "string",
+          "min_length": 1
+        },
+        "stdout": {
+          "type": "string"
+        },
+        "stderr": {
+          "type": "string"
+        },
+        "payload": {
+          "ref": "VerifyPayload"
+        }
+      },
+      "optional": {}
+    }
+  }
+}

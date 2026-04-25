@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import pathlib
 import subprocess
 import sys
@@ -46,13 +47,21 @@ class BootstrapValidationTests(unittest.TestCase):
 
 
 class BootstrapCliTests(unittest.TestCase):
+    def _run_cli(self, args: list[str], **kwargs) -> subprocess.CompletedProcess[str]:
+        env = os.environ.copy()
+        env["PYTHONPATH"] = str(SRC)
+        return subprocess.run(
+            [sys.executable, "-m", "spio_bootstrap", *args],
+            env=env,
+            **kwargs,
+        )
+
     def _write_fake_styio(self, root: pathlib.Path, payload: dict, *, exit_code: int = 0) -> pathlib.Path:
         script = root / "fake-styio.py"
-        payload_json = json.dumps(payload, sort_keys=True)
         script.write_text(
             "#!/usr/bin/env python3\n"
             "import json, sys\n"
-            f"PAYLOAD = json.loads({payload_json!r})\n"
+            f"PAYLOAD = {json.dumps(payload, sort_keys=True)}\n"
             f"EXIT_CODE = {exit_code}\n"
             "if len(sys.argv) == 2 and sys.argv[1] == '--machine-info=json':\n"
             "    print(json.dumps(PAYLOAD, sort_keys=True))\n"
@@ -64,8 +73,8 @@ class BootstrapCliTests(unittest.TestCase):
         return script
 
     def test_version_output(self) -> None:
-        proc = subprocess.run(
-            [str(ROOT / "scripts" / "spio"), "--version"],
+        proc = self._run_cli(
+            ["--version"],
             check=True,
             capture_output=True,
             text=True,
@@ -73,8 +82,8 @@ class BootstrapCliTests(unittest.TestCase):
         self.assertEqual(proc.stdout.strip(), f"spio {__version__}")
 
     def test_machine_info_json(self) -> None:
-        proc = subprocess.run(
-            [str(ROOT / "scripts" / "spio"), "machine-info", "--json"],
+        proc = self._run_cli(
+            ["machine-info", "--json"],
             check=True,
             capture_output=True,
             text=True,
@@ -82,63 +91,40 @@ class BootstrapCliTests(unittest.TestCase):
         payload = json.loads(proc.stdout)
         self.assertEqual(payload["tool"], "spio")
         self.assertEqual(payload["version"], __version__)
-        self.assertEqual(payload["active_integration_phase"], "compile-plan-live")
         self.assertEqual(payload["supported_contracts"]["compile_plan"], [1])
-        self.assertEqual(payload["supported_contracts"]["project_graph"], [1])
-        self.assertEqual(payload["supported_contracts"]["toolchain_state"], [1])
-        self.assertEqual(payload["supported_contracts"]["workflow_success_payloads"], [1])
-        self.assertEqual(payload["supported_contract_versions"]["machine_info"], [1])
-        self.assertEqual(payload["supported_contract_versions"]["compile_plan"], [1])
-        self.assertEqual(payload["supported_contract_versions"]["project_graph"], [1])
-        self.assertEqual(payload["supported_contract_versions"]["toolchain_state"], [1])
-        self.assertEqual(payload["supported_contract_versions"]["workflow_success_payloads"], [1])
-        self.assertEqual(payload["supported_adapter_modes"], ["cli"])
-        self.assertTrue(payload["feature_flags"]["live_compile_plan_handoff"])
-        self.assertTrue(payload["feature_flags"]["project_graph_payload"])
-        self.assertTrue(payload["feature_flags"]["toolchain_state_payload"])
-        self.assertTrue(payload["feature_flags"]["workflow_success_payloads"])
-        self.assertTrue(payload["feature_flags"]["runtime_event_payload"])
 
-    def test_build_dry_run_writes_compile_plan(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            root = pathlib.Path(tmp_dir)
-            manifest = root / "spio.toml"
-            source = root / "src" / "lib.styio"
-            source.parent.mkdir(parents=True, exist_ok=True)
-            source.write_text(">_(1)\n")
-            manifest.write_text(
-                "[spio]\n"
-                "manifest-version = 1\n\n"
-                "[package]\n"
-                "name = \"acme/demo\"\n"
-                "version = \"0.1.0\"\n"
-                "edition = \"2026\"\n"
-                "publish = false\n\n"
-                "[toolchain]\n"
-                "channel = \"stable\"\n"
-                "implicit-std = true\n\n"
-                "[lib]\n"
-                "path = \"src/lib.styio\"\n"
-            )
+    def test_stubbed_command_returns_bootstrap_code(self) -> None:
+        proc = self._run_cli(
+            ["--json", "build"],
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(proc.returncode, 31)
+        payload = json.loads(proc.stderr)
+        self.assertEqual(payload["category"], "BootstrapNotImplemented")
+        self.assertEqual(payload["command"], "build")
 
-            proc = subprocess.run(
-                [
-                    str(ROOT / "scripts" / "spio"),
-                    "--json",
-                    "build",
-                    "--manifest-path",
-                    str(manifest),
-                    "--dry-run",
-                ],
-                check=True,
-                capture_output=True,
-                text=True,
-            )
-            payload = json.loads(proc.stdout)
-            self.assertEqual(payload["command"], "build")
-            self.assertEqual(payload["mode"], "dry-run")
-            self.assertEqual(payload["intent"], "build")
-            self.assertTrue(pathlib.Path(payload["plan_path"]).exists())
+    def test_tool_use_returns_bootstrap_not_implemented(self) -> None:
+        proc = self._run_cli(
+            ["--json", "tool", "use", "--version", "0.0.5", "--channel", "stable"],
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(proc.returncode, 31)
+        payload = json.loads(proc.stderr)
+        self.assertEqual(payload["category"], "BootstrapNotImplemented")
+        self.assertEqual(payload["command"], "tool use")
+
+    def test_tool_install_accepts_documented_stub_shape(self) -> None:
+        proc = self._run_cli(
+            ["--json", "tool", "install", "--styio-bin", "/tmp/styio"],
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(proc.returncode, 31)
+        payload = json.loads(proc.stderr)
+        self.assertEqual(payload["category"], "BootstrapNotImplemented")
+        self.assertEqual(payload["command"], "tool install")
 
     def test_new_creates_bin_project(self) -> None:
         temp_root = pathlib.Path(self._testMethodName).resolve()
@@ -150,8 +136,8 @@ class BootstrapCliTests(unittest.TestCase):
                     elif child.is_dir():
                         child.rmdir()
                 temp_root.rmdir()
-        proc = subprocess.run(
-            [str(ROOT / "scripts" / "spio"), "new", "acme/demo", str(temp_root)],
+        proc = self._run_cli(
+            ["new", "acme/demo", str(temp_root)],
             check=True,
             capture_output=True,
             text=True,
@@ -168,8 +154,8 @@ class BootstrapCliTests(unittest.TestCase):
 
     def test_check_validates_manifest(self) -> None:
         manifest = FIXTURES / "manifests" / "ok-single-package" / "spio.toml"
-        proc = subprocess.run(
-            [str(ROOT / "scripts" / "spio"), "--json", "check", "--manifest-path", str(manifest)],
+        proc = self._run_cli(
+            ["--json", "check", "--manifest-path", str(manifest)],
             check=True,
             capture_output=True,
             text=True,
@@ -181,8 +167,8 @@ class BootstrapCliTests(unittest.TestCase):
 
     def test_check_rejects_bad_manifest(self) -> None:
         manifest = FIXTURES / "manifests" / "bad-package-name" / "spio.toml"
-        proc = subprocess.run(
-            [str(ROOT / "scripts" / "spio"), "--json", "check", "--manifest-path", str(manifest)],
+        proc = self._run_cli(
+            ["--json", "check", "--manifest-path", str(manifest)],
             capture_output=True,
             text=True,
         )
@@ -196,35 +182,14 @@ class BootstrapCliTests(unittest.TestCase):
             "tool": "styio",
             "compiler_version": "0.0.1",
             "channel": "stable",
-            "active_integration_phase": "compile-plan-live",
-            "supported_contracts": {
-                "machine_info": [1],
-                "jsonl_diagnostics": [1],
-                "compile_plan": [1],
-                "runtime_events": [],
-            },
-            "supported_contract_versions": {
-                "machine_info": [1],
-                "jsonl_diagnostics": [1],
-                "compile_plan": [1],
-                "runtime_events": [],
-            },
-            "supported_adapter_modes": ["cli"],
-            "feature_flags": {
-                "single_file_entry": True,
-                "jsonl_diagnostics": True,
-                "compile_plan_consumer": True,
-                "project_execution_via_compile_plan": True,
-                "runtime_event_stream": False,
-            },
+            "supported_contracts": {"compile_plan": [1]},
             "capabilities": ["machine_info_json", "single_file_entry", "jsonl_diagnostics"],
             "edition_max": "2026",
         }
         with tempfile.TemporaryDirectory() as tmp_dir:
             fake_styio = self._write_fake_styio(pathlib.Path(tmp_dir), machine_info)
-            proc = subprocess.run(
+            proc = self._run_cli(
                 [
-                    str(ROOT / "scripts" / "spio"),
                     "--json",
                     "check",
                     "--manifest-path",
@@ -248,35 +213,14 @@ class BootstrapCliTests(unittest.TestCase):
             "tool": "styio",
             "compiler_version": "0.0.1",
             "channel": "stable",
-            "active_integration_phase": "compile-plan-live",
-            "supported_contracts": {
-                "machine_info": [1],
-                "jsonl_diagnostics": [1],
-                "compile_plan": [1],
-                "runtime_events": [],
-            },
-            "supported_contract_versions": {
-                "machine_info": [1],
-                "jsonl_diagnostics": [1],
-                "compile_plan": [1],
-                "runtime_events": [],
-            },
-            "supported_adapter_modes": ["cli"],
-            "feature_flags": {
-                "single_file_entry": True,
-                "jsonl_diagnostics": True,
-                "compile_plan_consumer": True,
-                "project_execution_via_compile_plan": True,
-                "runtime_event_stream": False,
-            },
+            "supported_contracts": {"compile_plan": []},
             "capabilities": ["single_file_entry", "jsonl_diagnostics"],
             "edition_max": "2026",
         }
         with tempfile.TemporaryDirectory() as tmp_dir:
             fake_styio = self._write_fake_styio(pathlib.Path(tmp_dir), machine_info)
-            proc = subprocess.run(
+            proc = self._run_cli(
                 [
-                    str(ROOT / "scripts" / "spio"),
                     "--json",
                     "check",
                     "--manifest-path",

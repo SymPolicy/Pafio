@@ -1,8 +1,8 @@
-# Spio Registry Server Runbook
+# Spio Registry Origin Runbook
 
-**Purpose:** Provide the executable server-side validation and deployment procedure for a shared `spio` registry origin without mixing it with client cache behavior or future auth policy.
+**Purpose:** Provide the executable validation and deployment procedure for a shared `spio` registry `v2` origin without mixing it with client cache behavior or hosted publish-service policy.
 
-**Last updated:** 2026-04-12
+**Last updated:** 2026-04-21
 
 ## 1. Scope
 
@@ -10,9 +10,9 @@ This runbook owns:
 
 - server-side smoke validation commands
 - publish/read origin validation flow
-- deployment checklist for the current anonymous internal-registry phase
+- deployment checklist for the current registry `v2` static root and publish-control-plane boundary
 
-Server policy still lives in [../registry/Spio-Registry-Server-Contract.md](../registry/Spio-Registry-Server-Contract.md). Deployment baseline still lives in [../registry/Spio-Registry-Deployment-Baseline.md](../registry/Spio-Registry-Deployment-Baseline.md).
+Server policy lives in [../registry/Spio-Registry-Control-Plane-Contract.md](../registry/Spio-Registry-Control-Plane-Contract.md) and [../registry/Spio-Registry-V2-Publish-Control-Plane.md](../registry/Spio-Registry-V2-Publish-Control-Plane.md). Deployment baseline still lives in [../registry/Spio-Registry-Deployment-Baseline.md](../registry/Spio-Registry-Deployment-Baseline.md).
 
 ## 2. Preconditions
 
@@ -36,9 +36,9 @@ Use this when one origin handles both publish and fetch:
 
 What it proves:
 
-- publish succeeds
+- publish commits a valid registry `v2` release
 - duplicate publish is rejected
-- the new package is immediately fetchable from the same root
+- the new package is immediately fetchable from the same static root
 
 If the write origin sits behind an upload gateway that expects fixed headers, pass them explicitly:
 
@@ -88,9 +88,9 @@ Scoped promotion is also supported:
 
 What it proves:
 
-- the source root has a valid registry marker
+- the source root has a valid registry `v2` shape
 - destination objects remain immutable
-- marker, version-entry, and referenced blob objects are copied consistently
+- `config/`, `trust/`, `index/`, `artifacts/`, and `log/` objects are copied consistently
 - repeated promotion is idempotent
 
 ## 6. Local Split-Origin Smoke Test
@@ -134,10 +134,10 @@ Auth-bearing write-origin smoke tests are intentionally not shipped in the track
 ## 9. Production Checklist
 
 - use `https` for remote publish and fetch roots
-- preserve immutable object semantics for blobs and version entries
+- preserve immutable object semantics for artifacts and log leaves
 - reject overwrite attempts with `409 Conflict`
 - retain audit logs for publication attempts
-- keep marker, index, and blobs backed up together
+- keep `config/`, `trust/`, `index/`, `artifacts/`, and `log/` backed up together
 - keep upload and download origins synchronized before enabling client installs
 - keep the promotion step auditable and repeatable when upload and read origins are separate
 - if the write origin requires gateway headers, keep them scoped to the upload path only and do not require them from public read origins
@@ -155,6 +155,6 @@ Auth-bearing write-origin smoke tests are intentionally not shipped in the track
 - publish succeeds but fetch fails:
   upload and download roots are not serving the same objects yet, or sync lag exceeds `--sync-timeout-seconds`
 - promotion fails before any fetch:
-  check source marker validity, destination immutability conflicts, and backing-store path permissions
+  check source `v2` root validity, destination immutability conflicts, and backing-store path permissions
 - fetch succeeds but later client installs fail integrity checks:
-  inspect blob corruption, proxy rewriting, and backing-store immutability
+  inspect artifact corruption, proxy rewriting, and backing-store immutability

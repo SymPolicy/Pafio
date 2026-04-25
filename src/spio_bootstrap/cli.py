@@ -84,7 +84,11 @@ def _build_parser() -> argparse.ArgumentParser:
 
     tool = subparsers.add_parser("tool")
     tool_sub = tool.add_subparsers(dest="tool_command")
-    tool_sub.add_parser("install")
+    tool_install = tool_sub.add_parser("install")
+    tool_install.add_argument("--styio-bin")
+    tool_use = tool_sub.add_parser("use")
+    tool_use.add_argument("--version", dest="tool_version")
+    tool_use.add_argument("--channel")
 
     return parser
 
@@ -252,5 +256,9 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "check":
         return _handle_check(args, as_json)
     if args.command == "tool":
-        return _bootstrap_not_implemented("tool install", as_json)
+        if args.tool_command == "install":
+            return _bootstrap_not_implemented("tool install", as_json)
+        if args.tool_command == "use":
+            return _bootstrap_not_implemented("tool use", as_json)
+        return _bootstrap_not_implemented("tool", as_json)
     return _bootstrap_not_implemented(args.command, as_json)

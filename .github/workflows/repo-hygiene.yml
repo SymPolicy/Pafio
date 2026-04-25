@@ -1,0 +1,63 @@
+name: repo-hygiene
+
+on:
+  pull_request:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  hygiene:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      STYIO_PYTHON_VERSION: "3.13.5"
+
+    steps:
+      - name: Checkout styio-spio
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          path: styio-spio
+
+      - name: Check out styio-nightly sibling repository
+        uses: actions/checkout@v5
+        with:
+          repository: Unka-Malloc/styio-nightly
+          ref: ${{ github.ref_name }}
+          path: styio-nightly
+
+      - name: Check out styio-view sibling repository
+        uses: actions/checkout@v5
+        with:
+          repository: Unka-Malloc/styio-view
+          ref: ${{ github.ref_name }}
+          path: styio-view
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.STYIO_PYTHON_VERSION }}
+
+      - name: Check tracked tree
+        working-directory: styio-spio
+        run: python3 scripts/repo-hygiene-gate.py --mode tracked
+
+      - name: Check ecosystem CLI doc consistency
+        working-directory: styio-spio
+        run: python3 scripts/ecosystem-cli-doc-gate.py --require-workspace --json
+
+      - name: Check incoming history range
+        shell: bash
+        working-directory: styio-spio
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            RANGE="${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}"
+          elif [[ "${{ github.event.before }}" == "0000000000000000000000000000000000000000" ]]; then
+            RANGE="HEAD"
+          else
+            RANGE="${{ github.event.before }}..${{ github.sha }}"
+          fi
+          python3 scripts/repo-hygiene-gate.py --mode push --range "$RANGE"

@@ -5,6 +5,8 @@
 **Date:** 2026-04-12  
 **Purpose:** Record the decision to keep registry consumption and registry publication in one repository while separating them explicitly at the source-tree and documentation levels.
 
+**Last updated:** 2026-04-12
+
 ## Context
 
 `spio` now has both:

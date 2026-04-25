@@ -5,6 +5,8 @@
 **Date:** 2026-04-12  
 **Purpose:** Record the first remote registry write contract, keep it aligned with the existing static blob-and-index layout, and defer auth without blocking cloud-hosted package publication.
 
+**Last updated:** 2026-04-12
+
 ## Context
 
 `spio` already had:

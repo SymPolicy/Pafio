@@ -1,8 +1,8 @@
 # ADR-0028: Remote Publish Uses a Reusable Policy File for Write-Origin Hooks
 
-**Purpose:** Record the accepted boundary for reusable remote-publish policy files that carry write-origin headers without expanding client-side registry configuration.
+**Purpose:** Record the decision to make write-origin policy reusable through a TOML policy file without changing read-side registry behavior.
 
-**Last updated:** 2026-04-17
+**Last updated:** 2026-04-12
 
 - Status: Accepted
 - Date: 2026-04-12

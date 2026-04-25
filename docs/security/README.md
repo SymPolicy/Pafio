@@ -13,7 +13,7 @@
 ## Ownership
 
 - the public interface boundary lives in [Spio-Private-Security-Module-Contract.md](./Spio-Private-Security-Module-Contract.md)
-- registry layout and non-secret transport rules remain owned by [../governance/Spio-Registry-Repository-Contract.md](../governance/Spio-Registry-Repository-Contract.md)
+- registry layout and non-secret transport rules remain owned by [../registry/Spio-Registry-V2-Protocol.md](../registry/Spio-Registry-V2-Protocol.md)
 - client/server registry behavior remains owned by the documents under [../registry/](../registry/)
 
 ## Maintenance Rules

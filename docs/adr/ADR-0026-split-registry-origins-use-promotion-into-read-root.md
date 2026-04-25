@@ -5,6 +5,8 @@
 **Date:** 2026-04-12  
 **Purpose:** Record the decision to treat package publication and client download as separate operational concerns, with promotion from a writable upload root into a read-only serving root.
 
+**Last updated:** 2026-04-12
+
 ## Context
 
 The current registry contract already supports:

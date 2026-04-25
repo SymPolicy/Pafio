@@ -1,3 +1,13 @@
+.DS_Store
+.cursor/
+.idea/
+.vscode/
+.cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+node_modules/
 # Prerequisites
 *.d
 
@@ -42,46 +52,21 @@
 
 .build/
 build/
-build-*/
 build-codex/
+build-*/
 .spio/
 tmp/
 dist/
-.DS_Store
 *.tmp
 *.log
-*.tar
-*.tar.gz
-*.tgz
-*.zip
-*.7z
-*.gz
-*.bz2
-*.xz
 CMakeUserPresets.json
 CMakePresets.json
 CMakeCache.txt
 CMakeFiles/
 Testing/
-cmake_test_discovery_*.json
-compile_commands.json
 __pycache__/
 .pytest_cache/
-.cache/
-.mypy_cache/
-.ruff_cache/
-.tox/
-.nox/
-.venv/
-venv/
-node_modules/
-.idea/
-.vscode/
-.cursor/
-.clangd/
-
-# Allow intentionally tracked repro fixtures and docs assets even when names
-# overlap local temp/build conventions.
+docs/audit/defects/
 !docs/**/build/
 !docs/**/build/**
 !docs/**/build-*/

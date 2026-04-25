@@ -10,37 +10,40 @@ from datetime import date
 from pathlib import Path
 from typing import Iterable
 
-
 ROOT = Path(__file__).resolve().parents[1]
 TODAY = date.today().isoformat()
 COLLECTION_DIRS = [
     Path("docs"),
     Path("docs/adr"),
-    Path("docs/archive"),
-    Path("docs/archive/history"),
+    Path("docs/audit"),
+    Path("docs/assets"),
+    Path("docs/assets/workflow"),
     Path("docs/governance"),
-    Path("docs/history"),
     Path("docs/operations"),
     Path("docs/planning"),
     Path("docs/registry"),
-    Path("docs/rollups"),
     Path("docs/security"),
-    Path("docs/styio"),
+    Path("docs/specs"),
+    Path("docs/specs/audit"),
+    Path("docs/external"),
+    Path("docs/external/for-styio"),
     Path("docs/teams"),
 ]
 INDEX_META = {
-    "docs": ("Docs Index", "Provide the generated inventory for `docs/`; directory boundaries and maintenance rules live in [README.md](./README.md)."),
+    "docs": ("spio Docs Index", "Provide the generated inventory for `docs/`; directory boundaries and maintenance rules live in [README.md](./README.md)."),
     "docs/adr": ("ADR Index", "Provide the generated inventory for `docs/adr/`; decision-record conventions live in [README.md](./README.md)."),
-    "docs/archive": ("Archive Index", "Provide the generated inventory for `docs/archive/`; archive boundaries and lifecycle rules live in [README.md](./README.md)."),
-    "docs/archive/history": ("Archive History Index", "Provide the generated inventory for `docs/archive/history/`; archived daily provenance snapshots live in [README.md](./README.md)."),
-    "docs/governance": ("Governance Index", "Provide the generated inventory for `docs/governance/`; owner boundaries and maintenance rules live in [README.md](./README.md)."),
-    "docs/history": ("History Index", "Provide the generated inventory for `docs/history/`; recovery-note rules live in [README.md](./README.md)."),
-    "docs/operations": ("Operations Index", "Provide the generated inventory for `docs/operations/`; gate and operational-runbook boundaries live in [README.md](./README.md)."),
-    "docs/planning": ("Planning Index", "Provide the generated inventory for `docs/planning/`; sequencing and milestone-mirror rules live in [README.md](./README.md)."),
-    "docs/registry": ("Registry Index", "Provide the generated inventory for `docs/registry/`; client/server contract boundaries live in [README.md](./README.md)."),
-    "docs/rollups": ("Rollups Index", "Provide the generated inventory for `docs/rollups/`; compressed active summaries live in [README.md](./README.md)."),
-    "docs/security": ("Security Index", "Provide the generated inventory for `docs/security/`; public/private boundary rules live in [README.md](./README.md)."),
-    "docs/styio": ("Styio Integration Index", "Provide the generated inventory for `docs/styio/`; external compiler handoff boundaries live in [README.md](./README.md)."),
+    "docs/audit": ("Audit Index", "Provide the generated inventory for `docs/audit/`; transient defect records live in ignored `docs/audit/defects/` and are enforced by external `audit` runs."),
+    "docs/assets": ("Assets Index", "Provide the generated inventory for `docs/assets/`; reusable workflow assets live in [README.md](./README.md)."),
+    "docs/assets/workflow": ("Workflow Assets Index", "Provide the generated inventory for `docs/assets/workflow/`; gate and workflow guidance live in [README.md](./README.md)."),
+    "docs/governance": ("Governance Index", "Provide the generated inventory for `docs/governance/`; normative rules and contracts live in [README.md](./README.md)."),
+    "docs/operations": ("Operations Index", "Provide the generated inventory for `docs/operations/`; gates and operational runbooks live in [README.md](./README.md)."),
+    "docs/planning": ("Planning Index", "Provide the generated inventory for `docs/planning/`; phased implementation plans live in [README.md](./README.md)."),
+    "docs/registry": ("Registry Index", "Provide the generated inventory for `docs/registry/`; package registry contracts live in [README.md](./README.md)."),
+    "docs/security": ("Security Index", "Provide the generated inventory for `docs/security/`; public/private security boundary docs live in [README.md](./README.md)."),
+    "docs/specs": ("Specs Index", "Provide the generated inventory for `docs/specs/`; cross-cutting agent and audit rules live in [README.md](./README.md)."),
+    "docs/specs/audit": ("Audit Specs Index", "Provide the generated inventory for `docs/specs/audit/`; audit checklist ownership lives in [README.md](./README.md)."),
+    "docs/external": ("External Docs Index", "Provide the generated inventory for `docs/external/`; external handoff boundaries live in [README.md](./README.md)."),
+    "docs/external/for-styio": ("Styio Handoff Index", "Provide the generated inventory for `docs/external/for-styio/`; external compiler knowledge and requirements live in [README.md](./README.md)."),
     "docs/teams": ("Teams Index", "Provide the generated inventory for `docs/teams/`; team ownership and runbook boundaries live in [README.md](./README.md)."),
 }
 TITLE_RE = re.compile(r"^#\s+(.+?)\s*$", re.M)
@@ -67,8 +70,7 @@ def compact_plain(text: str) -> str:
     text = LINK_RE.sub(lambda match: match.group(1), text)
     for token in ("**", "`", "__"):
         text = text.replace(token, "")
-    text = text.replace("|", "\\|")
-    return re.sub(r"\s+", " ", text).strip()
+    return re.sub(r"\s+", " ", text.replace("|", "\\|")).strip()
 
 
 def extract_title(path: Path) -> str:
@@ -99,22 +101,10 @@ def choose_dir_entry(path: Path) -> Path | None:
     return None
 
 
-def child_sort_key(base: Path, path: Path) -> tuple[int, str]:
-    if base.as_posix() in {"docs/history", "docs/archive/history"} and path.is_file():
-        stem = path.stem
-        if re.match(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}$", stem):
-            return (1, f"{99999999 - int(stem.replace('-', '')):08d}")
-    return (0 if path.is_dir() else 1, path.name.lower())
-
-
 def build_entries(base: Path) -> list[Entry]:
     entries: list[Entry] = []
-    children = [
-        child
-        for child in base.iterdir()
-        if child.name not in {"README.md", "INDEX.md"} and not child.name.startswith(".")
-    ]
-    for child in sorted(children, key=lambda item: child_sort_key(base, item)):
+    children = [child for child in base.iterdir() if child.name not in {"README.md", "INDEX.md"} and not child.name.startswith(".")]
+    for child in sorted(children, key=lambda item: (0 if item.is_dir() else 1, item.name.lower())):
         if child.is_dir():
             entry_target = choose_dir_entry(child)
             if entry_target is None:
@@ -157,9 +147,9 @@ def render_index(base: Path) -> str:
     rel = base.relative_to(ROOT).as_posix()
     title, purpose = INDEX_META[rel]
     entries = build_entries(base)
+    updated = max((entry.last_updated for entry in entries), default=TODAY)
     dir_entries = [entry for entry in entries if entry.is_dir]
     file_entries = [entry for entry in entries if not entry.is_dir]
-    updated = max((entry.last_updated for entry in entries), default=TODAY)
 
     lines = [
         f"# {title}",
@@ -182,7 +172,7 @@ def render_index(base: Path) -> str:
 
 def sync_indexes(check: bool) -> int:
     failures: list[str] = []
-    for rel_dir in COLLECTION_DIRS:
+    for rel_dir in sorted(COLLECTION_DIRS, key=lambda path: len(path.parts), reverse=True):
         base = ROOT / rel_dir
         index_path = base / "INDEX.md"
         expected = render_index(base)
@@ -202,10 +192,10 @@ def sync_indexes(check: bool) -> int:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Generate or verify docs INDEX.md files.")
+    parser = argparse.ArgumentParser(description="Generate or verify spio docs INDEX.md files.")
     group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument("--write", action="store_true", help="rewrite generated docs indexes")
-    group.add_argument("--check", action="store_true", help="verify generated docs indexes are current")
+    group.add_argument("--write", action="store_true")
+    group.add_argument("--check", action="store_true")
     args = parser.parse_args()
     return sync_indexes(check=args.check)
 

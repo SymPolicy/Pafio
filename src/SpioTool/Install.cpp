@@ -12,6 +12,7 @@
 #include <vector>
 
 #include <nlohmann/json.hpp>
+#include <toml++/toml.h>
 
 namespace fs = std::filesystem;
 using json = nlohmann::json;
@@ -87,6 +88,43 @@ json BuildInstallMetadata(const spio::CompatibilityReport &report, const fs::pat
   };
 }
 
+json LoadJsonFile(const fs::path &path)
+{
+  std::ifstream in(path);
+  if (!in)
+  {
+    throw spio::ToolError("failed to open tool metadata for read: " + path.string());
+  }
+  json payload;
+  in >> payload;
+  if (!in.good() && !in.eof())
+  {
+    throw spio::ToolError("failed to parse tool metadata JSON: " + path.string());
+  }
+  return payload;
+}
+
+spio::ManagedToolchainStatus BuildManagedToolchainStatus(
+    const fs::path &install_root,
+    const fs::path &install_binary_path,
+    const fs::path &install_metadata_path,
+    bool current)
+{
+  const json metadata = LoadJsonFile(install_metadata_path);
+  return spio::ManagedToolchainStatus{
+      .install_root = install_root,
+      .install_binary_path = install_binary_path,
+      .install_metadata_path = install_metadata_path,
+      .compiler_version = metadata.value("compiler_version", install_root.filename().string()),
+      .compiler_channel = metadata.value("channel", install_root.parent_path().filename().string()),
+      .compiler_edition_max = metadata.value("edition_max", ""),
+      .integration_phase = metadata.value("integration_phase", ""),
+      .supported_compile_plan_versions = metadata.value("supported_compile_plan_versions", std::vector<int>{}),
+      .capabilities = metadata.value("capabilities", std::vector<std::string>{}),
+      .current = current,
+  };
+}
+
 void RefreshManagedCurrentRoot(
     const spio::CompatibilityReport &report,
     const fs::path &source_binary,
@@ -156,6 +194,53 @@ std::vector<InstalledManagedCompiler> CollectInstalledManagedCompilers(const fs:
   }
 
   return installed;
+}
+
+std::optional<spio::ProjectToolchainPinStatus> LoadProjectToolchainPinStatus(const std::optional<fs::path> &manifest_path)
+{
+  if (!manifest_path.has_value())
+  {
+    return std::nullopt;
+  }
+
+  const std::optional<fs::path> pin_path = spio::FindProjectToolchainPinPath(*manifest_path);
+  if (!pin_path.has_value())
+  {
+    return std::nullopt;
+  }
+
+  toml::table doc;
+  try
+  {
+    doc = toml::parse_file(pin_path->string());
+  }
+  catch (const toml::parse_error &err)
+  {
+    throw spio::ToolError("failed to parse project toolchain pin '" + pin_path->string() + "': " + std::string(err.description()));
+  }
+
+  const toml::table *styio_table = doc["styio"].as_table();
+  if (styio_table == nullptr)
+  {
+    throw spio::ToolError("project toolchain pin is missing [styio]: " + pin_path->string());
+  }
+
+  const auto version = styio_table->get_as<std::string>("version");
+  const auto channel = styio_table->get_as<std::string>("channel");
+  if (version == nullptr || version->get().empty())
+  {
+    throw spio::ToolError("project toolchain pin is missing styio.version: " + pin_path->string());
+  }
+  if (channel == nullptr || channel->get().empty())
+  {
+    throw spio::ToolError("project toolchain pin is missing styio.channel: " + pin_path->string());
+  }
+
+  return spio::ProjectToolchainPinStatus{
+      .pin_path = *pin_path,
+      .compiler_version = version->get(),
+      .compiler_channel = channel->get(),
+  };
 }
 
 InstalledManagedCompiler SelectInstalledManagedCompiler(const fs::path &spio_home, const spio::ToolUseRequest &request)
@@ -327,6 +412,44 @@ ToolPinResult PinManagedStyio(const ToolPinRequest &request)
       .compiler_version = selected.compiler_version,
       .compiler_channel = selected.compiler_channel,
   };
+}
+
+ToolStatusResult QueryToolStatus(const std::optional<fs::path> &manifest_path)
+{
+  const fs::path spio_home = ResolveSpioHome();
+  ToolStatusResult result{
+      .spio_home = spio_home,
+  };
+  if (manifest_path.has_value())
+  {
+    result.manifest_path = CanonicalAbsolutePath(*manifest_path);
+  }
+  result.project_pin = LoadProjectToolchainPinStatus(result.manifest_path);
+
+  if (const fs::path current_root = ManagedStyioCurrentRoot(spio_home);
+      fs::exists(ManagedStyioMetadataPath(current_root)) && fs::exists(ManagedStyioBinaryPath(current_root)))
+  {
+    result.current_compiler = BuildManagedToolchainStatus(
+        current_root,
+        ManagedStyioBinaryPath(current_root),
+        ManagedStyioMetadataPath(current_root),
+        true);
+  }
+
+  for (const InstalledManagedCompiler &candidate : CollectInstalledManagedCompilers(spio_home))
+  {
+    const bool current = result.current_compiler.has_value() &&
+                         result.current_compiler->compiler_version == candidate.compiler_version &&
+                         result.current_compiler->compiler_channel == candidate.compiler_channel;
+    result.managed_toolchains.push_back(
+        BuildManagedToolchainStatus(
+            candidate.install_root,
+            candidate.install_binary_path,
+            candidate.install_metadata_path,
+            current));
+  }
+
+  return result;
 }
 
 }  // namespace spio

@@ -2,140 +2,9 @@
 
 **Purpose:** Define the named gates, required commands, and pass conditions that close each `spio` implementation stream.
 
-**Last updated:** 2026-04-19
+**Last updated:** 2026-04-23
 
 ## Gate Matrix
-
-### `quality_no_binaries_gate`
-
-Objective:
-
-- reject tracked binary files in repository sources and delivery exports
-
-Commands:
-
-```text
-python3 ./scripts/check_no_binaries.py --repo-root . --mode tracked
-```
-
-Pass conditions:
-
-- tracked files contain no accidental binary content
-
-Defect:
-
-- this gate only checks source-tree binaries; archive integrity belongs to delivery checks
-
-### `quality_repo_hygiene_gate`
-
-Objective:
-
-- enforce generated/private-path hygiene and documentation linkage for gate entrypoints
-
-Commands:
-
-```text
-python3 ./scripts/repo-hygiene-check.py --repo-root . --mode tracked
-```
-
-Pass conditions:
-
-- tracked files contain no forbidden generated/private paths
-- `.gitignore` includes required generated/private patterns from `scripts/artifact-policy.json`
-- tracked docs/tests temp-build-style fixtures stay visible via explicit negate rules when needed
-- operations and governance docs reference gate entrypoints
-
-Defect:
-
-- it reports violations but does not auto-clean local files
-
-### `quality_docs_governance_gate`
-
-Objective:
-
-- enforce generated index freshness, docs lifecycle integrity, and required docs collection skeletons
-
-Commands:
-
-```text
-python3 ./scripts/docs-audit.py
-```
-
-Pass conditions:
-
-- required docs collections exist and contain `README.md` plus `INDEX.md`
-- generated docs indexes are current
-- docs lifecycle metadata and ledger are current
-- tracked docs include required `Purpose` and `Last updated` headers
-
-Defect:
-
-- it validates structure and freshness, not prose quality or architectural correctness
-
-### `performance_baseline_gate`
-
-Objective:
-
-- detect command-level performance regressions against a committed baseline
-
-Commands:
-
-```text
-python3 ./scripts/perf-gate.py
-```
-
-Pass conditions:
-
-- each benchmark median stays within the configured regression threshold
-
-Defect:
-
-- benchmark scope is intentionally CLI-focused and does not model end-to-end workload throughput
-
-### `delivery_package_gate`
-
-Objective:
-
-- validate exported delivery tree structure and run checks in the copied package
-
-Commands:
-
-```text
-python3 ./scripts/delivery-gate.py
-```
-
-Pass conditions:
-
-- exported tree contains required repository modules
-- exported tree excludes build/cache/tmp/private artifacts per `scripts/artifact-policy.json`
-- binary, hygiene, docs, and native checks pass inside the export
-
-Defect:
-
-- this gate validates repository delivery shape, not registry publish topology
-
-### `spio_submit_gate`
-
-Objective:
-
-- provide one enforceable submission entrypoint for quality, regression, performance, and delivery checks
-
-Commands:
-
-```text
-python3 ./scripts/submit-gate.py --profile pre-push
-python3 ./scripts/submit-gate.py --profile ci --json
-python3 ./scripts/submit-gate.py --profile release --styio-bin /absolute/path/to/styio --feature-config /absolute/path/to/submit-gate.features.json --json
-```
-
-Pass conditions:
-
-- `quality_no_binaries_gate`, `quality_repo_hygiene_gate`, `quality_docs_governance_gate`, `spio_manifest_lock_gate`, `spio_extractability_gate`, `performance_baseline_gate`, and `delivery_package_gate` are green
-- `styio` compatibility runs when release mode provides `--styio-bin`
-
-Defect:
-
-- release/styio/cloud checks stay disabled when feature config is missing or keeps defaults
 
 ### `spio_manifest_lock_gate`
 
@@ -146,7 +15,7 @@ Objective:
 Commands:
 
 ```text
-./spio/scripts/native-check.sh
+./scripts/native-check.sh
 ```
 
 Pass conditions:
@@ -169,8 +38,8 @@ Commands:
 
 ```text
 ./build-codex/bin/styio --machine-info=json
-./spio/scripts/spio --json check --manifest-path spio/tests/unit/fixtures/manifests/ok-single-package/spio.toml --styio-bin ./build-codex/bin/styio
-./spio/scripts/styio-interface-gate.py --styio-bin ./build-codex/bin/styio
+./scripts/spio --json check --manifest-path tests/unit/fixtures/manifests/ok-single-package/spio.toml --styio-bin ./build-codex/bin/styio
+./scripts/styio-interface-gate.py --styio-bin ./build-codex/bin/styio
 ./build-codex/bin/styio_test --gtest_filter=StyioDiagnostics.MachineInfoJsonReportsStableHandshakeFields
 ```
 
@@ -189,108 +58,24 @@ Defect:
 
 Objective:
 
-- validate the published direct compiler-side compile-plan consumer once that phase is advertised
+- validate the active compiler-side compile-plan v1 consumer and the `spio` handoff
 
 Commands:
 
 ```text
-./spio/scripts/styio-interface-gate.py --styio-bin ./build-codex/bin/styio --require-compile-plan
+./scripts/styio-interface-gate.py --styio-bin $HOME/styio-nightly/build-codex/bin/styio --spio-bin ./build-codex/bin/spio --require-compile-plan --json
 ```
 
 Pass conditions:
 
 - `styio --machine-info=json` advertises `supported_contracts.compile_plan = [1]` or another enabled line for the active phase
+- `spio check` reports `integration_phase = "compile-plan-live"` and `supported_compile_plan_versions = [1]`
 - `styio --compile-plan <path>` accepts a dry-run plan emitted by `spio`
-- compile-plan execution materializes the declared output roots
+- compile-plan execution materializes the declared output roots and `receipt.json`
 
 Defect:
 
-- blocked until the compiler team publishes compile-plan support for the active compatibility phase
-
-### `ecosystem_sample_workflow_gate`
-
-Objective:
-
-- validate the canonical cross-repo sample workflow matrix against published `styio` and `spio` binaries, not only local unit fixtures
-
-Commands:
-
-```text
-python3 ./scripts/ecosystem-sample-workflow-gate.py --styio-bin /absolute/path/to/styio --spio-bin ./build-codex/bin/spio --json
-```
-
-Covered scenarios:
-
-- managed toolchain switch path: `tool install/use/pin/status` on the published compiler -> install alternate managed compiler alias -> `tool use/pin/status` switch -> `check/fetch/vendor/run` on the switched compiler -> `tool use/pin/status` back to the published compiler -> `test/publish`
-- workspace path with explicit package selection for `run/test/publish`
-- workspace ambiguity protection when `--package` is omitted from `run/test/publish`
-- vendored offline path: `vendor -> clear SPIO_HOME -> fetch --offline -> check/run --offline`
-- registry-hosted source path: local filesystem registry `publish -> republish conflict -> fetch -> project-graph -> check -> run`
-
-Pass conditions:
-
-- the gate materializes temporary sample projects that cover managed toolchain switching, workspace routing, and vendored offline operation
-- the gate also materializes a real local registry source and proves that registry-hosted dependencies survive publication, resolution, `project-graph`, and compiler workflow execution
-- `spio tool install/use/pin/status` succeed against the published `styio` binary and a second managed compiler identity, and project execution remains usable without `--styio-bin` before and after switching
-- `spio check`, `fetch`, `vendor`, `run`, `test`, and `publish --dry-run` all succeed in the scenarios that advertise them
-- `run/test` workflow payloads carry `receipt`, `diagnostics`, and `runtime_events`
-- publish preflight materializes a real archive under `dist/`
-
-Defect:
-
-- this gate now covers the highest-value local toolchain matrix, but still stops short of IDE-driven hosted/cloud product flows
-
-### `ecosystem_product_gate`
-
-Objective:
-
-- validate the real product workflow across `styio-nightly + styio-spio + styio-view`, including the hosted control plane and IDE-owned workflow lanes
-
-Commands:
-
-```text
-python3 ./scripts/ecosystem-product-gate.py --styio-bin /absolute/path/to/styio --spio-bin ./build-codex/bin/spio --json
-```
-
-Covered scenarios:
-
-- baseline local sample workflow matrix from `ecosystem-sample-workflow-gate.py`
-- desktop local IDE workflow lane: real `styio-view` desktop shell on the CLI-owned route completes `install/use/pin/fetch/vendor/pack/run/test/preflight` against temporary sample workspaces and managed compiler identities
-- desktop local vendored/offline lane: after `fetch -> vendor`, the product workflow removes the temporary `SPIO_HOME`, rehydrates the managed compiler, and proves the same CLI-owned shell can still `fetch --offline` and run from vendored sources after the upstream git registry path disappears
-- desktop local multi-package workspace lane: route execution through the selected package target, block implicit publish preflight on ambiguity, and allow explicit package preflight on the CLI-owned route
-- desktop local registry distribution lane: reopen the pinned library workspace, prove the `lib` target routes through a real build before publish, publish a real package into a temporary filesystem registry from the IDE-owned deployment lane, reject republishing the same version into that registry, then open consumer workspaces through the same desktop product route and prove both `fetch -> run` against the published registry source and structured `fetch` failure for a missing registry version
-- desktop local failure matrix: compiler diagnostics failure, dependency fetch failure, and publish preflight failure must all surface structured lane-owned results instead of opaque logs
-- hosted workspace open/load through the repository-local hosted control plane
-- hosted `install/use/pin/fetch/vendor/pack/run/test/preflight` workflow lanes as consumed by `styio-view`
-- hosted managed-toolchain switch-and-return path: install primary compiler -> install alternate compiler identity -> switch/pin alternate -> switch/pin primary again -> execute the workflow lanes on the restored compiler
-- hosted multi-package workspace path: open a workspace root with two publishable members, route execution through the selected package target, block implicit publish preflight on ambiguity, and allow explicit package preflight
-- hosted registry distribution lane: build the hosted library package before publish, publish a real package into a temporary filesystem registry through the hosted deployment lane, reject republishing the same version into that registry, then open hosted consumer workspaces and prove both `fetch -> run` against the published registry source and structured `fetch` failure for a missing registry version
-- hosted compiler failure path: inject invalid source text through the hosted control plane and require structured diagnostics plus `compile.failed` runtime events back in the IDE-owned execution lane
-- hosted dependency failure path: open a hosted workspace with an intentionally broken git source and require `fetch` to fail with a structured error payload in the IDE-owned dependency lane
-- hosted deployment failure path: target the same non-publishable hosted package explicitly and require `publish --dry-run` to fail with a structured error payload in the IDE-owned deployment lane
-- platform semantics for `iOS cloud-only`, `Web hosted-only`, and `Android cloud fallback`
-
-Pass conditions:
-
-- the baseline local sample workflow matrix remains green
-- `styio-view` completes the desktop local product workflow without falling back to preview-only semantics or hosted routing
-- the desktop local product workflow proves managed toolchain switch-and-return on the CLI-owned route before `fetch/vendor/pack/run/test/preflight`
-- the desktop local product workflow also proves vendored/offline recovery: after vendoring and clearing the temporary `SPIO_HOME`, the same workspace can still `fetch --offline` and run on the CLI-owned route once the managed compiler is reinstalled and re-pinned
-- the desktop local product workflow also proves multi-package routing, publish ambiguity protection, compiler diagnostics failures, dependency fetch failures, and deployment preflight failures on the CLI-owned route
-- successful desktop local deployment lanes materialize a real source package archive and keep `archive_path` valid on disk for both `pack` and `publish --dry-run`
-- the desktop local product workflow also proves registry distribution end-to-end: a reopened pinned library workspace routes the `lib` target through a real build, a filesystem registry publish then succeeds in the IDE-owned deployment lane, republishing the same version fails with a structured deployment result, and separate consumer workspaces both resolve/run the published registry dependency and surface a structured dependency failure for a missing registry version on the same CLI-owned route
-- the hosted control plane publishes live `project_graph`, `toolchain_state`, workflow success payloads, diagnostics, receipts, and runtime events
-- `styio-view` completes the full hosted product workflow without falling back to preview-only semantics
-- `view` route summaries resolve to cloud/live for the hosted platforms under test
-- successful hosted deployment lanes materialize a real source package archive and keep `archive_path` valid on disk for both `pack` and `publish --dry-run`
-- the hosted product workflow also proves registry distribution parity: the hosted execution lane can first build the library package, the hosted deployment lane can then publish into a filesystem registry, reject same-version republish, and drive separate hosted consumer workspaces through success and missing-version failure on the same cloud-owned route
-- hosted compile failures surface machine-readable diagnostics inside the product lane instead of collapsing to opaque stderr
-- hosted dependency fetch failures surface a structured error payload inside the product lane instead of a generic blocked state
-- hosted publish preflight failures surface a structured error payload inside the product lane instead of collapsing to a local-only block or opaque stderr
-
-Defect:
-
-- this gate validates the repository-local hosted backend, not a public multi-tenant/authenticated hosted service
+- no known baseline blocker; keep expanding malformed-plan and release-matrix coverage
 
 ### `contract_schema_gate`
 
@@ -311,7 +96,7 @@ Pass conditions:
 
 Defect:
 
-- currently only partially implemented because `styio` has not yet published compile-plan support
+- schema fixture coverage is still narrower than the live handoff and should keep growing with release hardening
 
 ### `spio_cli_gate`
 
@@ -322,10 +107,11 @@ Objective:
 Commands:
 
 ```text
-./spio/scripts/native-check.sh
-./spio/scripts/spio --version
-./spio/scripts/spio machine-info --json
-./spio/scripts/spio --json build
+./scripts/native-check.sh
+./scripts/spio --version
+./scripts/spio machine-info --json
+./scripts/spio sync --help
+./scripts/spio --json build
 ```
 
 Pass conditions:
@@ -338,6 +124,34 @@ Defect:
 
 - some command semantics remain placeholder-only until later phases
 
+### `spio_installer_bootstrap_gate`
+
+Objective:
+
+- validate the fresh-machine bootstrap flow where `curl` installs `spio`, `spio install styio@latest` builds a managed compiler from source, and the managed `styio` shim executes from `PATH`
+
+Commands:
+
+```text
+ctest --test-dir build-codex -R spio_installer_bootstrap_smoke --output-on-failure
+python3 -m http.server <port> --bind 127.0.0.1
+curl -fsSL http://127.0.0.1:<port>/install-spio.sh | sh -s -- --base-url http://127.0.0.1:<port> --install-dir /usr/local/bin
+SPIO_STYIO_SOURCE_ORIGIN=file://$HOME/styio-nightly SPIO_STYIO_SOURCE_REF=ai-dev spio install styio@latest
+styio --file /tmp/hello.styio
+```
+
+Pass conditions:
+
+- `spio_installer_bootstrap_smoke` passes in a temporary install root without requiring `/usr/local/bin`
+- `command -v spio` resolves to the installed binary
+- `command -v styio` resolves to the installed shim
+- `spio install styio@latest` installs a compatible stable compiler under `SPIO_HOME/tools/styio/current/`
+- `styio --file` can execute a hello program and print `hello, styio!`
+
+Defect:
+
+- public GitHub source fetch is still subject to network TLS availability in the execution environment; local file-backed source origins are accepted for VM smoke rehearsal
+
 ### `spio_registry_server_gate`
 
 Objective:
@@ -347,7 +161,7 @@ Objective:
 Commands:
 
 ```text
-bash ./spio/tests/interop/registry-server-gate.sh ./spio/build-codex/bin/spio
+bash ./tests/interop/registry-server-gate.sh ./build-codex/bin/spio
 ```
 
 Pass conditions:
@@ -370,14 +184,14 @@ Objective:
 Commands:
 
 ```text
-bash ./spio/tests/interop/registry-split-origin-promotion.sh ./spio/build-codex/bin/spio
+bash ./tests/interop/registry-split-origin-promotion.sh ./build-codex/bin/spio
 ```
 
 Pass conditions:
 
 - a package can be published into the write root
 - client fetch fails before promotion into the read root
-- promotion copies marker, entry, and blob into the read root
+- promotion mirrors a self-consistent `registry v2` static read root into the read origin
 - repeated promotion is idempotent
 - client fetch succeeds from the read root after promotion
 
@@ -394,7 +208,7 @@ Objective:
 Commands:
 
 ```text
-bash ./spio/tests/interop/registry-split-origin-http.sh ./spio/build-codex/bin/spio
+bash ./tests/interop/registry-split-origin-http.sh ./build-codex/bin/spio
 ```
 
 Pass conditions:
@@ -409,6 +223,158 @@ Defect:
 
 - the gate still uses repository-local backing-store promotion rather than a cloud vendor's own replication mechanism
 
+### `spio_registry_v2_contract_gate`
+
+Objective:
+
+- validate the machine-readable `v2` static registry contract pack, schema inventory, and example-object coverage
+
+Commands:
+
+```text
+python3 ./tests/interop/registry-v2-contract-gate.py
+```
+
+Pass conditions:
+
+- `contracts/registry-v2/v1/registry-v2.contract.json` advertises the expected schema inventory
+- every referenced schema file exists and parses as JSON
+- `registry-v2.examples.json` covers config, signed metadata envelopes, package index records, and log leaves
+- no drift is introduced between the tracked contract pack and the gate snapshot
+
+Defect:
+
+- the tracked public tree uses structural contract checks rather than a full external JSON Schema validator runtime
+
+### `spio_registry_v2_publish_gate`
+
+Objective:
+
+- validate the tracked local `v2` publish control-plane worker that commits source packages directly into the signed static read plane
+
+Commands:
+
+```text
+bash ./tests/interop/registry-v2-publish.sh ./build-codex/bin/spio
+```
+
+Pass conditions:
+
+- a fresh `v2` registry root is initialized from role keys without requiring a `v1` import first
+- `registry-v2-publish.py` can prepare a publish candidate from a real `spio publish --dry-run` flow
+- repeated publishes append new index records and new log leaves
+- duplicate publish of the same version is rejected
+- the resulting root passes `registry-v2-verify.py`
+
+Defect:
+
+- the tracked public worker currently targets local roots only; the hosted network control plane remains future work
+
+### `spio_registry_v2_static_http_gate`
+
+Objective:
+
+- validate that the `v2` static read plane is consumable over ordinary HTTP and not only from a local directory
+
+Commands:
+
+```text
+bash ./tests/interop/registry-v2-http-read.sh ./build-codex/bin/spio
+```
+
+Pass conditions:
+
+- an imported `v2` registry root can be served by a plain static HTTP server
+- `config`, trust metadata, package index, and source artifacts are fetchable through GET
+- `registry-v2-verify.py --root http://...` accepts the served static root
+
+Defect:
+
+- the tracked gate validates static HTTP consumption and integrity, not CDN edge-caching semantics
+
+### `spio_registry_control_plane_contract_gate`
+
+Objective:
+
+- validate the versioned HTTP contract package for the registry `v2` publish/verify control plane
+
+Commands:
+
+```text
+python3 ./tests/interop/registry-control-plane-contract-gate.py
+python3 ./tests/interop/native-contract-source-gate.py
+```
+
+Pass conditions:
+
+- the method/path snapshot remains frozen
+- the example pack matches the contract shapes
+- native contract sources remain free of generated API-description artifacts
+
+Defect:
+
+- the local shape gate is structural; it does not yet use a standalone JSON Schema validator runtime
+
+### `spio_registry_control_plane_http_gate`
+
+Objective:
+
+- validate the local HTTP implementation of the registry `v2` control plane against the published contract surface
+
+Commands:
+
+```text
+bash ./tests/interop/registry-v2-control-plane-http.sh ./build-codex/bin/spio
+```
+
+Pass conditions:
+
+- `GET /status` reports the bound root before and after initialization
+- `POST /publish` initializes a fresh root and commits a release
+- `POST /verify` validates the resulting static root
+- duplicate publish attempts are rejected through the published failure envelope
+
+Defect:
+
+- the tracked server binds a local root and local key directory; hosted tenancy and auth policy remain future work
+
+### `spio_cloud_compile_stress_gate`
+
+Objective:
+
+- validate the public multi-tenant compile-cloud stress framework, including high concurrency, bounded container capacity, tenant isolation, and hot replacement lifecycle behavior
+
+Commands:
+
+```text
+./scripts/cloud-compile-stress.py \
+  --tenants 4 \
+  --containers-per-tenant 2 \
+  --slots-per-container 4 \
+  --jobs 1000 \
+  --concurrency 128 \
+  --hot-replace-every 200 \
+  --require-hot-replacement \
+  --summary-json /tmp/spio-cloud-stress-summary.json \
+  --events-jsonl /tmp/spio-cloud-stress-events.jsonl
+python3 tests/unit/test_cloud_compile_stress.py
+```
+
+Pass conditions:
+
+- all scheduled compile jobs finish
+- every tenant completes work
+- no job crosses tenant/container ownership boundaries
+- no container exceeds its declared slot capacity
+- draining containers never accept new jobs
+- no draining container remains after workload drain
+- configured failure-rate and p95 thresholds are respected
+- hot replacement occurs when required
+
+Defect:
+
+- the tracked public gate is synthetic and deterministic; it models the compile-cloud scheduler and container lifecycle before a production remote scheduler, queue, or container runtime is available
+
 ### `spio_registry_write_header_gate`
 
 Objective:
@@ -418,7 +384,7 @@ Objective:
 Commands:
 
 ```text
-implement under ./spio/tests-private/interop/
+implement under ./tests-private/interop/
 ```
 
 Pass conditions:
@@ -441,7 +407,7 @@ Objective:
 Commands:
 
 ```text
-implement under ./spio/tests-private/interop/
+implement under ./tests-private/interop/
 ```
 
 Pass conditions:
@@ -464,7 +430,7 @@ Objective:
 Commands:
 
 ```text
-implement under ./spio/tests-private/interop/
+implement under ./tests-private/interop/
 ```
 
 Pass conditions:
@@ -487,7 +453,7 @@ Objective:
 Commands:
 
 ```text
-./spio/scripts/extractability-check.sh
+./scripts/extractability-check.sh
 ```
 
 Pass conditions:
@@ -530,7 +496,7 @@ Objective:
 Commands:
 
 ```text
-./spio/scripts/preflight-readiness-check.py --styio-bin ./build-codex/bin/styio
+./scripts/preflight-readiness-check.py --styio-bin ./build-codex/bin/styio
 ```
 
 Pass conditions:
