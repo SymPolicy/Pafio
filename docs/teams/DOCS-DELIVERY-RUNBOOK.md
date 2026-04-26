@@ -53,7 +53,8 @@ without redefining planning, registry, compiler, or service contract semantics.
 14. Keep [../specs/TECHNOLOGY-COMPONENT-INVENTORY.md](../specs/TECHNOLOGY-COMPONENT-INVENTORY.md) aligned with `audit` whenever the technology stack, internal components, open-source components, dependency manifests, Apache-2.0 evidence, or commercial-risk boundaries change.
 15. For registry-management documentation changes, require explicit coverage of publish, verify, mirror handoff, offline behavior, cache reuse, and public/private security boundary before closing docs/audit work.
 16. Maintain GitHub merge gates through Rulesets rather than legacy classic branch protection; audit effective branch rules when required status-check governance changes, and keep `local-ci-gate` as the spio repository's own CI status-check surface rather than treating it as the shared upstream `styio-ci-gate` ecosystem resource gate.
-17. Keep `docs/governance/Spio-Entry-Argument-Index.md`, `docs/governance/Docs-Maintenance-Model.md`, and `docs/operations/Spio-Verification-Matrix.md` aligned whenever delivery scripts or submit gates change.
+17. Keep `local-ci-gate` sibling checkouts on downstream `nightly` branches when the downstream repositories have collapsed their branch set to `nightly`.
+18. Keep `docs/governance/Spio-Entry-Argument-Index.md`, `docs/governance/Docs-Maintenance-Model.md`, and `docs/operations/Spio-Verification-Matrix.md` aligned whenever delivery scripts or submit gates change.
 
 ## Change Classes
 
