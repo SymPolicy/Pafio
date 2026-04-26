@@ -34,12 +34,38 @@ fs::path ProjectToolchainPinPathForManifest(const fs::path &manifest_path)
   return CanonicalAbsolutePath(CanonicalAbsolutePath(manifest_path).parent_path() / "spio-toolchain.toml");
 }
 
+fs::path ProjectToolchainStatePathForManifest(const fs::path &manifest_path)
+{
+  return CanonicalAbsolutePath(CanonicalAbsolutePath(manifest_path).parent_path() / "spio-toolchain.lock");
+}
+
 std::optional<fs::path> FindProjectToolchainPinPath(const fs::path &manifest_path)
 {
   fs::path current = CanonicalAbsolutePath(manifest_path).parent_path();
   while (true)
   {
     const fs::path candidate = CanonicalAbsolutePath(current / "spio-toolchain.toml");
+    if (fs::exists(candidate))
+    {
+      return candidate;
+    }
+
+    const fs::path parent = current.parent_path();
+    if (parent == current)
+    {
+      break;
+    }
+    current = parent;
+  }
+  return std::nullopt;
+}
+
+std::optional<fs::path> FindProjectToolchainStatePath(const fs::path &manifest_path)
+{
+  fs::path current = CanonicalAbsolutePath(manifest_path).parent_path();
+  while (true)
+  {
+    const fs::path candidate = CanonicalAbsolutePath(current / "spio-toolchain.lock");
     if (fs::exists(candidate))
     {
       return candidate;
@@ -106,6 +132,25 @@ fs::path ManagedStyioBinaryPath(const fs::path &root)
 fs::path ManagedStyioMetadataPath(const fs::path &root)
 {
   return CanonicalAbsolutePath(root / "install.json");
+}
+
+fs::path SourceStateRoot(const fs::path &spio_home)
+{
+  return CanonicalAbsolutePath(CanonicalAbsolutePath(spio_home) / "src" / "styio");
+}
+
+fs::path SourceCheckoutRoot(const fs::path &spio_home, const std::string &channel, const std::string &identity)
+{
+  return CanonicalAbsolutePath(SourceStateRoot(spio_home) / channel / identity / "source");
+}
+
+fs::path SourceToolchainBuildRoot(
+    const fs::path &spio_home,
+    const std::string &channel,
+    const std::string &identity,
+    const std::string &build_mode)
+{
+  return CanonicalAbsolutePath(CanonicalAbsolutePath(spio_home) / "toolchains" / "source" / channel / identity / build_mode);
 }
 
 fs::path RegistryCacheRoot(const fs::path &spio_home)

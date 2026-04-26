@@ -106,12 +106,10 @@ import json
 import sys
 payload = json.loads(sys.argv[1])
 assert payload["ok"] is True
-assert payload["marker_action"] == "copied"
-assert payload["entries_total"] == 1
-assert payload["entries_copied"] == 1
-assert payload["blobs_total"] == 1
-assert payload["blobs_copied"] == 1
 assert payload["packages"] == ["acme/util@0.2.0"]
+assert payload["files_total"] >= 1
+assert payload["files_copied"] >= 1
+assert payload["verified"]["ok"] is True
 PY
 
 PROMOTE_AGAIN_JSON="$(
@@ -127,11 +125,10 @@ import json
 import sys
 payload = json.loads(sys.argv[1])
 assert payload["ok"] is True
-assert payload["marker_action"] == "reused"
-assert payload["entries_total"] == 1
-assert payload["entries_reused"] == 1
-assert payload["blobs_total"] == 1
-assert payload["blobs_reused"] == 1
+assert payload["packages"] == ["acme/util@0.2.0"]
+assert payload["files_total"] >= 1
+assert payload["files_reused"] >= 1
+assert payload["verified"]["ok"] is True
 PY
 
 FETCH_JSON="$("$SPIO_BIN" --json fetch --manifest-path "$TMP_ROOT/spio.toml")"

@@ -1,8 +1,11 @@
 # ADR-0023: Phase-6 Activates URL-Based Registry Consumption and a Cloud-Deployable Static Repository Layout
 
+**Last updated:** 2026-04-17  
 **Status:** Accepted  
 **Date:** 2026-04-12  
 **Purpose:** Record the decision to make the existing filesystem-registry layout the canonical package-repository contract for both local and cloud deployment, and to activate client-side registry dependency resolution against URL-addressable registry roots.
+
+**Last updated:** 2026-04-12
 
 ## Context
 

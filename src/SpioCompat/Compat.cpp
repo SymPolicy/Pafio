@@ -2,6 +2,7 @@
 
 #include "SpioCore/Errors.hpp"
 #include "SpioCore/Paths.hpp"
+#include "SpioCore/Process.hpp"
 
 #include <algorithm>
 #include <array>
@@ -16,96 +17,11 @@
 #include <nlohmann/json.hpp>
 #include <toml++/toml.h>
 
-#include <sys/types.h>
-#include <sys/wait.h>
-#include <unistd.h>
-
 namespace fs = std::filesystem;
 using json = nlohmann::json;
 
 namespace
 {
-
-struct ChildProcessResult
-{
-  int exit_code = 0;
-  std::string stdout_text;
-  std::string stderr_text;
-};
-
-ChildProcessResult RunChildProcess(const fs::path &binary, const std::vector<std::string> &args)
-{
-  int stdout_pipe[2];
-  int stderr_pipe[2];
-  if (pipe(stdout_pipe) != 0 || pipe(stderr_pipe) != 0)
-  {
-    throw spio::CompilerProbeError("failed to create pipes for compiler probe");
-  }
-
-  const pid_t child = fork();
-  if (child < 0)
-  {
-    close(stdout_pipe[0]);
-    close(stdout_pipe[1]);
-    close(stderr_pipe[0]);
-    close(stderr_pipe[1]);
-    throw spio::CompilerProbeError("failed to fork compiler probe process");
-  }
-
-  if (child == 0)
-  {
-    dup2(stdout_pipe[1], STDOUT_FILENO);
-    dup2(stderr_pipe[1], STDERR_FILENO);
-    close(stdout_pipe[0]);
-    close(stdout_pipe[1]);
-    close(stderr_pipe[0]);
-    close(stderr_pipe[1]);
-
-    std::vector<char *> argv;
-    argv.reserve(args.size() + 2U);
-    argv.push_back(const_cast<char *>(binary.c_str()));
-    for (const std::string &arg : args)
-    {
-      argv.push_back(const_cast<char *>(arg.c_str()));
-    }
-    argv.push_back(nullptr);
-
-    execv(binary.c_str(), argv.data());
-    _exit(127);
-  }
-
-  close(stdout_pipe[1]);
-  close(stderr_pipe[1]);
-
-  auto read_all = [](int fd) {
-    std::string text;
-    std::array<char, 4096> buffer{};
-    ssize_t read_size = 0;
-    while ((read_size = read(fd, buffer.data(), buffer.size())) > 0)
-    {
-      text.append(buffer.data(), static_cast<size_t>(read_size));
-    }
-    close(fd);
-    return text;
-  };
-
-  ChildProcessResult result;
-  result.stdout_text = read_all(stdout_pipe[0]);
-  result.stderr_text = read_all(stderr_pipe[0]);
-
-  int status = 0;
-  waitpid(child, &status, 0);
-  if (WIFEXITED(status))
-  {
-    result.exit_code = WEXITSTATUS(status);
-  }
-  else
-  {
-    result.exit_code = 1;
-  }
-
-  return result;
-}
 
 std::tuple<int, int, int> ParseSemver(const std::string &version)
 {
@@ -145,10 +61,16 @@ toml::table LoadCompatMatrix()
 
 json ProbeMachineInfo(const fs::path &binary)
 {
-  const ChildProcessResult result = RunChildProcess(binary, {"--machine-info=json"});
+  const spio::ProcessResult result = spio::RunProcess<spio::CompilerProbeError>({
+      .program = binary.string(),
+      .args = {"--machine-info=json"},
+      .search_path = false,
+      .timeout = spio::kExternalProcessProbeTimeout,
+      .error_context = "compiler probe process",
+  });
   if (result.exit_code != 0)
   {
-    const std::string detail = result.stderr_text.empty() ? result.stdout_text : result.stderr_text;
+    const std::string detail = spio::DescribeProcessFailure(result);
     throw spio::CompilerProbeError("compiler '" + binary.string() + "' rejected --machine-info=json" + (detail.empty() ? "" : ": " + detail));
   }
 

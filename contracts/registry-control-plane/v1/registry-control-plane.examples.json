@@ -1,0 +1,97 @@
+{
+  "registryStatus": {
+    "request": null,
+    "success": {
+      "returncode": 0,
+      "message": "registry control plane is ready",
+      "stdout": "",
+      "stderr": "",
+      "payload": {
+        "registry_root": "<redacted>",
+        "key_dir": "<redacted>",
+        "registry_name": "production-registry",
+        "root_initialized": true,
+        "config_present": true,
+        "root_metadata_present": true,
+        "publish_endpoint": "/api/spio-registry-control/v1/publish",
+        "verify_endpoint": "/api/spio-registry-control/v1/verify"
+      }
+    },
+    "failure": {
+      "returncode": 17,
+      "message": "registry status failed",
+      "stdout": "",
+      "stderr": "registry root is unreadable",
+      "error_payload": {
+        "category": "RegistryStatusError",
+        "detail": "registry root is unreadable"
+      }
+    }
+  },
+  "publishRelease": {
+    "request": {
+      "manifest_path": "/workspace/demo/spio.toml",
+      "publisher_id": "console-user"
+    },
+    "success": {
+      "returncode": 0,
+      "message": "published registry v2 release",
+      "stdout": "",
+      "stderr": "",
+      "payload": {
+        "registry_root": "/srv/spio-registry-v2",
+        "created_root": true,
+        "package": "demo/app",
+        "version": "0.1.0",
+        "publisher_id": "console-user",
+        "published_at": "2026-04-21T00:00:00Z",
+        "archive_path": "/tmp/demo/app-0.1.0.tar",
+        "archive_sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+        "archive_size_bytes": 4096,
+        "artifact_path": "artifacts/source/sha256/01/23/0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef.spio.src.tar",
+        "index_path": "index/demo/app.jsonl",
+        "log_leaf_path": "log/leaves/000000000001.json",
+        "sequence": 1,
+        "dependencies": 0,
+        "dev_dependencies": 0
+      }
+    },
+    "failure": {
+      "returncode": 17,
+      "message": "registry publish failed",
+      "stdout": "",
+      "stderr": "package version is already published",
+      "error_payload": {
+        "category": "PublishError",
+        "detail": "package version is already published"
+      }
+    }
+  },
+  "verifyRegistry": {
+    "request": {},
+    "success": {
+      "returncode": 0,
+      "message": "verified registry v2 root",
+      "stdout": "",
+      "stderr": "",
+      "payload": {
+        "ok": true,
+        "root": "/srv/spio-registry-v2",
+        "namespaces": 1,
+        "index_files": 1,
+        "releases": 2,
+        "tree_size": 2
+      }
+    },
+    "failure": {
+      "returncode": 17,
+      "message": "registry verification failed",
+      "stdout": "",
+      "stderr": "checkpoint hash mismatch",
+      "error_payload": {
+        "category": "VerifyError",
+        "detail": "checkpoint hash mismatch"
+      }
+    }
+  }
+}

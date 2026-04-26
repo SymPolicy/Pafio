@@ -227,8 +227,8 @@ Both teams are jointly responsible for:
 
 In practice, the `styio` team should watch these documents together:
 
-- [Styio-External-Interface-Requirement-Spec.md](../styio/Styio-External-Interface-Requirement-Spec.md)
-- [Styio-Public-Interface-Roadmap.md](../styio/Styio-Public-Interface-Roadmap.md)
+- [Styio-External-Interface-Requirement-Spec.md](../external/for-styio/Styio-External-Interface-Requirement-Spec.md)
+- [Styio-Public-Interface-Roadmap.md](../external/for-styio/Styio-Public-Interface-Roadmap.md)
 - [Spio-CLI-Contract.md](../governance/Spio-CLI-Contract.md)
 - this document
 

@@ -2,12 +2,12 @@
 
 #include "SpioCore/Errors.hpp"
 #include "SpioCore/Paths.hpp"
+#include "SpioCore/Process.hpp"
 #include "SpioCore/Version.hpp"
 #include "SpioManifest/Manifest.hpp"
 #include "SpioRegistryClient/Client.hpp"
 
 #include <algorithm>
-#include <array>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
@@ -18,11 +18,6 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
-
-#include <sys/types.h>
-#include <sys/wait.h>
-#include <unistd.h>
-
 namespace fs = std::filesystem;
 
 namespace
@@ -52,13 +47,6 @@ struct ManifestSelection
 {
   fs::path manifest_path;
   SourceOrigin origin;
-};
-
-struct ChildProcessResult
-{
-  int exit_code = 0;
-  std::string stdout_text;
-  std::string stderr_text;
 };
 
 fs::path CanonicalAbsolutePath(const fs::path &path)
@@ -118,88 +106,6 @@ std::string NormalizeGitSource(const std::string &source, const fs::path &packag
     return CanonicalAbsolutePath(source_path).generic_string();
   }
   return CanonicalAbsolutePath(package_dir / source_path).generic_string();
-}
-
-ChildProcessResult RunChildProcess(const std::string &binary, const std::vector<std::string> &args)
-{
-  int stdout_pipe[2];
-  int stderr_pipe[2];
-  if (pipe(stdout_pipe) != 0 || pipe(stderr_pipe) != 0)
-  {
-    throw spio::CacheError("failed to create pipes for resolver process execution");
-  }
-
-  const pid_t child = fork();
-  if (child < 0)
-  {
-    close(stdout_pipe[0]);
-    close(stdout_pipe[1]);
-    close(stderr_pipe[0]);
-    close(stderr_pipe[1]);
-    throw spio::CacheError("failed to fork resolver process");
-  }
-
-  if (child == 0)
-  {
-    dup2(stdout_pipe[1], STDOUT_FILENO);
-    dup2(stderr_pipe[1], STDERR_FILENO);
-    close(stdout_pipe[0]);
-    close(stdout_pipe[1]);
-    close(stderr_pipe[0]);
-    close(stderr_pipe[1]);
-
-    std::vector<char *> argv;
-    argv.reserve(args.size() + 2U);
-    argv.push_back(const_cast<char *>(binary.c_str()));
-    for (const std::string &arg : args)
-    {
-      argv.push_back(const_cast<char *>(arg.c_str()));
-    }
-    argv.push_back(nullptr);
-
-    execvp(binary.c_str(), argv.data());
-    _exit(127);
-  }
-
-  close(stdout_pipe[1]);
-  close(stderr_pipe[1]);
-
-  auto read_all = [](int fd) {
-    std::string text;
-    std::array<char, 4096> buffer{};
-    ssize_t read_size = 0;
-    while ((read_size = read(fd, buffer.data(), buffer.size())) > 0)
-    {
-      text.append(buffer.data(), static_cast<size_t>(read_size));
-    }
-    close(fd);
-    return text;
-  };
-
-  ChildProcessResult result;
-  result.stdout_text = read_all(stdout_pipe[0]);
-  result.stderr_text = read_all(stderr_pipe[0]);
-
-  int status = 0;
-  waitpid(child, &status, 0);
-  if (WIFEXITED(status))
-  {
-    result.exit_code = WEXITSTATUS(status);
-  }
-  else
-  {
-    result.exit_code = 1;
-  }
-  return result;
-}
-
-std::string TrimTrailingNewline(std::string text)
-{
-  while (!text.empty() && (text.back() == '\n' || text.back() == '\r'))
-  {
-    text.pop_back();
-  }
-  return text;
 }
 
 std::string SourceKindString(SourceKind kind)
@@ -362,29 +268,48 @@ private:
     }
 
     fs::create_directories(repo_dir.parent_path());
-    const ChildProcessResult result = RunChildProcess("git", {"clone", "--mirror", normalized_source, repo_dir.string()});
+    const spio::ProcessResult result = spio::RunProcess<spio::CacheError>({
+        .program = "git",
+        .args = {"clone", "--mirror", normalized_source, repo_dir.string()},
+        .timeout = spio::kExternalProcessStepTimeout,
+        .error_context = "resolver process",
+    });
     if (result.exit_code != 0)
     {
       throw spio::FetchError(
           "failed to clone git source '" + normalized_source + "': " +
-          TrimTrailingNewline(result.stderr_text.empty() ? result.stdout_text : result.stderr_text));
+          spio::DescribeProcessFailure(result));
     }
   }
 
   bool HasRevision(const fs::path &repo_dir, const std::string &rev) const
   {
-    const ChildProcessResult result = RunChildProcess("git", {"--git-dir", repo_dir.string(), "cat-file", "-e", rev + "^{commit}"});
+    const spio::ProcessResult result = spio::RunProcess<spio::CacheError>({
+        .program = "git",
+        .args = {"--git-dir", repo_dir.string(), "cat-file", "-e", rev + "^{commit}"},
+        .timeout = spio::kExternalProcessProbeTimeout,
+        .error_context = "resolver process",
+    });
+    if (result.timed_out)
+    {
+      throw spio::FetchError("failed to check git rev '" + rev + "': " + spio::DescribeProcessFailure(result));
+    }
     return result.exit_code == 0;
   }
 
   void FetchOrigin(const fs::path &repo_dir) const
   {
-    const ChildProcessResult result = RunChildProcess("git", {"--git-dir", repo_dir.string(), "fetch", "--prune", "origin"});
+    const spio::ProcessResult result = spio::RunProcess<spio::CacheError>({
+        .program = "git",
+        .args = {"--git-dir", repo_dir.string(), "fetch", "--prune", "origin"},
+        .timeout = spio::kExternalProcessStepTimeout,
+        .error_context = "resolver process",
+    });
     if (result.exit_code != 0)
     {
       throw spio::FetchError(
           "failed to fetch git source cache '" + repo_dir.string() + "': " +
-          TrimTrailingNewline(result.stderr_text.empty() ? result.stdout_text : result.stderr_text));
+          spio::DescribeProcessFailure(result));
     }
   }
 
@@ -398,35 +323,34 @@ private:
 
     fs::remove_all(snapshot_root);
     fs::create_directories(snapshot_root);
-    const ChildProcessResult archive = RunChildProcess("git", {"--git-dir", repo_dir.string(), "archive", "--format=tar", rev});
+    const fs::path archive_path = snapshot_root.parent_path() / (Hex64(Fnv1a64(rev)) + ".tar");
+    const spio::ProcessResult archive = spio::RunProcess<spio::CacheError>({
+        .program = "git",
+        .args = {"--git-dir", repo_dir.string(), "archive", "--format=tar", "--output", archive_path.string(), rev},
+        .timeout = spio::kExternalProcessStepTimeout,
+        .error_context = "resolver process",
+    });
     if (archive.exit_code != 0)
     {
+      std::error_code ignored;
+      fs::remove(archive_path, ignored);
       throw spio::FetchError(
           "failed to archive git rev '" + rev + "': " +
-          TrimTrailingNewline(archive.stderr_text.empty() ? archive.stdout_text : archive.stderr_text));
+          spio::DescribeProcessFailure(archive));
     }
 
-    const fs::path archive_path = snapshot_root.parent_path() / (Hex64(Fnv1a64(rev)) + ".tar");
-    {
-      std::ofstream out(archive_path, std::ios::binary);
-      if (!out)
-      {
-        throw spio::CacheError("failed to create temporary git archive: " + archive_path.string());
-      }
-      out.write(archive.stdout_text.data(), static_cast<std::streamsize>(archive.stdout_text.size()));
-      if (!out.good())
-      {
-        throw spio::CacheError("failed to write temporary git archive: " + archive_path.string());
-      }
-    }
-
-    const ChildProcessResult extract = RunChildProcess("tar", {"-xf", archive_path.string(), "-C", snapshot_root.string()});
+    const spio::ProcessResult extract = spio::RunProcess<spio::CacheError>({
+        .program = "tar",
+        .args = {"-xf", archive_path.string(), "-C", snapshot_root.string()},
+        .timeout = spio::kExternalProcessStepTimeout,
+        .error_context = "resolver process",
+    });
     fs::remove(archive_path);
     if (extract.exit_code != 0)
     {
       throw spio::CacheError(
           "failed to extract git snapshot '" + snapshot_root.string() + "': " +
-          TrimTrailingNewline(extract.stderr_text.empty() ? extract.stdout_text : extract.stderr_text));
+          spio::DescribeProcessFailure(extract));
     }
 
     std::ofstream marker(ready_marker);

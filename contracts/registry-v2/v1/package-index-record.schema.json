@@ -1,0 +1,248 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://spio.dev/contracts/registry-v2/v1/package-index-record.schema.json",
+  "title": "spio Registry V2 Package Index Record",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "package",
+    "version",
+    "release_revision",
+    "published_at",
+    "publisher_id",
+    "yanked",
+    "deprecated_message",
+    "source_artifact",
+    "binary_artifacts",
+    "dependencies",
+    "dev_dependencies",
+    "features",
+    "manifest_digest",
+    "metadata_digest"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "package": {
+      "type": "string",
+      "pattern": "^[^/]+/[^/]+$"
+    },
+    "version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "release_revision": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "published_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "publisher_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "yanked": {
+      "type": "boolean"
+    },
+    "deprecated_message": {
+      "type": "string"
+    },
+    "source_artifact": {
+      "$ref": "#/$defs/sourceArtifact"
+    },
+    "binary_artifacts": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/binaryArtifact"
+      }
+    },
+    "dependencies": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/dependency"
+      }
+    },
+    "dev_dependencies": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/dependency"
+      }
+    },
+    "features": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "default",
+        "optional"
+      ],
+      "properties": {
+        "default": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "optional": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "manifest_digest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "metadata_digest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    }
+  },
+  "$defs": {
+    "sourceArtifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sha256",
+        "size_bytes",
+        "path",
+        "archive_format",
+        "compression"
+      ],
+      "properties": {
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "size_bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "path": {
+          "type": "string",
+          "pattern": "^artifacts/source/"
+        },
+        "archive_format": {
+          "type": "string",
+          "minLength": 1
+        },
+        "compression": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "binaryArtifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sha256",
+        "size_bytes",
+        "path",
+        "target_triple",
+        "abi",
+        "libc",
+        "build_profile",
+        "features_fingerprint",
+        "archive_format",
+        "compression"
+      ],
+      "properties": {
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "size_bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "path": {
+          "type": "string",
+          "pattern": "^artifacts/binary/"
+        },
+        "target_triple": {
+          "type": "string",
+          "minLength": 1
+        },
+        "abi": {
+          "type": "string",
+          "minLength": 1
+        },
+        "libc": {
+          "type": "string",
+          "minLength": 1
+        },
+        "build_profile": {
+          "type": "string",
+          "minLength": 1
+        },
+        "features_fingerprint": {
+          "type": "string",
+          "minLength": 1
+        },
+        "archive_format": {
+          "type": "string",
+          "minLength": 1
+        },
+        "compression": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "dependency": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "alias",
+        "package",
+        "version_req",
+        "registry",
+        "kind",
+        "optional",
+        "target_condition",
+        "features"
+      ],
+      "properties": {
+        "alias": {
+          "type": "string",
+          "minLength": 1
+        },
+        "package": {
+          "type": "string",
+          "pattern": "^[^/]+/[^/]+$"
+        },
+        "version_req": {
+          "type": "string",
+          "minLength": 1
+        },
+        "registry": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "type": "string",
+          "minLength": 1
+        },
+        "optional": {
+          "type": "boolean"
+        },
+        "target_condition": {
+          "type": "string"
+        },
+        "features": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

@@ -57,12 +57,12 @@ SERVER_PID="$!"
 
 REGISTRY_URL="http://127.0.0.1:${PORT}"
 for _ in $(seq 1 30); do
-  if curl -fsS "${REGISTRY_URL}/spio-registry.json" >/dev/null 2>&1; then
+  if curl -fsS "${REGISTRY_URL}/config.json" >/dev/null 2>&1; then
     break
   fi
   sleep 0.1
 done
-curl -fsS "${REGISTRY_URL}/spio-registry.json" >/dev/null
+curl -fsS "${REGISTRY_URL}/config.json" >/dev/null
 
 cat >"$ROOT/spio.toml" <<EOF
 [spio]

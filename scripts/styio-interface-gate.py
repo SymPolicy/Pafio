@@ -57,6 +57,14 @@ def load_json(stdout_text: str, context: str) -> dict:
     return payload
 
 
+def load_json_file(path: pathlib.Path, context: str) -> dict:
+    if not path.exists():
+        raise RuntimeError(f"{context} is missing: {path}")
+    if not path.is_file():
+        raise RuntimeError(f"{context} is not a file: {path}")
+    return load_json(path.read_text(encoding="utf-8"), context)
+
+
 def validate_machine_info(payload: dict, *, require_compile_plan: bool) -> list[str]:
     errors: list[str] = []
 
@@ -72,6 +80,10 @@ def validate_machine_info(payload: dict, *, require_compile_plan: bool) -> list[
     if not isinstance(channel, str) or not channel:
         errors.append("machine-info field 'channel' must be a non-empty string")
 
+    integration_phase = payload.get("active_integration_phase")
+    if not isinstance(integration_phase, str) or not integration_phase:
+        errors.append("machine-info field 'active_integration_phase' must be a non-empty string")
+
     supported_contracts = payload.get("supported_contracts")
     if not isinstance(supported_contracts, dict):
         errors.append("machine-info field 'supported_contracts' must be an object")
@@ -81,6 +93,24 @@ def validate_machine_info(payload: dict, *, require_compile_plan: bool) -> list[
             errors.append("machine-info field 'supported_contracts.compile_plan' must be an array of integers")
         elif require_compile_plan and 1 not in compile_plan:
             errors.append("machine-info must advertise compile-plan v1 support when --require-compile-plan is set")
+
+    supported_contract_versions = payload.get("supported_contract_versions")
+    if not isinstance(supported_contract_versions, dict):
+        errors.append("machine-info field 'supported_contract_versions' must be an object")
+    elif supported_contract_versions.get("machine_info") != [1]:
+        errors.append("machine-info must advertise supported_contract_versions.machine_info = [1]")
+
+    supported_adapter_modes = payload.get("supported_adapter_modes")
+    if not isinstance(supported_adapter_modes, list) or not all(isinstance(item, str) for item in supported_adapter_modes):
+        errors.append("machine-info field 'supported_adapter_modes' must be an array of strings")
+    elif "cli" not in supported_adapter_modes:
+        errors.append("machine-info must advertise 'cli' in supported_adapter_modes")
+
+    feature_flags = payload.get("feature_flags")
+    if not isinstance(feature_flags, dict):
+        errors.append("machine-info field 'feature_flags' must be an object")
+    elif feature_flags.get("jsonl_diagnostics") is not True:
+        errors.append("machine-info feature_flags must declare jsonl_diagnostics = true")
 
     capabilities = payload.get("capabilities")
     if not isinstance(capabilities, list) or not all(isinstance(item, str) for item in capabilities):
@@ -189,6 +219,8 @@ def main(argv: list[str] | None = None) -> int:
                 build_root = pathlib.Path(dry_run_payload["build_root"])
                 artifact_dir = pathlib.Path(dry_run_payload["artifact_dir"])
                 diag_dir = pathlib.Path(dry_run_payload["diag_dir"])
+                receipt_path = build_root / "receipt.json"
+                diagnostics_path = diag_dir / "diagnostics.jsonl"
 
                 compile_plan_step = run_step("compile_plan_execute", [styio_bin, "--compile-plan", str(plan_path)])
                 steps.append(compile_plan_step)
@@ -203,6 +235,36 @@ def main(argv: list[str] | None = None) -> int:
                             validation_errors.append(
                                 f"compile-plan execution did not materialize outputs.{label}: {expected_dir}"
                             )
+                    try:
+                        receipt_payload = load_json_file(receipt_path, "compile-plan receipt")
+                        if receipt_payload.get("intent") != dry_run_payload.get("intent"):
+                            validation_errors.append(
+                                f"compile-plan receipt intent mismatch: expected {dry_run_payload.get('intent')!r}, got {receipt_payload.get('intent')!r}"
+                            )
+                        receipt_outputs = receipt_payload.get("outputs")
+                        if not isinstance(receipt_outputs, dict):
+                            validation_errors.append("compile-plan receipt field 'outputs' must be an object")
+                        else:
+                            for key, expected_path in (
+                                ("build_root", build_root),
+                                ("artifact_dir", artifact_dir),
+                                ("diag_dir", diag_dir),
+                            ):
+                                if receipt_outputs.get(key) != str(expected_path):
+                                    validation_errors.append(
+                                        f"compile-plan receipt outputs.{key} mismatch: expected {expected_path}, got {receipt_outputs.get(key)!r}"
+                                    )
+                    except RuntimeError as err:
+                        validation_errors.append(str(err))
+
+                    if not diagnostics_path.exists():
+                        validation_errors.append(
+                            f"compile-plan execution did not publish diagnostics artifact: {diagnostics_path}"
+                        )
+                    elif not diagnostics_path.is_file():
+                        validation_errors.append(
+                            f"compile-plan diagnostics path is not a file: {diagnostics_path}"
+                        )
             except (RuntimeError, KeyError, TypeError) as err:
                 validation_errors.append(f"compile-plan dry-run payload is invalid: {err}")
 

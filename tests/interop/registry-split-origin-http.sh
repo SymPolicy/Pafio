@@ -24,6 +24,7 @@ cleanup() {
 trap cleanup EXIT
 
 export SPIO_HOME="$TMP_ROOT/.spio-home"
+KEY_DIR="$TMP_ROOT/keys"
 WRITE_ROOT="$TMP_ROOT/upload-root"
 READ_ROOT="$TMP_ROOT/read-root"
 mkdir -p "$WRITE_ROOT" "$READ_ROOT" "$TMP_ROOT/publish/util/src"
@@ -48,22 +49,29 @@ s.close()
 PY
 )"
 
-python3 "$SCRIPT_DIR/registry-http-server.py" --root "$WRITE_ROOT" --bind 127.0.0.1 --port "$write_port" >"$WRITE_LOG" 2>&1 &
+python3 "$ROOT_DIR/scripts/registry-v2-keygen.py" --output-dir "$KEY_DIR" >/dev/null
+
+python3 "$ROOT_DIR/scripts/registry-v2-control-plane-server.py" \
+  --root "$WRITE_ROOT" \
+  --key-dir "$KEY_DIR" \
+  --spio-bin "$SPIO_BIN" \
+  --bind 127.0.0.1 \
+  --port "$write_port" >"$WRITE_LOG" 2>&1 &
 WRITE_SERVER_PID="$!"
 
 python3 -m http.server "$read_port" --bind 127.0.0.1 --directory "$READ_ROOT" >"$READ_LOG" 2>&1 &
 READ_SERVER_PID="$!"
 
-WRITE_URL="http://127.0.0.1:${write_port}"
+WRITE_URL="http://127.0.0.1:${write_port}/api/spio-registry-control/v1"
 READ_URL="http://127.0.0.1:${read_port}"
 
 for _ in $(seq 1 30); do
-  if curl -fsS "${WRITE_URL}/" >/dev/null 2>&1 && curl -fsS "${READ_URL}/" >/dev/null 2>&1; then
+  if curl -fsS "${WRITE_URL}/status" >/dev/null 2>&1 && curl -fsS "${READ_URL}/" >/dev/null 2>&1; then
     break
   fi
   sleep 0.1
 done
-curl -fsS "${WRITE_URL}/" >/dev/null
+curl -fsS "${WRITE_URL}/status" >/dev/null
 curl -fsS "${READ_URL}/" >/dev/null
 
 cat >"$TMP_ROOT/publish/util/spio.toml" <<'EOF'
@@ -96,8 +104,9 @@ payload = json.loads(sys.argv[1])
 assert payload["command"] == "publish"
 assert payload["mode"] == "publish"
 assert payload["transport"] == "http"
+assert payload["registry_protocol"] == "v2"
 assert payload["package"] == "acme/util"
-assert payload["registry_entry_url"].endswith("/index/acme/util/0.2.0.json")
+assert payload["registry_index_path"].endswith("index/acme/util.jsonl")
 PY
 
 cat >"$TMP_ROOT/spio.toml" <<EOF
@@ -139,8 +148,9 @@ import json
 import sys
 payload = json.loads(sys.argv[1])
 assert payload["ok"] is True
-assert payload["entries_total"] == 1
-assert payload["blobs_total"] == 1
+assert payload["packages"] == ["acme/util@0.2.0"]
+assert payload["files_total"] >= 1
+assert payload["verified"]["ok"] is True
 PY
 
 FETCH_JSON="$("$SPIO_BIN" --json fetch --manifest-path "$TMP_ROOT/spio.toml")"

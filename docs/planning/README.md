@@ -2,6 +2,8 @@
 
 **Purpose:** Hold delivery phases, workstreams, and planning summaries for `spio`.
 
+**Last updated:** 2026-04-19
+
 ## Scope
 
 - master plan

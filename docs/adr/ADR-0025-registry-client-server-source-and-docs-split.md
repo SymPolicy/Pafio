@@ -1,8 +1,11 @@
 # ADR-0025: Registry Client and Server Concerns Are Split in Source and Docs
 
+**Last updated:** 2026-04-17  
 **Status:** Accepted  
 **Date:** 2026-04-12  
 **Purpose:** Record the decision to keep registry consumption and registry publication in one repository while separating them explicitly at the source-tree and documentation levels.
+
+**Last updated:** 2026-04-12
 
 ## Context
 

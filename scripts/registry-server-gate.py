@@ -192,6 +192,8 @@ def validate_publish_payload(
         errors.append("publish payload field 'command' must equal 'publish'")
     if payload.get("mode") != "publish":
         errors.append("publish payload field 'mode' must equal 'publish'")
+    if payload.get("registry_protocol") != "v2":
+        errors.append("publish payload field 'registry_protocol' must equal 'v2'")
 
     transport = payload.get("transport")
     expected_transport = expected_publish_transport(publish_root)
@@ -234,10 +236,17 @@ def validate_publish_payload(
         errors.append("publish payload field 'registry_profile' must be absent when no profile was requested")
 
     if expected_transport == "http":
+        control_plane_base = publish_root.rstrip("/")
+        if not control_plane_base.endswith("/api/spio-registry-control/v1"):
+            control_plane_base = control_plane_base + "/api/spio-registry-control/v1"
+        if payload.get("control_plane_base_url") != control_plane_base:
+            errors.append("publish payload field 'control_plane_base_url' did not match the expected control-plane base")
+        if payload.get("publish_endpoint") != control_plane_base + "/publish":
+            errors.append("publish payload field 'publish_endpoint' did not match the expected control-plane publish route")
         for key, suffix in (
-            ("registry_marker_url", "/spio-registry.json"),
-            ("registry_blob_url", ".tar"),
-            ("registry_entry_url", "/index/acme/server-gate/0.1.0.json"),
+            ("registry_index_path", "index/acme/server-gate.jsonl"),
+            ("registry_artifact_path", ".spio.src.tar"),
+            ("registry_log_leaf_path", "log/leaves/000000000001.json"),
         ):
             value = payload.get(key)
             if not isinstance(value, str) or not value:
@@ -246,20 +255,26 @@ def validate_publish_payload(
                 errors.append(f"publish payload field '{key}' must end with '{suffix}'")
     else:
         for key, suffix in (
-            ("registry_marker_path", "spio-registry.json"),
-            ("registry_blob_path", ".tar"),
-            ("registry_entry_path", os.path.join("index", "acme", "server-gate", "0.1.0.json")),
+            ("registry_config_path", "config.json"),
+            ("registry_index_path", os.path.join("index", "acme", "server-gate.jsonl")),
+            ("registry_artifact_path", ".spio.src.tar"),
+            ("registry_log_leaf_path", os.path.join("log", "leaves", "000000000001.json")),
         ):
             value = payload.get(key)
             if not isinstance(value, str) or not value:
                 errors.append(f"publish payload field '{key}' must be a non-empty string")
-            elif suffix == ".tar":
+            elif suffix in (".spio.src.tar",):
                 if not value.endswith(suffix):
                     errors.append(f"publish payload field '{key}' must end with '{suffix}'")
             else:
                 normalized = value.replace("\\", "/")
                 if not normalized.endswith(suffix.replace("\\", "/")):
                     errors.append(f"publish payload field '{key}' must end with '{suffix}'")
+
+    if payload.get("created_root") not in (True, False):
+        errors.append("publish payload field 'created_root' must be a boolean")
+    if payload.get("sequence") != 1:
+        errors.append("publish payload field 'sequence' must equal 1 for the first publish in the gate")
 
     return errors
 

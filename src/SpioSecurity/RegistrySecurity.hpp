@@ -38,8 +38,18 @@ struct RegistryWriteSecurityDecision
   std::optional<std::string> profile_name;
 };
 
+struct RegistryPackageNameParts
+{
+  std::string namespace_name;
+  std::string short_name;
+};
+
 using RegistryReadSecurityResolver = RegistryReadSecurityDecision (*)(const RegistryReadSecurityRequest &request);
 using RegistryWriteSecurityResolver = RegistryWriteSecurityDecision (*)(const RegistryWriteSecurityRequest &request);
+
+RegistryPackageNameParts SplitRegistryPackageName(const std::string &package_name, const std::string &context);
+std::filesystem::path NormalizeRegistryRelativePath(const std::string &relative_path, const std::string &context);
+bool IsRegistrySha256Digest(const std::string &value);
 
 RegistryReadSecurityDecision ResolveDefaultRegistryReadSecurity(const RegistryReadSecurityRequest &request);
 RegistryWriteSecurityDecision ResolveDefaultRegistryWriteSecurity(const RegistryWriteSecurityRequest &request);
@@ -49,5 +59,8 @@ RegistryWriteSecurityResolver RegisterRegistryWriteSecurityResolver(RegistryWrit
 
 RegistryReadSecurityDecision ResolveRegistryReadSecurity(const RegistryReadSecurityRequest &request);
 RegistryWriteSecurityDecision ResolveRegistryWriteSecurity(const RegistryWriteSecurityRequest &request);
+
+void ValidateRegistryPackageIdentity(const std::string &package_name);
+std::filesystem::path NormalizeRegistryObjectPath(const std::string &relative_path, const std::string &context);
 
 }  // namespace spio
