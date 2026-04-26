@@ -16,23 +16,24 @@ without redefining planning, registry, compiler, or service contract semantics.
 2. `LICENSE`
 3. `LICENSE-POLICY.md`
 4. `DEPENDENCY-USAGE.md`
-5. `docs/`
-6. `docs/external/`
-7. `docs/audit/`
-8. `scripts/audit-gate.sh`
-9. `scripts/docs-index.py`
-10. `scripts/docs-lifecycle.py`
-11. `scripts/docs-audit.py`
-12. `scripts/repo-hygiene-gate.py`
-13. `scripts/team-docs-gate.py`
-14. `scripts/docs-gate.sh`
-15. `scripts/delivery-gate.sh`
-16. `scripts/ecosystem-cli-doc-gate.py`
-17. `scripts/install-spio.sh`
-18. `scripts/repo-hygiene-check.py`
-19. `scripts/submit-gate.py`
-20. `scripts/perf-gate.py`
-21. `scripts/delivery-gate.py`
+5. `.github/workflows/local-ci-gate.yml`
+6. `docs/`
+7. `docs/external/`
+8. `docs/audit/`
+9. `scripts/audit-gate.sh`
+10. `scripts/docs-index.py`
+11. `scripts/docs-lifecycle.py`
+12. `scripts/docs-audit.py`
+13. `scripts/repo-hygiene-gate.py`
+14. `scripts/team-docs-gate.py`
+15. `scripts/docs-gate.sh`
+16. `scripts/delivery-gate.sh`
+17. `scripts/ecosystem-cli-doc-gate.py`
+18. `scripts/install-spio.sh`
+19. `scripts/repo-hygiene-check.py`
+20. `scripts/submit-gate.py`
+21. `scripts/perf-gate.py`
+22. `scripts/delivery-gate.py`
 
 ## Daily Workflow
 
@@ -51,7 +52,7 @@ without redefining planning, registry, compiler, or service contract semantics.
 13. Treat regenerated `docs/audit/` reports as evidence snapshots: update ownership metadata and indexes when they move, but leave defect status changes to code/test gate evidence.
 14. Keep [../specs/TECHNOLOGY-COMPONENT-INVENTORY.md](../specs/TECHNOLOGY-COMPONENT-INVENTORY.md) aligned with `audit` whenever the technology stack, internal components, open-source components, dependency manifests, Apache-2.0 evidence, or commercial-risk boundaries change.
 15. For registry-management documentation changes, require explicit coverage of publish, verify, mirror handoff, offline behavior, cache reuse, and public/private security boundary before closing docs/audit work.
-16. Maintain GitHub merge gates through Rulesets rather than legacy classic branch protection; audit effective branch rules when required status-check governance changes.
+16. Maintain GitHub merge gates through Rulesets rather than legacy classic branch protection; audit effective branch rules when required status-check governance changes, and keep `local-ci-gate` as the spio repository's own CI status-check surface rather than treating it as the shared upstream `styio-ci-gate` ecosystem resource gate.
 17. Keep `docs/governance/Spio-Entry-Argument-Index.md`, `docs/governance/Docs-Maintenance-Model.md`, and `docs/operations/Spio-Verification-Matrix.md` aligned whenever delivery scripts or submit gates change.
 
 ## Change Classes

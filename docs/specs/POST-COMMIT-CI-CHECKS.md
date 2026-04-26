@@ -2,7 +2,7 @@
 
 **Purpose:** Define the required workflow for checking GitHub Actions after a local commit is pushed, including what must be verified before committing and what must be watched after pushing.
 
-**Last updated:** 2026-04-25
+**Last updated:** 2026-04-26
 
 ## Scope
 
@@ -19,6 +19,13 @@ ctest --test-dir build-codex --output-on-failure
 python3 scripts/repo-hygiene-gate.py --mode tracked
 python3 scripts/docs-audit.py
 ```
+
+The GitHub Actions CI floor is the repository-local `local-ci-gate` workflow.
+It owns the range-aware docs/repo hygiene checks, native submit gate,
+extractability gate, performance smoke gate, and delivery package gate that
+were previously split across `styio-ci`, `repo-hygiene`, and `Submit Gate`.
+`local-ci-gate` is the spio repository's own CI surface; it is not the shared
+Styio ecosystem resource gate modeled by upstream `styio-ci-gate`.
 
 Cross-repository contract or product changes must also run the matching ecosystem gate from `styio-nightly`, for example:
 
@@ -61,7 +68,7 @@ Cross-repository gates must use the same workspace checkout set that will be vis
 
 ## Delivery Ruleset Governance
 
-Required GitHub merge gates are maintained through GitHub Rulesets, not legacy classic branch protection. `ai-dev` and protected release/default branches must have an active Ruleset requiring the `audit` status check from the `audit` workflow, with strict required status checks enabled.
+Required GitHub merge gates are maintained through GitHub Rulesets, not legacy classic branch protection. Protected downstream branches should require `audit` and `local-ci-gate` as the stable repository-local status-check surface, with `audit` kept as the policy workflow check where the upstream ruleset expects it.
 
 Gate audits must inspect effective branch rules, for example:
 

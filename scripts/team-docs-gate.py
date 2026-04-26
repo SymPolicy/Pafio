@@ -67,6 +67,7 @@ TEAM_RULES: tuple[TeamRule, ...] = (
             "LICENSE",
             "LICENSE-POLICY.md",
             "DEPENDENCY-USAGE.md",
+            ".github/workflows/local-ci-gate.yml",
             "docs/",
             "scripts/audit-gate.sh",
             "scripts/docs-index.py",
