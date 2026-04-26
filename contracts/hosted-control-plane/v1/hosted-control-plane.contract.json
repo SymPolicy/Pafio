@@ -1,0 +1,1278 @@
+{
+  "schema_version": 1,
+  "contract_name": "spio hosted control plane",
+  "contract_version": "v1",
+  "base_path": "/api/styio-hosted/v1",
+  "workspace_path_parameter": "workspace_id",
+  "operations": [
+    {
+      "id": "openWorkspace",
+      "method": "POST",
+      "path": "/workspaces/open",
+      "request_shape": "OpenWorkspaceRequest",
+      "success_shape": "HostedProjectGraphEnvelope",
+      "failure_shape": "HostedCommandFailureEnvelope"
+    },
+    {
+      "id": "projectGraph",
+      "method": "GET",
+      "path": "/workspaces/{workspace_id}/project-graph",
+      "request_shape": "NoRequestBody",
+      "success_shape": "HostedProjectGraphEnvelope",
+      "failure_shape": "HostedCommandFailureEnvelope"
+    },
+    {
+      "id": "toolInstall",
+      "method": "POST",
+      "path": "/workspaces/{workspace_id}/tool/install",
+      "request_shape": "ToolInstallRequest",
+      "success_shape": "ToolCommandEnvelope",
+      "failure_shape": "HostedCommandFailureEnvelope"
+    },
+    {
+      "id": "toolUse",
+      "method": "POST",
+      "path": "/workspaces/{workspace_id}/tool/use",
+      "request_shape": "ToolVersionRequest",
+      "success_shape": "ToolCommandEnvelope",
+      "failure_shape": "HostedCommandFailureEnvelope"
+    },
+    {
+      "id": "toolPin",
+      "method": "POST",
+      "path": "/workspaces/{workspace_id}/tool/pin",
+      "request_shape": "ToolVersionRequest",
+      "success_shape": "ToolCommandEnvelope",
+      "failure_shape": "HostedCommandFailureEnvelope"
+    },
+    {
+      "id": "toolClearPin",
+      "method": "POST",
+      "path": "/workspaces/{workspace_id}/tool/clear-pin",
+      "request_shape": "EmptyObject",
+      "success_shape": "ToolCommandEnvelope",
+      "failure_shape": "HostedCommandFailureEnvelope"
+    },
+    {
+      "id": "fetchDependencies",
+      "method": "POST",
+      "path": "/workspaces/{workspace_id}/dependencies/fetch",
+      "request_shape": "DependencyFetchRequest",
+      "success_shape": "DependencyCommandEnvelope",
+      "failure_shape": "HostedCommandFailureEnvelope"
+    },
+    {
+      "id": "vendorDependencies",
+      "method": "POST",
+      "path": "/workspaces/{workspace_id}/dependencies/vendor",
+      "request_shape": "DependencyVendorRequest",
+      "success_shape": "DependencyCommandEnvelope",
+      "failure_shape": "HostedCommandFailureEnvelope"
+    },
+    {
+      "id": "runWorkflow",
+      "method": "POST",
+      "path": "/workspaces/{workspace_id}/execution/run",
+      "request_shape": "ExecutionWorkflowRequest",
+      "success_shape": "ExecutionCommandEnvelope",
+      "failure_shape": "ExecutionCommandEnvelope"
+    },
+    {
+      "id": "buildWorkflow",
+      "method": "POST",
+      "path": "/workspaces/{workspace_id}/execution/build",
+      "request_shape": "ExecutionWorkflowRequest",
+      "success_shape": "ExecutionCommandEnvelope",
+      "failure_shape": "ExecutionCommandEnvelope"
+    },
+    {
+      "id": "testWorkflow",
+      "method": "POST",
+      "path": "/workspaces/{workspace_id}/execution/test",
+      "request_shape": "ExecutionWorkflowRequest",
+      "success_shape": "ExecutionCommandEnvelope",
+      "failure_shape": "ExecutionCommandEnvelope"
+    },
+    {
+      "id": "packProject",
+      "method": "POST",
+      "path": "/workspaces/{workspace_id}/deployment/pack",
+      "request_shape": "DeploymentRequest",
+      "success_shape": "DeploymentCommandEnvelope",
+      "failure_shape": "HostedCommandFailureEnvelope"
+    },
+    {
+      "id": "preparePublish",
+      "method": "POST",
+      "path": "/workspaces/{workspace_id}/deployment/preflight",
+      "request_shape": "DeploymentRequest",
+      "success_shape": "DeploymentCommandEnvelope",
+      "failure_shape": "HostedCommandFailureEnvelope"
+    },
+    {
+      "id": "publishToRegistry",
+      "method": "POST",
+      "path": "/workspaces/{workspace_id}/deployment/publish",
+      "request_shape": "DeploymentPublishRequest",
+      "success_shape": "DeploymentCommandEnvelope",
+      "failure_shape": "HostedCommandFailureEnvelope"
+    }
+  ],
+  "shapes": {
+    "NoRequestBody": {
+      "kind": "none"
+    },
+    "EmptyObject": {
+      "kind": "object",
+      "required": {},
+      "optional": {}
+    },
+    "OpenWorkspaceRequest": {
+      "kind": "object",
+      "required": {
+        "workspace_root": {
+          "type": "string",
+          "min_length": 1
+        },
+        "platform": {
+          "type": "enum",
+          "values": [
+            "ios",
+            "web",
+            "android"
+          ]
+        }
+      },
+      "optional": {
+        "manifest_path": {
+          "type": "string",
+          "min_length": 1
+        }
+      }
+    },
+    "ToolInstallRequest": {
+      "kind": "object",
+      "required": {
+        "styio_binary_path": {
+          "type": "string",
+          "min_length": 1
+        }
+      },
+      "optional": {}
+    },
+    "ToolVersionRequest": {
+      "kind": "object",
+      "required": {
+        "compiler_version": {
+          "type": "string",
+          "min_length": 1
+        }
+      },
+      "optional": {
+        "channel": {
+          "type": "string",
+          "min_length": 1
+        }
+      }
+    },
+    "DependencyFetchRequest": {
+      "kind": "object",
+      "required": {},
+      "optional": {
+        "locked": {
+          "type": "boolean"
+        },
+        "offline": {
+          "type": "boolean"
+        }
+      }
+    },
+    "DependencyVendorRequest": {
+      "kind": "object",
+      "required": {},
+      "optional": {
+        "output_path": {
+          "type": "string",
+          "min_length": 1
+        },
+        "locked": {
+          "type": "boolean"
+        },
+        "offline": {
+          "type": "boolean"
+        }
+      }
+    },
+    "ExecutionWorkflowRequest": {
+      "kind": "object",
+      "required": {
+        "active_file_path": {
+          "type": "string",
+          "min_length": 1
+        },
+        "document_text": {
+          "type": "string"
+        }
+      },
+      "optional": {
+        "package_name": {
+          "type": "string",
+          "min_length": 1
+        },
+        "target_name": {
+          "type": "string",
+          "min_length": 1
+        },
+        "target_kind": {
+          "type": "enum",
+          "values": [
+            "lib",
+            "bin",
+            "test"
+          ]
+        }
+      }
+    },
+    "DeploymentRequest": {
+      "kind": "object",
+      "required": {},
+      "optional": {
+        "package_name": {
+          "type": "string",
+          "min_length": 1
+        },
+        "output_path": {
+          "type": "string",
+          "min_length": 1
+        }
+      }
+    },
+    "DeploymentPublishRequest": {
+      "kind": "object",
+      "required": {
+        "registry_root": {
+          "type": "string",
+          "min_length": 1
+        }
+      },
+      "optional": {
+        "package_name": {
+          "type": "string",
+          "min_length": 1
+        },
+        "output_path": {
+          "type": "string",
+          "min_length": 1
+        }
+      }
+    },
+    "HostedProjectGraphEnvelope": {
+      "kind": "object",
+      "required": {
+        "returncode": {
+          "type": "integer"
+        },
+        "message": {
+          "type": "string",
+          "min_length": 1
+        },
+        "payload": {
+          "ref": "ProjectGraphPayload"
+        },
+        "workspace": {
+          "ref": "HostedWorkspaceRecord"
+        }
+      },
+      "optional": {
+        "stdout": {
+          "type": "string"
+        },
+        "stderr": {
+          "type": "string"
+        }
+      }
+    },
+    "HostedCommandFailureEnvelope": {
+      "kind": "object",
+      "required": {
+        "returncode": {
+          "type": "integer"
+        },
+        "message": {
+          "type": "string",
+          "min_length": 1
+        },
+        "stdout": {
+          "type": "string"
+        },
+        "stderr": {
+          "type": "string"
+        },
+        "error_payload": {
+          "ref": "ErrorPayload"
+        }
+      },
+      "optional": {
+        "payload": {
+          "type": "object"
+        }
+      }
+    },
+    "ToolCommandEnvelope": {
+      "kind": "object",
+      "required": {
+        "returncode": {
+          "type": "integer"
+        },
+        "message": {
+          "type": "string",
+          "min_length": 1
+        },
+        "stdout": {
+          "type": "string"
+        },
+        "stderr": {
+          "type": "string"
+        },
+        "payload": {
+          "ref": "ToolCommandPayload"
+        }
+      },
+      "optional": {
+        "error_payload": {
+          "ref": "ErrorPayload"
+        }
+      }
+    },
+    "DependencyCommandEnvelope": {
+      "kind": "object",
+      "required": {
+        "returncode": {
+          "type": "integer"
+        },
+        "message": {
+          "type": "string",
+          "min_length": 1
+        },
+        "stdout": {
+          "type": "string"
+        },
+        "stderr": {
+          "type": "string"
+        },
+        "payload": {
+          "ref": "DependencyCommandPayload"
+        }
+      },
+      "optional": {
+        "error_payload": {
+          "ref": "ErrorPayload"
+        }
+      }
+    },
+    "ExecutionCommandEnvelope": {
+      "kind": "object",
+      "required": {
+        "returncode": {
+          "type": "integer"
+        },
+        "message": {
+          "type": "string",
+          "min_length": 1
+        },
+        "stdout": {
+          "type": "string"
+        },
+        "stderr": {
+          "type": "string"
+        }
+      },
+      "optional": {
+        "payload": {
+          "ref": "ExecutionCommandPayload"
+        },
+        "error_payload": {
+          "ref": "ExecutionCommandPayload"
+        }
+      }
+    },
+    "DeploymentCommandEnvelope": {
+      "kind": "object",
+      "required": {
+        "returncode": {
+          "type": "integer"
+        },
+        "message": {
+          "type": "string",
+          "min_length": 1
+        },
+        "stdout": {
+          "type": "string"
+        },
+        "stderr": {
+          "type": "string"
+        },
+        "payload": {
+          "ref": "DeploymentCommandPayload"
+        }
+      },
+      "optional": {
+        "error_payload": {
+          "ref": "ErrorPayload"
+        }
+      }
+    },
+    "ErrorPayload": {
+      "kind": "object",
+      "required": {
+        "code": {
+          "type": "string",
+          "min_length": 1
+        },
+        "reason": {
+          "type": "string",
+          "min_length": 1
+        }
+      },
+      "optional": {
+        "retryable": {
+          "type": "boolean"
+        },
+        "details": {
+          "type": "map",
+          "values": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "HostedWorkspaceRecord": {
+      "kind": "object",
+      "required": {
+        "workspaceId": {
+          "type": "string",
+          "min_length": 1
+        },
+        "schemaVersion": {
+          "type": "string",
+          "min_length": 1
+        },
+        "ownerRef": {
+          "type": "string",
+          "min_length": 1
+        },
+        "status": {
+          "type": "enum",
+          "values": [
+            "provisioning",
+            "active",
+            "closing",
+            "pending_deletion",
+            "deleted"
+          ]
+        },
+        "entryUrl": {
+          "type": "string",
+          "min_length": 1
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "lastActiveAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "retentionDays": {
+          "type": "integer"
+        },
+        "exportState": {
+          "type": "enum",
+          "values": [
+            "not_requested",
+            "preparing",
+            "ready",
+            "expired"
+          ]
+        }
+      },
+      "optional": {
+        "closedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "retentionDeadline": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "coreFileExportUrl": {
+          "type": "string",
+          "min_length": 1
+        },
+        "coreFileExportExpiresAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "ProjectGraphPayload": {
+      "kind": "object",
+      "required": {
+        "id": {
+          "type": "string",
+          "min_length": 1
+        },
+        "title": {
+          "type": "string",
+          "min_length": 1
+        },
+        "kind": {
+          "type": "enum",
+          "values": [
+            "hosted"
+          ]
+        },
+        "workspace_root": {
+          "type": "string",
+          "min_length": 1
+        },
+        "workspace_members": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "manifest_path": {
+          "type": "string",
+          "min_length": 1
+        },
+        "packages": {
+          "type": "array",
+          "items": {
+            "ref": "ProjectPackage"
+          }
+        },
+        "dependencies": {
+          "type": "array",
+          "items": {
+            "ref": "ProjectDependency"
+          }
+        },
+        "targets": {
+          "type": "array",
+          "items": {
+            "ref": "ProjectTarget"
+          }
+        },
+        "editor_files": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "toolchain": {
+          "ref": "ToolchainStatus"
+        },
+        "lock_state": {
+          "type": "enum",
+          "values": [
+            "fresh",
+            "stale",
+            "missing",
+            "unknown"
+          ]
+        },
+        "vendor_state": {
+          "type": "enum",
+          "values": [
+            "present",
+            "missing",
+            "unknown"
+          ]
+        }
+      },
+      "optional": {
+        "lockfile_path": {
+          "type": "string",
+          "min_length": 1
+        },
+        "toolchain_pin_path": {
+          "type": "string",
+          "min_length": 1
+        },
+        "styio_config_path": {
+          "type": "string",
+          "min_length": 1
+        },
+        "vendor_root": {
+          "type": "string",
+          "min_length": 1
+        },
+        "build_root": {
+          "type": "string",
+          "min_length": 1
+        },
+        "active_compiler": {
+          "ref": "CompilerHandshake"
+        },
+        "managed_toolchains": {
+          "ref": "ManagedToolchainState"
+        },
+        "package_distribution": {
+          "ref": "PackageDistributionSnapshot"
+        },
+        "source_state": {
+          "ref": "ProjectSourceState"
+        },
+        "notes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "ProjectPackage": {
+      "kind": "object",
+      "required": {
+        "package_name": {
+          "type": "string",
+          "min_length": 1
+        },
+        "version": {
+          "type": "string",
+          "min_length": 1
+        },
+        "root_path": {
+          "type": "string",
+          "min_length": 1
+        },
+        "manifest_path": {
+          "type": "string",
+          "min_length": 1
+        },
+        "targets": {
+          "type": "array",
+          "items": {
+            "ref": "ProjectTarget"
+          }
+        },
+        "dependencies": {
+          "type": "array",
+          "items": {
+            "ref": "ProjectDependency"
+          }
+        },
+        "is_workspace_member": {
+          "type": "boolean"
+        },
+        "publish_enabled": {
+          "type": "boolean"
+        }
+      },
+      "optional": {}
+    },
+    "ProjectDependency": {
+      "kind": "object",
+      "required": {
+        "source_package_name": {
+          "type": "string",
+          "min_length": 1
+        },
+        "dependency_name": {
+          "type": "string",
+          "min_length": 1
+        },
+        "kind": {
+          "type": "enum",
+          "values": [
+            "runtime",
+            "dev"
+          ]
+        },
+        "requirement": {
+          "type": "string",
+          "min_length": 1
+        },
+        "source_kind": {
+          "type": "enum",
+          "values": [
+            "path",
+            "git",
+            "registry",
+            "unknown"
+          ]
+        },
+        "publish_blocking": {
+          "type": "boolean"
+        }
+      },
+      "optional": {
+        "is_workspace_reference": {
+          "type": "boolean"
+        },
+        "package": {
+          "type": "string",
+          "min_length": 1
+        },
+        "path": {
+          "type": "string",
+          "min_length": 1
+        },
+        "git": {
+          "type": "string",
+          "min_length": 1
+        },
+        "rev": {
+          "type": "string",
+          "min_length": 1
+        },
+        "registry": {
+          "type": "string",
+          "min_length": 1
+        },
+        "version": {
+          "type": "string",
+          "min_length": 1
+        }
+      }
+    },
+    "ProjectTarget": {
+      "kind": "object",
+      "required": {
+        "id": {
+          "type": "string",
+          "min_length": 1
+        },
+        "package_name": {
+          "type": "string",
+          "min_length": 1
+        },
+        "kind": {
+          "type": "enum",
+          "values": [
+            "lib",
+            "bin",
+            "test"
+          ]
+        },
+        "name": {
+          "type": "string",
+          "min_length": 1
+        },
+        "file_path": {
+          "type": "string",
+          "min_length": 1
+        }
+      },
+      "optional": {}
+    },
+    "ToolchainStatus": {
+      "kind": "object",
+      "required": {
+        "source": {
+          "type": "enum",
+          "values": [
+            "project-pin",
+            "managed-current",
+            "environment",
+            "unavailable",
+            "unknown"
+          ]
+        },
+        "detail": {
+          "type": "string",
+          "min_length": 1
+        }
+      },
+      "optional": {
+        "pin_path": {
+          "type": "string",
+          "min_length": 1
+        },
+        "channel": {
+          "type": "string",
+          "min_length": 1
+        },
+        "version": {
+          "type": "string",
+          "min_length": 1
+        }
+      }
+    },
+    "ManagedToolchainInstall": {
+      "kind": "object",
+      "required": {
+        "channel": {
+          "type": "string",
+          "min_length": 1
+        },
+        "compiler_version": {
+          "type": "string",
+          "min_length": 1
+        },
+        "install_root": {
+          "type": "string",
+          "min_length": 1
+        },
+        "install_binary_path": {
+          "type": "string",
+          "min_length": 1
+        }
+      },
+      "optional": {
+        "install_metadata_path": {
+          "type": "string",
+          "min_length": 1
+        }
+      }
+    },
+    "ManagedToolchainState": {
+      "kind": "object",
+      "required": {
+        "installed": {
+          "type": "array",
+          "items": {
+            "ref": "ManagedToolchainInstall"
+          }
+        }
+      },
+      "optional": {
+        "spio_home": {
+          "type": "string",
+          "min_length": 1
+        },
+        "current_binary": {
+          "type": "string",
+          "min_length": 1
+        },
+        "current_metadata_path": {
+          "type": "string",
+          "min_length": 1
+        }
+      }
+    },
+    "CompilerHandshake": {
+      "kind": "object",
+      "required": {
+        "binary_path": {
+          "type": "string",
+          "min_length": 1
+        },
+        "tool": {
+          "type": "string",
+          "min_length": 1
+        },
+        "compiler_version": {
+          "type": "string",
+          "min_length": 1
+        },
+        "channel": {
+          "type": "string",
+          "min_length": 1
+        },
+        "variant": {
+          "type": "string",
+          "min_length": 1
+        },
+        "capabilities": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "supported_contract_versions": {
+          "type": "map",
+          "values": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          }
+        },
+        "integration_phase": {
+          "type": "string",
+          "min_length": 1
+        },
+        "supported_adapter_modes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "feature_flags": {
+          "type": "map",
+          "values": {
+            "type": "boolean"
+          }
+        }
+      },
+      "optional": {}
+    },
+    "RegistrySource": {
+      "kind": "object",
+      "required": {
+        "registry_root": {
+          "type": "string",
+          "min_length": 1
+        },
+        "transport": {
+          "type": "string",
+          "min_length": 1
+        },
+        "dependency_refs": {
+          "type": "integer"
+        },
+        "packages": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "optional": {}
+    },
+    "PackageDistributionPackage": {
+      "kind": "object",
+      "required": {
+        "package_name": {
+          "type": "string",
+          "min_length": 1
+        },
+        "manifest_path": {
+          "type": "string",
+          "min_length": 1
+        },
+        "publish_enabled": {
+          "type": "boolean"
+        },
+        "publish_ready": {
+          "type": "boolean"
+        },
+        "blocking_reasons": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "runtime_registry_dependencies": {
+          "type": "integer"
+        },
+        "runtime_path_dependencies": {
+          "type": "integer"
+        },
+        "runtime_git_dependencies": {
+          "type": "integer"
+        },
+        "dev_registry_dependencies": {
+          "type": "integer"
+        },
+        "dev_path_dependencies": {
+          "type": "integer"
+        },
+        "dev_git_dependencies": {
+          "type": "integer"
+        }
+      },
+      "optional": {}
+    },
+    "PackageDistributionSnapshot": {
+      "kind": "object",
+      "required": {
+        "schema_version": {
+          "type": "integer"
+        },
+        "packages": {
+          "type": "array",
+          "items": {
+            "ref": "PackageDistributionPackage"
+          }
+        },
+        "registry_sources": {
+          "type": "array",
+          "items": {
+            "ref": "RegistrySource"
+          }
+        },
+        "publishable_packages": {
+          "type": "integer"
+        },
+        "blocked_packages": {
+          "type": "integer"
+        }
+      },
+      "optional": {}
+    },
+    "GitCacheState": {
+      "kind": "object",
+      "required": {
+        "repos_present": {
+          "type": "boolean"
+        },
+        "checkouts_present": {
+          "type": "boolean"
+        }
+      },
+      "optional": {
+        "repos_root": {
+          "type": "string",
+          "min_length": 1
+        },
+        "checkouts_root": {
+          "type": "string",
+          "min_length": 1
+        }
+      }
+    },
+    "RegistryCacheState": {
+      "kind": "object",
+      "required": {
+        "index_present": {
+          "type": "boolean"
+        },
+        "blobs_present": {
+          "type": "boolean"
+        },
+        "checkouts_present": {
+          "type": "boolean"
+        }
+      },
+      "optional": {
+        "cache_root": {
+          "type": "string",
+          "min_length": 1
+        },
+        "index_root": {
+          "type": "string",
+          "min_length": 1
+        },
+        "blob_root": {
+          "type": "string",
+          "min_length": 1
+        },
+        "checkout_root": {
+          "type": "string",
+          "min_length": 1
+        }
+      }
+    },
+    "VendorSourceState": {
+      "kind": "object",
+      "required": {
+        "vendor_present": {
+          "type": "boolean"
+        },
+        "metadata_present": {
+          "type": "boolean"
+        },
+        "git_snapshots": {
+          "type": "integer"
+        }
+      },
+      "optional": {
+        "vendor_root": {
+          "type": "string",
+          "min_length": 1
+        },
+        "metadata_path": {
+          "type": "string",
+          "min_length": 1
+        }
+      }
+    },
+    "ProjectSourceState": {
+      "kind": "object",
+      "required": {
+        "schema_version": {
+          "type": "integer"
+        },
+        "declared_git_dependencies": {
+          "type": "integer"
+        },
+        "declared_registry_dependencies": {
+          "type": "integer"
+        },
+        "git_cache": {
+          "ref": "GitCacheState"
+        },
+        "registry_cache": {
+          "ref": "RegistryCacheState"
+        },
+        "vendor": {
+          "ref": "VendorSourceState"
+        }
+      },
+      "optional": {
+        "spio_home": {
+          "type": "string",
+          "min_length": 1
+        }
+      }
+    },
+    "ToolCommandPayload": {
+      "kind": "object",
+      "required": {
+        "installed": {
+          "type": "array",
+          "items": {
+            "ref": "ManagedToolchainInstall"
+          }
+        }
+      },
+      "optional": {
+        "compiler_version": {
+          "type": "string",
+          "min_length": 1
+        },
+        "channel": {
+          "type": "string",
+          "min_length": 1
+        },
+        "spio_home": {
+          "type": "string",
+          "min_length": 1
+        },
+        "current_binary": {
+          "type": "string",
+          "min_length": 1
+        },
+        "current_metadata_path": {
+          "type": "string",
+          "min_length": 1
+        }
+      }
+    },
+    "DependencyCommandPayload": {
+      "kind": "object",
+      "required": {
+        "packages": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "optional": {
+        "vendor_root": {
+          "type": "string",
+          "min_length": 1
+        },
+        "metadata_path": {
+          "type": "string",
+          "min_length": 1
+        },
+        "source_state": {
+          "ref": "ProjectSourceState"
+        }
+      }
+    },
+    "DiagnosticRecord": {
+      "kind": "object",
+      "required": {
+        "message": {
+          "type": "string",
+          "min_length": 1
+        }
+      },
+      "optional": {
+        "severity": {
+          "type": "string",
+          "min_length": 1
+        },
+        "category": {
+          "type": "string",
+          "min_length": 1
+        },
+        "code": {
+          "type": "string",
+          "min_length": 1
+        },
+        "file": {
+          "type": "string",
+          "min_length": 1
+        },
+        "range": {
+          "type": "object"
+        }
+      }
+    },
+    "RuntimeEvent": {
+      "kind": "object",
+      "required": {
+        "schemaVersion": {
+          "type": "integer"
+        },
+        "sessionId": {
+          "type": "string",
+          "min_length": 1
+        },
+        "sequence": {
+          "type": "integer"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "eventKind": {
+          "type": "string",
+          "min_length": 1
+        },
+        "origin": {
+          "type": "string",
+          "min_length": 1
+        },
+        "payload": {
+          "type": "object"
+        }
+      },
+      "optional": {}
+    },
+    "ExecutionCommandPayload": {
+      "kind": "object",
+      "required": {
+        "session_id": {
+          "type": "string",
+          "min_length": 1
+        },
+        "stdout": {
+          "type": "string"
+        },
+        "stderr": {
+          "type": "string"
+        },
+        "diagnostics": {
+          "type": "array",
+          "items": {
+            "ref": "DiagnosticRecord"
+          }
+        },
+        "runtime_events": {
+          "type": "array",
+          "items": {
+            "ref": "RuntimeEvent"
+          }
+        }
+      },
+      "optional": {}
+    },
+    "DeploymentCommandPayload": {
+      "kind": "object",
+      "required": {
+        "package": {
+          "type": "string",
+          "min_length": 1
+        },
+        "archive_path": {
+          "type": "string",
+          "min_length": 1
+        }
+      },
+      "optional": {
+        "registry_root": {
+          "type": "string",
+          "min_length": 1
+        }
+      }
+    }
+  }
+}

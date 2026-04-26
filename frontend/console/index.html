@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>spio control console</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="hero">
+        <p class="eyebrow">repo-hosted frontend</p>
+        <h1>spio control console</h1>
+        <p class="lede">
+          The control console is the human-facing page. Registry hosting and cloud
+          platform behavior stay behind backend contracts.
+        </p>
+        <div class="hero-links">
+          <a href="../../docs/governance/Spio-Control-Console-And-Service-Split.md">Surface split</a>
+          <a href="../../docs/governance/Spio-Control-Console-Backend-Surface.md">Console backend surface</a>
+          <a href="../../docs/registry/Spio-Registry-Server-Contract.md">Registry server contract</a>
+          <a href="../../docs/governance/Spio-Cloud-Control-Plane-Contract.md">Cloud control-plane contract</a>
+        </div>
+      </section>
+
+      <section class="grid">
+        <article class="card">
+          <p class="card-kicker">Frontend plane</p>
+          <h2>Control console</h2>
+          <ul>
+            <li>Workspace inventory and lifecycle</li>
+            <li>Registry and publish visibility</li>
+            <li>Toolchain, dependency, and deployment controls</li>
+            <li>Execution lane and worker-pool summaries</li>
+          </ul>
+        </article>
+
+        <article class="card">
+          <p class="card-kicker">Backend plane A</p>
+          <h2>Repository hosting</h2>
+          <ul>
+            <li>Immutable blobs and index entries</li>
+            <li>Read root, write root, and promotion flow</li>
+            <li>Package publish transport</li>
+            <li>Static or HTTP(S) registry serving</li>
+          </ul>
+        </article>
+
+        <article class="card">
+          <p class="card-kicker">Backend plane B</p>
+          <h2>Cloud platform</h2>
+          <ul>
+            <li>Hosted workspace lifecycle</li>
+            <li>Project graph and toolchain routes</li>
+            <li>Dependency, execution, and deployment routes</li>
+            <li>Future queue and worker-pool orchestration</li>
+          </ul>
+        </article>
+
+        <article class="card">
+          <p class="card-kicker">Backend engine</p>
+          <h2>Native core</h2>
+          <ul>
+            <li>Machine-readable CLI contracts</li>
+            <li>Domain serializers and workflow orchestration</li>
+            <li>Registry client and server modules</li>
+            <li>Cloud policy rendering</li>
+          </ul>
+        </article>
+      </section>
+
+      <section class="routes">
+        <div class="section-head">
+          <p class="eyebrow">backend contract families</p>
+          <h2>Console-facing routes</h2>
+        </div>
+        <div class="route-list">
+          <code>POST /workspaces/open</code>
+          <code>GET /workspaces/{id}/project-graph</code>
+          <code>POST /workspaces/{id}/tool/*</code>
+          <code>POST /workspaces/{id}/dependencies/*</code>
+          <code>POST /workspaces/{id}/execution/*</code>
+          <code>POST /workspaces/{id}/deployment/*</code>
+          <code>GET /spio-registry.json</code>
+          <code>GET /index/&lt;namespace&gt;/&lt;name&gt;/&lt;version&gt;.json</code>
+        </div>
+      </section>
+
+      <section class="notes">
+        <div class="note">
+          <h2>Non-goals</h2>
+          <p>
+            This frontend does not parse manifests, resolve dependencies, publish
+            packages, or schedule workers. Those stay in backend services and native
+            domain code.
+          </p>
+        </div>
+        <div class="note">
+          <h2>Source of truth</h2>
+          <p>
+            Contract truth lives in <code>docs/governance/</code>,
+            <code>docs/registry/</code>, and <code>src/</code>. This page is a
+            concrete frontend scaffold, not a second backend spec.
+          </p>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

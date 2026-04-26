@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import pathlib
 import subprocess
 import sys
@@ -46,6 +47,15 @@ class BootstrapValidationTests(unittest.TestCase):
 
 
 class BootstrapCliTests(unittest.TestCase):
+    def _run_cli(self, args: list[str], **kwargs) -> subprocess.CompletedProcess[str]:
+        env = os.environ.copy()
+        env["PYTHONPATH"] = str(SRC)
+        return subprocess.run(
+            [sys.executable, "-m", "spio_bootstrap", *args],
+            env=env,
+            **kwargs,
+        )
+
     def _write_fake_styio(self, root: pathlib.Path, payload: dict, *, exit_code: int = 0) -> pathlib.Path:
         script = root / "fake-styio.py"
         script.write_text(
@@ -63,8 +73,8 @@ class BootstrapCliTests(unittest.TestCase):
         return script
 
     def test_version_output(self) -> None:
-        proc = subprocess.run(
-            [str(ROOT / "scripts" / "spio"), "--version"],
+        proc = self._run_cli(
+            ["--version"],
             check=True,
             capture_output=True,
             text=True,
@@ -72,8 +82,8 @@ class BootstrapCliTests(unittest.TestCase):
         self.assertEqual(proc.stdout.strip(), f"spio {__version__}")
 
     def test_machine_info_json(self) -> None:
-        proc = subprocess.run(
-            [str(ROOT / "scripts" / "spio"), "machine-info", "--json"],
+        proc = self._run_cli(
+            ["machine-info", "--json"],
             check=True,
             capture_output=True,
             text=True,
@@ -84,8 +94,8 @@ class BootstrapCliTests(unittest.TestCase):
         self.assertEqual(payload["supported_contracts"]["compile_plan"], [1])
 
     def test_stubbed_command_returns_bootstrap_code(self) -> None:
-        proc = subprocess.run(
-            [str(ROOT / "scripts" / "spio"), "--json", "build"],
+        proc = self._run_cli(
+            ["--json", "build"],
             capture_output=True,
             text=True,
         )
@@ -93,6 +103,28 @@ class BootstrapCliTests(unittest.TestCase):
         payload = json.loads(proc.stderr)
         self.assertEqual(payload["category"], "BootstrapNotImplemented")
         self.assertEqual(payload["command"], "build")
+
+    def test_tool_use_returns_bootstrap_not_implemented(self) -> None:
+        proc = self._run_cli(
+            ["--json", "tool", "use", "--version", "0.0.5", "--channel", "stable"],
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(proc.returncode, 31)
+        payload = json.loads(proc.stderr)
+        self.assertEqual(payload["category"], "BootstrapNotImplemented")
+        self.assertEqual(payload["command"], "tool use")
+
+    def test_tool_install_accepts_documented_stub_shape(self) -> None:
+        proc = self._run_cli(
+            ["--json", "tool", "install", "--styio-bin", "/tmp/styio"],
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(proc.returncode, 31)
+        payload = json.loads(proc.stderr)
+        self.assertEqual(payload["category"], "BootstrapNotImplemented")
+        self.assertEqual(payload["command"], "tool install")
 
     def test_new_creates_bin_project(self) -> None:
         temp_root = pathlib.Path(self._testMethodName).resolve()
@@ -104,8 +136,8 @@ class BootstrapCliTests(unittest.TestCase):
                     elif child.is_dir():
                         child.rmdir()
                 temp_root.rmdir()
-        proc = subprocess.run(
-            [str(ROOT / "scripts" / "spio"), "new", "acme/demo", str(temp_root)],
+        proc = self._run_cli(
+            ["new", "acme/demo", str(temp_root)],
             check=True,
             capture_output=True,
             text=True,
@@ -122,8 +154,8 @@ class BootstrapCliTests(unittest.TestCase):
 
     def test_check_validates_manifest(self) -> None:
         manifest = FIXTURES / "manifests" / "ok-single-package" / "spio.toml"
-        proc = subprocess.run(
-            [str(ROOT / "scripts" / "spio"), "--json", "check", "--manifest-path", str(manifest)],
+        proc = self._run_cli(
+            ["--json", "check", "--manifest-path", str(manifest)],
             check=True,
             capture_output=True,
             text=True,
@@ -135,8 +167,8 @@ class BootstrapCliTests(unittest.TestCase):
 
     def test_check_rejects_bad_manifest(self) -> None:
         manifest = FIXTURES / "manifests" / "bad-package-name" / "spio.toml"
-        proc = subprocess.run(
-            [str(ROOT / "scripts" / "spio"), "--json", "check", "--manifest-path", str(manifest)],
+        proc = self._run_cli(
+            ["--json", "check", "--manifest-path", str(manifest)],
             capture_output=True,
             text=True,
         )
@@ -150,15 +182,14 @@ class BootstrapCliTests(unittest.TestCase):
             "tool": "styio",
             "compiler_version": "0.0.1",
             "channel": "stable",
-            "supported_contracts": {"compile_plan": []},
+            "supported_contracts": {"compile_plan": [1]},
             "capabilities": ["machine_info_json", "single_file_entry", "jsonl_diagnostics"],
             "edition_max": "2026",
         }
         with tempfile.TemporaryDirectory() as tmp_dir:
             fake_styio = self._write_fake_styio(pathlib.Path(tmp_dir), machine_info)
-            proc = subprocess.run(
+            proc = self._run_cli(
                 [
-                    str(ROOT / "scripts" / "spio"),
                     "--json",
                     "check",
                     "--manifest-path",
@@ -173,8 +204,8 @@ class BootstrapCliTests(unittest.TestCase):
         payload = json.loads(proc.stdout)
         self.assertTrue(payload["compiler_checked"])
         self.assertEqual(payload["styio"]["compiler_version"], "0.0.1")
-        self.assertEqual(payload["styio"]["integration_phase"], "bootstrap-only")
-        self.assertEqual(payload["styio"]["supported_compile_plan_versions"], [])
+        self.assertEqual(payload["styio"]["integration_phase"], "compile-plan-live")
+        self.assertEqual(payload["styio"]["supported_compile_plan_versions"], [1])
 
     def test_check_rejects_incompatible_styio_handshake(self) -> None:
         manifest = FIXTURES / "manifests" / "ok-single-package" / "spio.toml"
@@ -188,9 +219,8 @@ class BootstrapCliTests(unittest.TestCase):
         }
         with tempfile.TemporaryDirectory() as tmp_dir:
             fake_styio = self._write_fake_styio(pathlib.Path(tmp_dir), machine_info)
-            proc = subprocess.run(
+            proc = self._run_cli(
                 [
-                    str(ROOT / "scripts" / "spio"),
                     "--json",
                     "check",
                     "--manifest-path",

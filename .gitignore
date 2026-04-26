@@ -1,3 +1,15 @@
+.DS_Store
+.cursor/
+.idea/
+.vscode/
+.cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.nox/
+.venv/
+venv/
+node_modules/
 # Prerequisites
 *.d
 
@@ -43,9 +55,18 @@
 .build/
 build/
 build-codex/
+build-*/
 .spio/
 tmp/
 dist/
+*.tar
+*.tar.gz
+*.tgz
+*.zip
+*.7z
+*.gz
+*.bz2
+*.xz
 *.tmp
 *.log
 CMakeUserPresets.json
@@ -55,6 +76,23 @@ CMakeFiles/
 Testing/
 __pycache__/
 .pytest_cache/
+docs/audit/defects/
+!docs/**/build/
+!docs/**/build/**
+!docs/**/build-*/
+!docs/**/build-*/**
+!docs/**/tmp/
+!docs/**/tmp/**
+!docs/**/*.tmp
+!docs/**/*.log
+!tests/**/build/
+!tests/**/build/**
+!tests/**/build-*/
+!tests/**/build-*/**
+!tests/**/tmp/
+!tests/**/tmp/**
+!tests/**/*.tmp
+!tests/**/*.log
 
 # Private security/auth extensions that must not ship in the open-source tree.
 src-private/

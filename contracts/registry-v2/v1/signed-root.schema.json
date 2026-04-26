@@ -1,0 +1,156 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://spio.dev/contracts/registry-v2/v1/signed-root.schema.json",
+  "title": "spio Registry V2 Signed Root Metadata",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "signed",
+    "signatures"
+  ],
+  "properties": {
+    "signed": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "spec_version",
+        "version",
+        "expires",
+        "keys",
+        "roles"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "root"
+        },
+        "spec_version": {
+          "type": "string",
+          "const": "1"
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "expires": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "keys": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "keytype",
+              "scheme",
+              "keyval"
+            ],
+            "properties": {
+              "keytype": {
+                "type": "string",
+                "const": "ed25519"
+              },
+              "scheme": {
+                "type": "string",
+                "const": "ed25519"
+              },
+              "keyval": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "public"
+                ],
+                "properties": {
+                  "public": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          }
+        },
+        "roles": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "root",
+            "timestamp",
+            "snapshot",
+            "targets",
+            "log"
+          ],
+          "properties": {
+            "root": {
+              "$ref": "#/$defs/rolePolicy"
+            },
+            "timestamp": {
+              "$ref": "#/$defs/rolePolicy"
+            },
+            "snapshot": {
+              "$ref": "#/$defs/rolePolicy"
+            },
+            "targets": {
+              "$ref": "#/$defs/rolePolicy"
+            },
+            "log": {
+              "$ref": "#/$defs/rolePolicy"
+            }
+          }
+        }
+      }
+    },
+    "signatures": {
+      "$ref": "#/$defs/signatures"
+    }
+  },
+  "$defs": {
+    "rolePolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "keyids",
+        "threshold"
+      ],
+      "properties": {
+        "keyids": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "threshold": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "signatures": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "keyid",
+          "sig"
+        ],
+        "properties": {
+          "keyid": {
+            "type": "string",
+            "minLength": 1
+          },
+          "sig": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    }
+  }
+}

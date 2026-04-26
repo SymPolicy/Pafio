@@ -2,7 +2,7 @@
 
 **Purpose:** Define the split between `spio` unit tests and black-box integration tests, with strict environment and cache isolation.
 
-**Last updated:** 2026-04-12
+**Last updated:** 2026-04-24
 
 ## Test Classes
 
@@ -19,6 +19,11 @@
 ## Acceptance Gates
 
 - `spio_manifest_lock_gate`
+- `quality_no_binaries_gate`
+- `quality_repo_hygiene_gate`
+- `performance_baseline_gate`
+- `delivery_package_gate`
+- `spio_submit_gate`
 - `contract_schema_gate`
 - `spio_resolver_gate`
 - `spio_cli_gate`
@@ -27,6 +32,19 @@
 - `spio_registry_server_gate`
 - `spio_registry_promotion_gate`
 - `spio_registry_split_origin_http_gate`
+- `spio_registry_v2_unit_gate`
+- `spio_registry_v2_contract_gate`
+- `spio_registry_v2_publish_gate`
+- `spio_registry_v2_static_http_gate`
+- `spio_registry_control_plane_contract_gate`
+- `spio_registry_control_plane_http_gate`
+- `spio_native_contract_source_gate`
+- `spio_hosted_api_contract_unit_gate`
+- `spio_hosted_api_contract_integration_gate`
+- `spio_hosted_api_contract_regression_gate`
+- `spio_hosted_api_contract_smoke_gate`
+- `spio_hosted_api_contract_fuzz_gate`
+- `spio_cloud_compile_stress_gate`
 - `styio_contract_compat_gate`
 - `styio_compile_plan_contract_gate`
 

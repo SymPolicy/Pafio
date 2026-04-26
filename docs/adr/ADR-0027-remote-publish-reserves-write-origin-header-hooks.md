@@ -1,8 +1,11 @@
 # ADR-0027: Remote Publish Reserves Write-Origin Header Hooks
 
+**Last updated:** 2026-04-17  
 **Status:** Accepted  
 **Date:** 2026-04-12  
 **Purpose:** Record the decision to add request-header injection for remote publish as a write-origin integration hook without turning it into a full auth or client-fetch feature.
+
+**Last updated:** 2026-04-12
 
 ## Context
 

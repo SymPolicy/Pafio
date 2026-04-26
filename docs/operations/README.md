@@ -2,9 +2,12 @@
 
 **Purpose:** Hold executable verification and migration procedures for `spio`.
 
+**Last updated:** 2026-04-19
+
 ## Scope
 
 - verification matrix
+- compile-cloud stress runbook
 - repository split runbook
 - registry server runbook
 

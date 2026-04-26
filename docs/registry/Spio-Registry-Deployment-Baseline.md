@@ -1,29 +1,31 @@
 # Spio Registry Deployment Baseline
 
-**Purpose:** Provide the current pragmatic deployment baseline for teams that operate a shared `spio` registry and only need safe internal distribution with checksum verification.
+**Purpose:** Provide the current pragmatic deployment baseline for teams that operate a shared `spio` registry `v2` root and need safe internal distribution before a hosted publish service is deployed.
 
-**Last updated:** 2026-04-12
+**Last updated:** 2026-04-21
 
 ## 1. Baseline Goal
 
 The current baseline is:
 
 - package downloads must come from a trusted registry origin
-- downloaded blobs must pass `sha256` verification before use
-- server-side object paths must be immutable
+- downloaded source artifacts must pass `sha256` verification before use
+- the read root must expose the `v2` object families: `config/`, `trust/`, `index/`, `artifacts/`, and `log/`
+- artifact paths must be immutable
+- metadata and package indexes must be updated only by the publish worker or a compatible control-plane service
 
-This baseline explicitly does not require signatures or transparency logs.
+The tracked baseline already writes signed metadata and a hash-chain transparency checkpoint. It does not yet require a hosted multi-tenant publish service.
 
 ## 2. Recommended Topology
 
-Recommended near-term deployment:
+Recommended deployment:
 
-1. internal upload origin that accepts `PUT`
-2. read-only download origin or CDN for `GET` and `HEAD`
-3. promotion or replication from the upload backing store into the read-side serving root
-4. object storage or filesystem backing store with immutable/versioned objects
+1. internal publish worker or control-plane service that writes a staging `v2` root
+2. read-only download origin or CDN for static `GET` and `HEAD`
+3. promotion or replication from the staging root into the read-side serving root
+4. object storage or filesystem backing store with immutable/versioned artifact objects
 
-This keeps write risk and read traffic separated without inventing a new registry protocol.
+This keeps write risk and read traffic separated while preserving the static read-plane protocol.
 
 ## 3. Promotion Model
 
@@ -38,20 +40,20 @@ Use it when:
 - the upload root is a writable filesystem or mounted object-store view
 - the read root is a separate static-serving directory or staging area for CDN sync
 
-Do not treat this helper as a generic remote replication protocol. It is a practical local promotion tool for the current internal/shared-registry phase.
+Do not treat this helper as a generic remote replication protocol. It is a practical local promotion tool for moving a complete, valid `v2` static root from a staging view to a read-serving view.
 
 ## 4. Minimum Server Controls
 
 - use `https` for remote registry roots in production
-- reject overwrite attempts for existing immutable objects
+- reject overwrite attempts for existing artifact and log objects
 - preserve audit logs for package publication attempts
-- restrict upload access at the network or proxy layer if auth is still deferred in `spio`
+- restrict publish-worker or control-plane access at the network, storage, or service layer
 - if write-origin auth is needed, provision it through the private security boundary and deployment-owned config instead of committing it under the tracked project tree
-- back up marker, index, and blobs together
+- back up `config/`, `trust/`, `index/`, `artifacts/`, and `log/` together
 
 ## 5. Minimum Client Controls
 
-- keep blob `sha256` verification mandatory
+- keep artifact `sha256` verification mandatory
 - prefer locked workflows for CI and release paths
 - use `--offline` or vendored state where deterministic offline builds matter
 - pin registry dependencies in `spio.lock`

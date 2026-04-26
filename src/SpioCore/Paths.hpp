@@ -13,6 +13,8 @@ std::filesystem::path ProjectStateRootForManifest(const std::filesystem::path &m
 std::filesystem::path ProjectVendorRootForManifest(const std::filesystem::path &manifest_path);
 std::filesystem::path ProjectToolchainPinPathForManifest(const std::filesystem::path &manifest_path);
 std::optional<std::filesystem::path> FindProjectToolchainPinPath(const std::filesystem::path &manifest_path);
+std::filesystem::path ProjectToolchainStatePathForManifest(const std::filesystem::path &manifest_path);
+std::optional<std::filesystem::path> FindProjectToolchainStatePath(const std::filesystem::path &manifest_path);
 std::optional<std::filesystem::path> ResolveOptionalSpioHome();
 std::filesystem::path ResolveSpioHome();
 std::filesystem::path ManagedToolsRoot(const std::filesystem::path &spio_home);
@@ -24,6 +26,16 @@ std::filesystem::path ManagedStyioInstallRoot(
 std::filesystem::path ManagedStyioCurrentRoot(const std::filesystem::path &spio_home);
 std::filesystem::path ManagedStyioBinaryPath(const std::filesystem::path &root);
 std::filesystem::path ManagedStyioMetadataPath(const std::filesystem::path &root);
+std::filesystem::path SourceStateRoot(const std::filesystem::path &spio_home);
+std::filesystem::path SourceCheckoutRoot(
+    const std::filesystem::path &spio_home,
+    const std::string &channel,
+    const std::string &identity);
+std::filesystem::path SourceToolchainBuildRoot(
+    const std::filesystem::path &spio_home,
+    const std::string &channel,
+    const std::string &identity,
+    const std::string &build_mode);
 std::filesystem::path RegistryCacheRoot(const std::filesystem::path &spio_home);
 std::filesystem::path RegistryIndexCacheRoot(const std::filesystem::path &spio_home);
 std::filesystem::path RegistryBlobCacheRoot(const std::filesystem::path &spio_home);

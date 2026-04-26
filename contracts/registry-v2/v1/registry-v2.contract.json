@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "protocol": "spio-static-registry",
+  "protocol_version": 2,
+  "read_plane": {
+    "marker": "config.json",
+    "trust_root": "trust/root.json",
+    "timestamp": "trust/timestamp.json",
+    "snapshot": "trust/snapshot.json",
+    "namespace_targets_prefix": "trust/targets/",
+    "package_index_prefix": "index/",
+    "source_artifact_prefix": "artifacts/source/",
+    "binary_artifact_prefix": "artifacts/binary/",
+    "log_checkpoint": "log/checkpoint.json",
+    "log_leaf_prefix": "log/leaves/"
+  },
+  "capabilities": {
+    "append_only_index": true,
+    "source_artifacts": true,
+    "binary_artifacts": true,
+    "transparency_log": true,
+    "signed_metadata": true,
+    "delegated_namespace_targets": true
+  },
+  "schemas": {
+    "config": "config.schema.json",
+    "root": "signed-root.schema.json",
+    "timestamp": "signed-timestamp.schema.json",
+    "snapshot": "signed-snapshot.schema.json",
+    "namespace_targets": "signed-namespace-targets.schema.json",
+    "package_index_record": "package-index-record.schema.json",
+    "log_checkpoint": "signed-checkpoint.schema.json",
+    "log_leaf": "transparency-log-leaf.schema.json"
+  }
+}

@@ -2,7 +2,7 @@
 
 **Purpose:** Provide the single entrypoint index for user-visible `spio` arguments, repository-maintainer script arguments, and public environment variables so parameter lists do not drift across code, scripts, and contract documents.
 
-**Last updated:** 2026-04-12
+**Last updated:** 2026-04-20
 
 ## 1. Ownership
 
@@ -46,21 +46,33 @@ spio [--help] [--version] [--json] <command> [command-args...]
 ### Implemented Native Commands
 
 - `spio machine-info [--json]`
+- `spio project-graph --json [--manifest-path <path>] [--locked|--offline|--frozen]`
+- `spio cloud status --json [--manifest-path <path>]`
+- `spio cloud plan --json <build|run|test> [minimal] [--manifest-path <path>] [--package <package-name>] [--bin <name>|--lib|--test <name>] [--profile <dev|release>] [--source-root <path>] [--source-rev <rev>] [--yes|--no-fetch|--non-interactive] [--locked|--offline|--frozen]`
 - `spio new <package-name> [directory] [--lib|--bin]`
 - `spio init [--name <package-name>] [--lib|--bin]`
+- `spio use <binary|build> [--manifest-path <path>]`
+- `spio set channel [as] <stable|nightly> [--manifest-path <path>]`
+- `spio set build [as] <minimal> [--manifest-path <path>]`
+- `spio set risk [as] <trusted-internal|partner-controlled|untrusted-user> [--manifest-path <path>]`
+- `spio set lane [as] <isolated|warm-shared> [--manifest-path <path>]`
+- `spio set security [as] <sandbox-default|partner-restricted|trusted-warm> [--manifest-path <path>]`
+- `spio install styio[@latest] [--source-root <path>] [--source-rev <ref>] [--channel <stable|nightly>] [--build <minimal>] [--yes|--no-fetch|--offline|--non-interactive]`
 - `spio check [--manifest-path <path>] [--styio-bin <path>] [--locked|--offline|--frozen]`
 - `spio add <package-name> (--path <path> | --git <source> --rev <rev> | --registry <url> --version <x.y.z>) [--alias <name>] [--dev] [--manifest-path <path>]`
 - `spio remove <alias-or-package> [--dev] [--manifest-path <path>]`
+- `spio sync [--manifest-path <path>] [--locked|--offline|--frozen]`
 - `spio fetch [--manifest-path <path>] [--locked|--offline|--frozen]`
-- `spio build [--manifest-path <path>] [--package <package-name>] [--bin <name>|--lib] [--profile <dev|release>] [--dry-run] [--styio-bin <path>] [--locked|--offline|--frozen]`
-- `spio run [--manifest-path <path>] [--package <package-name>] [--bin <name>] [--profile <dev|release>] [--dry-run] [--styio-bin <path>] [--locked|--offline|--frozen]`
-- `spio test [--manifest-path <path>] [--package <package-name>] [--test <name>] [--profile <dev|release>] [--dry-run] [--styio-bin <path>] [--locked|--offline|--frozen]`
+- `spio build [minimal] [--manifest-path <path>] [--package <package-name>] [--bin <name>|--lib] [--profile <dev|release>] [--dry-run] [--styio-bin <path>] [--source-root <path>] [--source-rev <rev>] [--yes|--no-fetch|--non-interactive] [--locked|--offline|--frozen]`
+- `spio run [--manifest-path <path>] [--package <package-name>] [--bin <name>] [--profile <dev|release>] [--dry-run] [--styio-bin <path>] [--source-root <path>] [--source-rev <rev>] [--yes|--no-fetch|--non-interactive] [--locked|--offline|--frozen]`
+- `spio test [--manifest-path <path>] [--package <package-name>] [--test <name>] [--profile <dev|release>] [--dry-run] [--styio-bin <path>] [--source-root <path>] [--source-rev <rev>] [--yes|--no-fetch|--non-interactive] [--locked|--offline|--frozen]`
 - `spio lock [--manifest-path <path>] [--check] [--offline]`
 - `spio tree [--manifest-path <path>]`
 - `spio vendor [--manifest-path <path>] [--output <path>] [--locked|--offline|--frozen]`
 - `spio pack [--manifest-path <path>] [--package <package-name>] [--output <path>]`
 - `spio publish [--manifest-path <path>] [--package <package-name>] [--output <path>] [--registry <path-or-url>] [--registry-profile <name>] [--registry-policy-file <path>] [--registry-header <name:value>] [--dry-run]`
 - `spio tool install --styio-bin <path>`
+- `spio tool status --json [--manifest-path <path>]`
 - `spio tool use --version <compiler-version> [--channel <channel>]`
 - `spio tool pin (--version <compiler-version> [--channel <channel>] | --clear) [--manifest-path <path>]`
 
@@ -80,6 +92,132 @@ Rules:
 - output is machine-readable JSON in the current native core
 - `--json` is accepted as the explicit compatibility spelling
 - no other command-specific arguments are valid
+
+### `project-graph`
+
+Canonical form:
+
+```text
+spio project-graph --json [--manifest-path <path>] [--locked|--offline|--frozen]
+```
+
+Arguments:
+
+- `--json`
+  - required in the current native core
+  - machine-readable success output is the only supported form
+- `--manifest-path <path>`
+  - optional
+  - path to the manifest file
+  - defaults to `spio.toml`
+- `--locked`
+  - optional
+  - requires the adjacent `spio.lock` to match the active graph
+- `--offline`
+  - optional
+  - forbids network fetches and uses only local cache or vendored snapshots
+- `--frozen`
+  - optional
+  - shorthand for `--locked` plus `--offline`
+
+Behavior summary:
+
+- validates the selected manifest
+- resolves the active `single-version-v1` graph
+- reports packages, dependency edges, targets, toolchain state, managed toolchains, lock state, vendor state, source state, and package distribution
+- embeds the resolved local cloud execution policy alongside the project-local toolchain state
+
+### `cloud status`
+
+Canonical form:
+
+```text
+spio cloud status --json [--manifest-path <path>]
+```
+
+Arguments:
+
+- `status`
+  - required subcommand
+  - prints the resolved local cloud execution policy
+- `--json`
+  - required in the current native core
+  - machine-readable success output is the only supported form
+- `--manifest-path <path>`
+  - optional
+  - selected project manifest used to locate the project-local toolchain state
+  - defaults to `spio.toml`
+
+Behavior summary:
+
+- validates the selected manifest
+- loads or initializes adjacent `spio-toolchain.lock`
+- resolves local cloud policy from project-local state
+- reports both persisted preferences and resolved execution policy
+
+### `cloud plan`
+
+Canonical form:
+
+```text
+spio cloud plan --json <build|run|test> [minimal] [--manifest-path <path>] [--package <package-name>] [--bin <name>|--lib|--test <name>] [--profile <dev|release>] [--source-root <path>] [--source-rev <rev>] [--yes|--no-fetch|--non-interactive] [--locked|--offline|--frozen]
+```
+
+Arguments:
+
+- `plan`
+  - required subcommand
+  - renders a normalized control-plane job request
+- `--json`
+  - required in the current native core
+  - machine-readable success output is the only supported form
+- `<build|run|test>`
+  - required action
+  - selects the workflow intent encoded in the job request
+- `[minimal]`
+  - optional build-mode selector
+  - only valid when the action is `build`
+- `--manifest-path <path>`
+  - optional
+  - defaults to `spio.toml`
+- `--package <package-name>`
+  - optional
+- `--bin <name>`
+  - optional
+  - valid for `build` and `run`
+- `--lib`
+  - optional
+  - valid only for `build`
+- `--test <name>`
+  - optional
+  - valid only for `test`
+- `--profile <dev|release>`
+  - optional
+- `--source-root <path>`
+  - optional
+  - valid only when the project uses `spio use build`
+- `--source-rev <rev>`
+  - optional
+  - valid only when the project uses `spio use build`
+- `--yes`
+  - optional
+- `--no-fetch`
+  - optional
+- `--non-interactive`
+  - optional
+- `--locked`
+  - optional
+- `--offline`
+  - optional
+- `--frozen`
+  - optional
+
+Behavior summary:
+
+- validates and normalizes the same target-selection grammar used by local `build/run/test`
+- resolves the project-local toolchain state and local cloud-execution policy
+- emits the frozen `build_job_request v1` request body for `POST /api/styio-platform/v1/jobs`
+- does not execute the build and does not contact a remote scheduler
 
 ### `new`
 
@@ -127,6 +265,95 @@ Arguments:
   - optional
   - create a binary package scaffold in the current directory
   - default if neither `--lib` nor `--bin` is provided
+
+### `use`
+
+Canonical form:
+
+```text
+spio use <binary|build> [--manifest-path <path>]
+```
+
+Arguments:
+
+- `<binary|build>`
+  - required
+  - selects the project-local toolchain mode
+- `--manifest-path <path>`
+  - optional
+  - selected project manifest used to locate the project-local toolchain state
+  - defaults to `spio.toml`
+
+Behavior summary:
+
+- validates the selected manifest before changing project-local toolchain state
+- writes or refreshes `<selected-manifest-dir>/spio-toolchain.lock`
+- `binary` keeps build/run/test on the published-compiler path
+- `build` opts the project into source-toolchain build orchestration
+- does not modify the adjacent `spio.lock`
+
+### `set`
+
+Canonical forms:
+
+```text
+spio set channel as <stable|nightly> [--manifest-path <path>]
+spio set build as <minimal> [--manifest-path <path>]
+spio set risk as <trusted-internal|partner-controlled|untrusted-user> [--manifest-path <path>]
+spio set lane as <isolated|warm-shared> [--manifest-path <path>]
+spio set security as <sandbox-default|partner-restricted|trusted-warm> [--manifest-path <path>]
+```
+
+Compatibility forms accepted by the parser:
+
+```text
+spio set channel <stable|nightly> [--manifest-path <path>]
+spio set build <minimal> [--manifest-path <path>]
+spio set risk <trusted-internal|partner-controlled|untrusted-user> [--manifest-path <path>]
+spio set lane <isolated|warm-shared> [--manifest-path <path>]
+spio set security <sandbox-default|partner-restricted|trusted-warm> [--manifest-path <path>]
+```
+
+Arguments:
+
+- `channel`
+  - selects the project-local release channel
+- `build`
+  - selects the project-local build mode
+- `risk`
+  - selects the project-local cloud risk class
+- `lane`
+  - selects the project-local preferred execution lane
+- `security`
+  - selects the project-local security profile
+- `as`
+  - optional for parsing compatibility
+  - official docs, help output, and diagnostics keep the `as` spelling
+- `<stable|nightly>`
+  - valid values for `channel`
+- `<minimal>`
+  - the only currently supported build mode
+- `<trusted-internal|partner-controlled|untrusted-user>`
+  - valid values for `risk`
+- `<isolated|warm-shared>`
+  - valid values for `lane`
+- `<sandbox-default|partner-restricted|trusted-warm>`
+  - valid values for `security`
+- `--manifest-path <path>`
+  - optional
+  - selected project manifest used to locate the project-local toolchain state
+  - defaults to `spio.toml`
+
+Behavior summary:
+
+- validates the selected manifest before changing project-local toolchain state
+- writes or refreshes `<selected-manifest-dir>/spio-toolchain.lock`
+- `spio set channel as ...` updates the selected project release channel for both `binary` and `build` mode
+- `spio set build as minimal` persists the current build mode default used by bare `spio build`
+- `spio set risk as ...` persists the project-local cloud risk class
+- `spio set lane as ...` persists the preferred execution lane
+- `spio set security as ...` persists the project-local security profile
+- does not modify the adjacent `spio.lock`
 
 ### `check`
 
@@ -248,6 +475,38 @@ Behavior summary:
 - rolls back manifest and adjacent lockfile changes if the post-edit resolver step fails
 - rejects ambiguous remove targets
 
+### `sync`
+
+Canonical form:
+
+```text
+spio sync [--manifest-path <path>] [--locked|--offline|--frozen]
+```
+
+Arguments:
+
+- `--manifest-path <path>`
+  - optional
+  - path to the project manifest
+  - defaults to `spio.toml`
+- `--locked`
+  - optional
+  - requires the adjacent `spio.lock` to match the active graph
+- `--offline`
+  - optional
+  - forbids network fetches and uses only local cache or vendored snapshots
+- `--frozen`
+  - optional
+  - shorthand for `--locked` plus `--offline`
+
+Behavior summary:
+
+- validates the selected manifest
+- resolves the active graph
+- writes or refreshes the adjacent lockfile unless locked mode is requested
+- materializes dependency sources through the same resolver/cache path as `fetch`
+- reports lockfile mode as `write`, `unchanged`, or `locked`
+
 ### `fetch`
 
 Canonical form:
@@ -320,11 +579,15 @@ Behavior summary:
 Canonical form:
 
 ```text
-spio build [--manifest-path <path>] [--package <package-name>] [--bin <name>|--lib] [--profile <dev|release>] [--dry-run] [--styio-bin <path>] [--locked|--offline|--frozen]
+spio build [minimal] [--manifest-path <path>] [--package <package-name>] [--bin <name>|--lib] [--profile <dev|release>] [--dry-run] [--styio-bin <path>] [--source-root <path>] [--source-rev <rev>] [--yes|--no-fetch|--non-interactive] [--locked|--offline|--frozen]
 ```
 
 Arguments:
 
+- `[minimal]`
+  - optional positional build mode
+  - the only currently supported build mode
+  - bare `spio build` normalizes to the same mode through project defaults
 - `--manifest-path <path>`
   - optional
   - path to the manifest file used as the resolver graph root
@@ -347,13 +610,35 @@ Arguments:
   - writes the compile-plan and build directories locally without invoking the compiler
 - `--styio-bin <path>`
   - optional for `--dry-run`
-  - required for non-dry-run compiler execution unless compiler discovery succeeds through `SPIO_STYIO_BIN`, nearest project-local `spio-toolchain.toml`, or the managed current compiler
+  - valid only when the selected project toolchain mode is `binary`
+  - overrides published compiler discovery for the current invocation
+- `--source-root <path>`
+  - optional
+  - valid only when the selected project toolchain mode is `build`
+  - points to an already available `styio` source tree
+- `--source-rev <rev>`
+  - optional
+  - valid only when the selected project toolchain mode is `build`
+  - overrides the source revision or branch selected from the project-local channel
+- `--yes`
+  - optional
+  - valid only when the selected project toolchain mode is `build`
+  - auto-confirms fetching the official `styio` source tree when it is missing locally
+- `--no-fetch`
+  - optional
+  - valid only when the selected project toolchain mode is `build`
+  - forbids auto-fetching the official `styio` source tree
+- `--non-interactive`
+  - optional
+  - valid only when the selected project toolchain mode is `build`
+  - rejects the fetch prompt instead of waiting for TTY input
 - `--locked`
   - optional
   - requires an adjacent `spio.lock` to exist and match the active resolver graph
 - `--offline`
   - optional
   - forbids network fetches and uses only local cache or vendored snapshots
+  - in `build` mode it also forbids fetching or updating the official `styio` source tree
 - `--frozen`
   - optional
   - shorthand for `--locked` plus `--offline`
@@ -370,14 +655,32 @@ Behavior summary:
 - requires `--lib` or `--bin <name>` when the selected package target set is ambiguous
 - rejects cyclic graphs and mixed `edition` / `toolchain` tuples that `compile-plan v1` cannot represent
 - `--dry-run` does not require compiler probing and does not change `spio machine-info`
-- non-dry-run build is still gated by the published compatibility matrix; under the current bootstrap-only matrix it fails before compiler execution starts
+- records or reuses project-local toolchain state from `spio-toolchain.lock`
+- in `binary` mode, non-dry-run compiler execution resolves the published compiler through:
+  - explicit `--styio-bin <path>`
+  - `SPIO_STYIO_BIN`
+  - nearest project-local `spio-toolchain.toml`
+  - managed current compiler under `SPIO_HOME/tools/styio/current/bin/styio`
+- in `binary` mode, non-dry-run build still requires the published compatibility matrix to allow compile-plan v1
+- in `build` mode, `spio` resolves a local source root from:
+  - explicit `--source-root <path>`
+  - `SPIO_STYIO_SOURCE_ROOT`
+  - cached official source checkout under `SPIO_HOME/src/styio/...`
+- in `build` mode, the default official source origin is `https://github.com/SymPolicy/Styio.git`
+- in `build` mode, project channel selection maps to the same-named source branch:
+  - `stable` -> `stable`
+  - `nightly` -> `nightly`
+- in `build` mode, missing local source may trigger the interactive fetch prompt:
+  - `styio source tree not found locally. Fetch from official Styio source origin? [Y/n]`
+- in `build` mode, the source-built compiler is cached under `SPIO_HOME/toolchains/source/...`
+- in `build` mode, the resolved source revision is written back into `spio-toolchain.lock`
 
 ### `run`
 
 Canonical form:
 
 ```text
-spio run [--manifest-path <path>] [--package <package-name>] [--bin <name>] [--profile <dev|release>] [--dry-run] [--styio-bin <path>] [--locked|--offline|--frozen]
+spio run [--manifest-path <path>] [--package <package-name>] [--bin <name>] [--profile <dev|release>] [--dry-run] [--styio-bin <path>] [--source-root <path>] [--source-rev <rev>] [--yes|--no-fetch|--non-interactive] [--locked|--offline|--frozen]
 ```
 
 Arguments:
@@ -401,7 +704,23 @@ Arguments:
   - writes the compile-plan and build directories locally without invoking the compiler
 - `--styio-bin <path>`
   - optional for `--dry-run`
-  - required for non-dry-run compiler execution unless compiler discovery succeeds through `SPIO_STYIO_BIN`, nearest project-local `spio-toolchain.toml`, or the managed current compiler
+  - valid only when the selected project toolchain mode is `binary`
+  - overrides published compiler discovery for the current invocation
+- `--source-root <path>`
+  - optional
+  - valid only when the selected project toolchain mode is `build`
+- `--source-rev <rev>`
+  - optional
+  - valid only when the selected project toolchain mode is `build`
+- `--yes`
+  - optional
+  - valid only when the selected project toolchain mode is `build`
+- `--no-fetch`
+  - optional
+  - valid only when the selected project toolchain mode is `build`
+- `--non-interactive`
+  - optional
+  - valid only when the selected project toolchain mode is `build`
 - `--locked`
   - optional
   - requires an adjacent `spio.lock` to exist and match the active resolver graph
@@ -424,14 +743,16 @@ Behavior summary:
 - requires `--package` when the selected manifest graph has multiple root packages and no root package at the selected manifest path
 - requires an adjacent fresh `spio.lock` when `--locked` or `--frozen` is set
 - `--dry-run` does not require compiler probing and does not change `spio machine-info`
-- non-dry-run run is still gated by the published compatibility matrix; under the current bootstrap-only matrix it fails before compiler execution starts
+- records or reuses project-local toolchain state from `spio-toolchain.lock`
+- in `binary` mode, non-dry-run run uses the same published compiler discovery and compatibility gate as `spio build`
+- in `build` mode, non-dry-run run uses the same source-root resolution, fetch rules, and source-built compiler cache as `spio build`
 
 ### `test`
 
 Canonical form:
 
 ```text
-spio test [--manifest-path <path>] [--package <package-name>] [--test <name>] [--profile <dev|release>] [--dry-run] [--styio-bin <path>] [--locked|--offline|--frozen]
+spio test [--manifest-path <path>] [--package <package-name>] [--test <name>] [--profile <dev|release>] [--dry-run] [--styio-bin <path>] [--source-root <path>] [--source-rev <rev>] [--yes|--no-fetch|--non-interactive] [--locked|--offline|--frozen]
 ```
 
 Arguments:
@@ -455,7 +776,23 @@ Arguments:
   - writes the compile-plan and build directories locally without invoking the compiler
 - `--styio-bin <path>`
   - optional for `--dry-run`
-  - required for non-dry-run compiler execution unless compiler discovery succeeds through `SPIO_STYIO_BIN`, nearest project-local `spio-toolchain.toml`, or the managed current compiler
+  - valid only when the selected project toolchain mode is `binary`
+  - overrides published compiler discovery for the current invocation
+- `--source-root <path>`
+  - optional
+  - valid only when the selected project toolchain mode is `build`
+- `--source-rev <rev>`
+  - optional
+  - valid only when the selected project toolchain mode is `build`
+- `--yes`
+  - optional
+  - valid only when the selected project toolchain mode is `build`
+- `--no-fetch`
+  - optional
+  - valid only when the selected project toolchain mode is `build`
+- `--non-interactive`
+  - optional
+  - valid only when the selected project toolchain mode is `build`
 - `--locked`
   - optional
   - requires an adjacent `spio.lock` to exist and match the active resolver graph
@@ -478,7 +815,9 @@ Behavior summary:
 - requires `--package` when the selected manifest graph has multiple root packages and no root package at the selected manifest path
 - requires an adjacent fresh `spio.lock` when `--locked` or `--frozen` is set
 - `--dry-run` does not require compiler probing and does not change `spio machine-info`
-- non-dry-run test is still gated by the published compatibility matrix; under the current bootstrap-only matrix it fails before compiler execution starts
+- records or reuses project-local toolchain state from `spio-toolchain.lock`
+- in `binary` mode, non-dry-run test uses the same published compiler discovery and compatibility gate as `spio build`
+- in `build` mode, non-dry-run test uses the same source-root resolution, fetch rules, and source-built compiler cache as `spio build`
 
 ### `tree`
 
@@ -633,19 +972,69 @@ Behavior summary:
 - requires `package.publish = true`
 - allows dependency entries only when they are themselves registry-addressable
 - stages the same deterministic source archive shape used by `spio pack`
-- non-dry-run `publish` writes into the static registry layout rooted at `--registry <path-or-url>`
-- local paths and `file://...` publish directly into the filesystem registry root
-- `http://...` and `https://...` publish through anonymous HTTP `PUT`
+- non-dry-run `publish` writes into the registry `v2` static read plane or calls the registry `v2` control plane rooted at `--registry <path-or-url>`
+- local paths and `file://...` publish directly into a filesystem registry `v2` root
+- `http://...` and `https://...` publish through `/api/spio-registry-control/v1/publish`
 - when a private security module accepts `--registry-profile <name>`, `--registry-policy-file <path>`, or `--registry-header <name:value>`, those options affect only remote publish against the write origin and do not affect client-side fetch semantics
 - publish writes:
-  - marker file: `<registry-root>/spio-registry.json`
-  - immutable archive blob: `<registry-root>/blobs/sha256/<xx>/<yy>/<sha256>.tar`
-  - version entry: `<registry-root>/index/<namespace>/<name>/<version>.json`
-- version entries record package name, version, archive digest, archive size, publish timestamp, and dependency metadata for `[dependencies]` and `[dev-dependencies]`
-- remote publish currently requires the origin to preserve immutable paths and reject overwrites
+  - registry config: `<registry-root>/config.json`
+  - signed namespace targets: `<registry-root>/trust/targets/<namespace>.json`
+  - append-only package index: `<registry-root>/index/<namespace>/<name>.jsonl`
+  - source artifact: `<registry-root>/artifacts/source/sha256/<xx>/<yy>/<sha256>.spio.src.tar`
+  - transparency metadata: `<registry-root>/log/...`
+- index records store package name, version, archive digest, archive size, publish timestamp, and dependency metadata for `[dependencies]` and `[dev-dependencies]`
+- remote publish currently requires a registry control-plane service that preserves append-only index and immutable artifact semantics
 - publish JSON stays redacted and may expose only security-provider metadata, security mode, header count, and optional profile name
 - auth/account behavior is intentionally kept behind the private security-module boundary
 - republishing an existing package version into the same registry fails explicitly
+
+### `install`
+
+Canonical surface:
+
+```text
+spio install styio[@latest] [--source-root <path>] [--source-rev <ref>] [--channel <stable|nightly>] [--build <minimal>] [--yes|--no-fetch|--offline|--non-interactive]
+```
+
+Arguments:
+
+- `styio` or `styio@latest`
+  - required
+  - defaults to stable latest
+  - `styio@<ref>` is accepted as a source revision while hosted package distribution is unavailable
+- `--source-root <path>`
+  - optional
+  - uses an existing local source checkout instead of fetching
+- `--source-rev <ref>`
+  - optional
+  - overrides the source revision selected by the package spec
+- `--channel <stable|nightly>`
+  - optional
+  - managed compiler channel, default `stable`
+- `--build <minimal>`
+  - optional
+  - source build mode, default `minimal`
+- `--yes`
+  - optional
+  - confirms source fetch; enabled by default for this top-level install path
+- `--no-fetch`
+  - optional
+  - refuses remote source fetch and requires a local source root or cache
+- `--offline`
+  - optional
+  - equivalent to no fetch plus offline source-cache behavior
+- `--non-interactive`
+  - optional
+  - keeps the command non-interactive
+
+Behavior summary:
+
+- fetches source from `SPIO_STYIO_SOURCE_ORIGIN` when set, otherwise from `https://github.com/SymPolicy/styio.git`
+- uses `SPIO_STYIO_SOURCE_REF` when set; otherwise `latest` maps to `main`
+- builds the `styio` target through the source-build path
+- validates the resulting compiler through `styio --machine-info=json` and the compatibility matrix
+- promotes the compiler into the managed current root under `SPIO_HOME/tools/styio/current/`
+- returns the same managed compiler fields as `tool install` plus source-root, source-revision, fetched, and built flags
 
 ### `tool install`
 
@@ -668,11 +1057,37 @@ Behavior summary:
 - installs the compiler under `SPIO_HOME/tools/styio/<channel>/<compiler-version>/bin/styio`
 - refreshes the managed default compiler copy at `SPIO_HOME/tools/styio/current/bin/styio`
 - writes stable install metadata beside both the versioned install root and the managed current root
-- `spio check`, `spio build`, `spio run`, and `spio test` continue compiler discovery through:
+- `spio check` plus `spio build`, `spio run`, and `spio test` in `binary` mode continue compiler discovery through:
   - explicit `--styio-bin <path>`
   - `SPIO_STYIO_BIN`
   - nearest project-local `spio-toolchain.toml`
   - managed current compiler
+
+### `tool status`
+
+Canonical surface:
+
+```text
+spio tool status --json [--manifest-path <path>]
+```
+
+Arguments:
+
+- `--json`
+  - required in the current native core
+  - machine-readable success output is the only supported form
+- `--manifest-path <path>`
+  - optional
+  - selected project manifest used to locate the project-local toolchain state and pin
+  - defaults to omitting project-local state from the result
+
+Behavior summary:
+
+- reports `SPIO_HOME`
+- reports the active managed current compiler when present
+- reports all installed managed toolchains under `SPIO_HOME/tools/styio/`
+- reports the nearest project-local `spio-toolchain.toml` pin when a manifest path is supplied
+- reports the project-local `spio-toolchain.lock` state and resolved cloud policy when a manifest path is supplied
 
 ### `tool use`
 
@@ -750,6 +1165,38 @@ Behavior:
 - builds the native binary on demand if the configured build directory does not already contain it
 - forwards all remaining arguments to the native `spio` executable
 
+### `scripts/install-spio.sh`
+
+Canonical form:
+
+```text
+curl -fsSL <base-url>/install-spio.sh | sh -s -- --base-url <base-url> [--install-dir <dir>]
+```
+
+Arguments:
+
+- `--base-url <url>`
+  - optional when `--binary-url` is provided
+  - directory containing a `spio` binary
+- `--binary-url <url>`
+  - optional
+  - exact URL for the `spio` binary
+- `--install-dir <dir>`
+  - optional
+  - defaults to `/usr/local/bin`
+- `--binary-name <name>`
+  - optional
+  - defaults to `spio`
+- `--no-styio-shim`
+  - optional
+  - skips installing the companion `styio` shim
+
+Behavior:
+
+- downloads the `spio` binary with `curl`
+- installs it into a PATH directory, using passwordless `sudo` when needed
+- installs a companion `styio` shim that forwards to `SPIO_HOME/tools/styio/current/bin/styio`
+
 ### `scripts/native-check.sh`
 
 Canonical form:
@@ -776,6 +1223,144 @@ Behavior:
 
 - copies a clean subtree to a temporary directory
 - runs `scripts/native-check.sh` inside the copied tree
+
+### `scripts/docs-index.py`
+
+Canonical form:
+
+```text
+python3 scripts/docs-index.py
+```
+
+Behavior:
+
+- validates documentation index ownership and generated doc-entry consistency
+
+### `scripts/docs-lifecycle.py`
+
+Canonical form:
+
+```text
+python3 scripts/docs-lifecycle.py
+```
+
+Behavior:
+
+- validates documentation lifecycle metadata and stale-document policy
+
+### `scripts/docs-audit.py`
+
+Canonical form:
+
+```text
+python3 scripts/docs-audit.py
+```
+
+Behavior:
+
+- runs the repository documentation ownership audit used by delivery gates
+
+### `scripts/submit-gate.py`
+
+Canonical form:
+
+```text
+python3 scripts/submit-gate.py [--profile <profile>] [--json]
+```
+
+Arguments:
+
+- `--profile <profile>`
+  - optional
+  - selects the submit-gate profile, with `ci` used by repository checks
+- `--json`
+  - optional
+  - emits a machine-readable step summary
+
+Behavior:
+
+- runs the submit-time quality gate bundle for the selected profile
+
+### `scripts/perf-gate.py`
+
+Canonical form:
+
+```text
+python3 scripts/perf-gate.py
+```
+
+Behavior:
+
+- runs the configured performance smoke gate for submission readiness
+
+### `scripts/repo-hygiene-check.py`
+
+Canonical form:
+
+```text
+python3 scripts/repo-hygiene-check.py [--repo-root <path>] [--mode <auto|tracked|all>] [--skip-doc-check]
+```
+
+Arguments:
+
+- `--repo-root <path>`
+  - optional
+  - repository or exported tree root to scan
+- `--mode <auto|tracked|all>`
+  - optional
+  - selects tracked-file, filesystem, or automatic scan mode
+- `--skip-doc-check`
+  - optional
+  - skips documentation reference validation
+
+Behavior:
+
+- validates artifact policy, `.gitignore` coverage, and required delivery documentation references
+
+### `scripts/delivery-gate.py`
+
+Canonical form:
+
+```text
+python3 scripts/delivery-gate.py [--json]
+```
+
+Arguments:
+
+- `--json`
+  - optional
+  - emits a machine-readable delivery-tree validation summary
+
+Behavior:
+
+- copies the repository into an extractable delivery tree and runs delivery hygiene, docs, and native checks there
+
+### `scripts/delivery-gate.sh`
+
+Canonical form:
+
+```text
+./scripts/delivery-gate.sh [--mode <checkpoint|push>] [--base <rev>] [--audit-bin <path>] [--skip-health]
+```
+
+Arguments:
+
+- `--mode <checkpoint|push>`
+  - optional
+  - selects the checkpoint or push-ready verification bundle
+- `--base <rev>`
+  - optional
+  - comparison base for push-mode hygiene validation
+- `--audit-bin <path>`
+  - optional
+  - released `audit` entrypoint used by the local audit step
+- `--skip-health`
+  - optional
+  - skips health checks that are already covered by a prior full run
+
+Behavior:
+
+- orchestrates repository hygiene, documentation, audit, native, and delivery-specific checks for branch submission
 
 ### `scripts/preflight-readiness-check.py`
 
@@ -911,7 +1496,7 @@ Arguments:
 
 - `--source-root <path-or-file-url>`
   - required
-  - writable source registry root that already contains canonical marker, index entries, and blobs
+  - writable source registry `v2` root that already contains canonical `config/`, `trust/`, `index/`, `artifacts/`, and `log/` objects
 - `--dest-root <path-or-file-url>`
   - required
   - read-side registry root that will serve the promoted objects
@@ -929,8 +1514,8 @@ Arguments:
 Behavior:
 
 - supports only local paths and `file://` roots
-- validates the source registry marker
-- copies marker, version entries, and referenced immutable blobs into the destination root
+- validates the source registry `v2` root shape
+- copies `config/`, `trust/`, `index/`, `artifacts/`, and `log/` objects into the destination root
 - treats destination objects as immutable and fails if an existing object differs from the source
 - supports idempotent repeated promotion runs
 
@@ -952,11 +1537,17 @@ Arguments:
 ## 6. Public Environment Variables
 
 - `SPIO_STYIO_BIN`
-  - external compiler path used by `spio build`, `spio run`, `spio test`, and `spio check` when `--styio-bin` is not passed
+  - external published compiler path used by `spio check` and `spio build`, `spio run`, or `spio test` when the selected project mode is `binary` and `--styio-bin` is not passed
   - takes precedence over any project-local toolchain pin or compiler installed through `spio tool install`
+- `SPIO_STYIO_SOURCE_ROOT`
+  - source-tree override used by `spio build`, `spio run`, and `spio test` when the selected project mode is `build` and `--source-root` is not passed
+- `SPIO_STYIO_SOURCE_ORIGIN`
+  - official source origin override used by source-build mode when fetching the `styio` source tree into `SPIO_HOME/src/styio/...`
 - `SPIO_HOME`
   - source cache root used by resolver-backed commands such as `spio add`, `spio check`, `spio fetch`, `spio lock`, and `spio tree`
   - managed tool install root for `spio tool install`, `spio tool use`, and `spio tool pin`
+  - source-build checkout root for `SPIO_HOME/src/styio/...`
+  - source-built compiler cache root for `SPIO_HOME/toolchains/source/...`
   - defaults to `~/.spio` when not set
 - `SPIO_BUILD_DIR`
   - build directory used by `scripts/spio` and `scripts/native-check.sh`

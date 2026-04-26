@@ -3,9 +3,15 @@
 #include "SpioCore/Errors.hpp"
 
 #include <array>
+#include <cctype>
+#include <filesystem>
 #include <stdexcept>
 #include <string>
+#include <sstream>
 #include <utility>
+#include <vector>
+
+namespace fs = std::filesystem;
 
 namespace
 {
@@ -33,6 +39,41 @@ bool IsHttpRegistryRoot(const std::string &value)
 bool IsFileRegistryRoot(const std::string &value)
 {
   return value.starts_with("file://");
+}
+
+std::vector<std::string> SplitPosixPath(const std::string &value)
+{
+  std::vector<std::string> parts;
+  std::stringstream stream(value);
+  std::string part;
+  while (std::getline(stream, part, '/'))
+  {
+    parts.push_back(part);
+  }
+  return parts;
+}
+
+bool IsSafePackageSegment(const std::string &value)
+{
+  if (value.empty())
+  {
+    return false;
+  }
+  const auto is_lower_or_digit = [](const unsigned char ch) {
+    return (ch >= 'a' && ch <= 'z') || std::isdigit(ch) != 0;
+  };
+  if (!is_lower_or_digit(static_cast<unsigned char>(value.front())))
+  {
+    return false;
+  }
+  for (const unsigned char ch : value)
+  {
+    if (!is_lower_or_digit(ch) && ch != '-' && ch != '_')
+    {
+      return false;
+    }
+  }
+  return true;
 }
 
 using ReadSecurityHandler =
@@ -204,6 +245,88 @@ RegistryReadSecurityDecision ResolveRegistryReadSecurity(const RegistryReadSecur
 RegistryWriteSecurityDecision ResolveRegistryWriteSecurity(const RegistryWriteSecurityRequest &request)
 {
   return WriteSecurityResolverSlot()(request);
+}
+
+RegistryPackageNameParts SplitRegistryPackageName(const std::string &package_name, const std::string &context)
+{
+  const size_t slash = package_name.find('/');
+  if (slash == std::string::npos || slash != package_name.rfind('/'))
+  {
+    throw FetchError(context + " must match namespace/name: " + package_name);
+  }
+  RegistryPackageNameParts parts{
+      .namespace_name = package_name.substr(0U, slash),
+      .short_name = package_name.substr(slash + 1U),
+  };
+  if (!IsSafePackageSegment(parts.namespace_name) || !IsSafePackageSegment(parts.short_name))
+  {
+    throw FetchError(context + " must match namespace/name: " + package_name);
+  }
+  return parts;
+}
+
+void ValidateRegistryPackageIdentity(const std::string &package_name)
+{
+  (void) SplitRegistryPackageName(package_name, "registry package name");
+}
+
+std::filesystem::path NormalizeRegistryObjectPath(const std::string &relative_path, const std::string &context)
+{
+  if (relative_path.empty() || relative_path.ends_with('/'))
+  {
+    throw FetchError(context + " must be a non-empty POSIX-relative path: " + relative_path);
+  }
+  if (relative_path.find('\\') != std::string::npos || relative_path.starts_with('/'))
+  {
+    throw FetchError(context + " must be a POSIX-relative path inside the registry root: " + relative_path);
+  }
+  for (const unsigned char ch : relative_path)
+  {
+    if (ch < 32U)
+    {
+      throw FetchError(context + " must not contain control characters: " + relative_path);
+    }
+  }
+  const fs::path path(relative_path);
+  if (path.is_absolute())
+  {
+    throw FetchError(context + " must be relative: " + relative_path);
+  }
+  for (const std::string &part : SplitPosixPath(relative_path))
+  {
+    if (part.empty() || part == "." || part == "..")
+    {
+      throw FetchError(context + " must be a canonical POSIX-relative path inside the registry root: " + relative_path);
+    }
+  }
+  const fs::path normalized = path.lexically_normal();
+  const std::string text = normalized.generic_string();
+  if (text.empty() || text == "." || text == ".." || text.starts_with("../"))
+  {
+    throw FetchError(context + " escapes the registry root: " + relative_path);
+  }
+  return normalized;
+}
+
+std::filesystem::path NormalizeRegistryRelativePath(const std::string &relative_path, const std::string &context)
+{
+  return NormalizeRegistryObjectPath(relative_path, context);
+}
+
+bool IsRegistrySha256Digest(const std::string &value)
+{
+  if (value.size() != 64U)
+  {
+    return false;
+  }
+  for (const unsigned char ch : value)
+  {
+    if (!std::isdigit(ch) && (ch < 'a' || ch > 'f'))
+    {
+      return false;
+    }
+  }
+  return true;
 }
 
 }  // namespace spio
