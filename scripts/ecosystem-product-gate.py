@@ -9,8 +9,9 @@ import shlex
 import subprocess
 import sys
 import tempfile
-import urllib.request
 import urllib.error
+import urllib.parse
+import urllib.request
 from typing import Any
 
 
@@ -20,6 +21,7 @@ SAMPLE_GATE = ROOT / "scripts" / "ecosystem-sample-workflow-gate.py"
 HOSTED_SERVER = ROOT / "scripts" / "spio-hosted-serve.py"
 VIEW_APP_ROOT = ROOT.parent / "styio-view" / "frontend" / "styio_view_app"
 PRODUCT_REPORT_MARKER = "STYIO_VIEW_PRODUCT_REPORT "
+LOCAL_HOSTS = {"127.0.0.1", "::1", "localhost"}
 
 
 def run_step(
@@ -393,9 +395,17 @@ def stop_hosted_server(proc: subprocess.Popen[str]) -> None:
         proc.wait(timeout=5)
 
 
+def hosted_endpoint(base_url: str, path: str) -> str:
+    parsed = urllib.parse.urlparse(base_url)
+    if parsed.scheme != "http" or parsed.hostname not in LOCAL_HOSTS:
+        raise RuntimeError(f"refusing non-local hosted endpoint: {base_url}")
+    clean_path = path if path.startswith("/") else f"/{path}"
+    return urllib.parse.urlunparse((parsed.scheme, parsed.netloc, clean_path, "", "", ""))
+
+
 def health_check(base_url: str) -> dict[str, Any]:
-    url = f"{base_url}/health"
-    with urllib.request.urlopen(url, timeout=5) as response:
+    health_request = urllib.request.Request(hosted_endpoint(base_url, "/health"))
+    with urllib.request.urlopen(health_request, timeout=5) as response:
         payload = json.loads(response.read().decode("utf-8"))
     if not isinstance(payload, dict):
         raise RuntimeError("hosted health endpoint did not return a JSON object")
@@ -416,7 +426,7 @@ def open_workspace(
         }
     ).encode("utf-8")
     request = urllib.request.Request(
-        f"{base_url}/workspaces/open",
+        hosted_endpoint(base_url, "/workspaces/open"),
         data=payload,
         headers={"Content-Type": "application/json"},
         method="POST",

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import os
 import re
 import subprocess
 import sys
@@ -12,21 +13,22 @@ DOCS = ROOT / "docs"
 REQUIRED_COLLECTION_DIRS = [
     DOCS,
     DOCS / "adr",
-    DOCS / "archive",
-    DOCS / "archive" / "history",
+    DOCS / "audit",
+    DOCS / "assets",
+    DOCS / "assets" / "workflow",
     DOCS / "governance",
-    DOCS / "history",
     DOCS / "operations",
     DOCS / "planning",
     DOCS / "registry",
-    DOCS / "rollups",
     DOCS / "security",
-    DOCS / "styio",
+    DOCS / "specs",
+    DOCS / "specs" / "audit",
+    DOCS / "external",
+    DOCS / "external" / "for-styio",
     DOCS / "teams",
 ]
 PURPOSE_RE = re.compile(r"^\*\*Purpose:\*\*\s+.+$", re.M)
 LAST_UPDATED_RE = re.compile(r"^\*\*Last updated:\*\*\s+[0-9]{4}-[0-9]{2}-[0-9]{2}\s*$", re.M)
-DATE_FILE_RE = re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}\.md$")
 
 
 def check_collections() -> list[str]:
@@ -45,23 +47,12 @@ def check_collections() -> list[str]:
 def check_metadata() -> list[str]:
     errors: list[str] = []
     for path in sorted(DOCS.rglob("*.md")):
-        text = path.read_text(encoding="utf-8")
         rel = path.relative_to(ROOT).as_posix()
+        text = path.read_text(encoding="utf-8")
         if not PURPOSE_RE.search(text):
             errors.append(f"missing Purpose line: {rel}")
         if not LAST_UPDATED_RE.search(text):
             errors.append(f"missing Last updated line: {rel}")
-    return errors
-
-
-def check_history_names() -> list[str]:
-    errors: list[str] = []
-    for base in (DOCS / "history", DOCS / "archive" / "history"):
-        for path in sorted(base.glob("*.md")):
-            if path.name in {"README.md", "INDEX.md"}:
-                continue
-            if not DATE_FILE_RE.match(path.name):
-                errors.append(f"dated history file must use YYYY-MM-DD.md: {path.relative_to(ROOT).as_posix()}")
     return errors
 
 
@@ -77,9 +68,10 @@ def main() -> int:
     errors: list[str] = []
     errors.extend(check_collections())
     errors.extend(check_metadata())
-    errors.extend(check_history_names())
     errors.extend(run_check([sys.executable, "scripts/docs-index.py", "--check"]))
     errors.extend(run_check([sys.executable, "scripts/docs-lifecycle.py", "validate"]))
+    if os.environ.get("STYIO_SKIP_TEAM_DOC_GATE") != "1":
+        errors.extend(run_check([sys.executable, "scripts/team-docs-gate.py"]))
 
     if errors:
         sys.stderr.write("docs audit failed:\n")

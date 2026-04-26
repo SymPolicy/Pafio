@@ -2,7 +2,7 @@
 
 **Purpose:** Keep `spio` documentation modular and maintainable by assigning a single owner module to each kind of knowledge.
 
-**Last updated:** 2026-04-17
+**Last updated:** 2026-04-12
 
 ## 1. Module Roles
 
@@ -77,48 +77,6 @@ Must not:
 - redefine CLI, schema, or compatibility rules
 - redefine exact gate commands
 
-### `docs/rollups/`
-
-Owns:
-
-- compressed active-state summaries
-- current-state reading order
-- active gap ledgers
-
-Must not:
-
-- redefine normative policy
-- replace planning detail, ADR rationale, or operational gate commands
-- become a shadow archive
-
-### `docs/history/`
-
-Owns:
-
-- active dated recovery notes
-- rollback points and restart commands
-- checkpoint-local provenance that is still operationally relevant
-
-Must not:
-
-- replace rollups as the default entrypoint
-- replace archive as the long-term provenance store
-- become a second planning backlog
-
-### `docs/archive/`
-
-Owns:
-
-- archived provenance
-- archive manifest and ledger
-- lifecycle metadata for moved documentation
-
-Must not:
-
-- hide unresolved active owner docs
-- replace rollups or history as the active surface
-- redefine policy or planning priorities
-
 ### `docs/operations/`
 
 Owns:
@@ -133,22 +91,7 @@ Must not:
 - redefine policy that belongs to governance
 - redefine backlog decomposition that belongs to planning
 
-### `docs/teams/`
-
-Owns:
-
-- daily-work runbooks
-- ownership routing
-- review and handoff entrypoints
-- checkpoint-facing recovery summaries
-
-Must not:
-
-- define normative contract text
-- duplicate gate command details from operations
-- replace planning or governance as the owner of a rule
-
-### `docs/styio/`
+### `docs/external/for-styio/`
 
 Owns:
 
@@ -167,19 +110,14 @@ Must not:
 - CLI/exit-code/error contract: `docs/governance/Spio-CLI-Contract.md`
 - entrypoint and argument index: `docs/governance/Spio-Entry-Argument-Index.md`
 - manifest/lock conventions: `docs/governance/Spio-Manifest-and-Lock-Conventions.md`
-- registry repository contract: `docs/governance/Spio-Registry-Repository-Contract.md`
 - private security boundary: `docs/security/Spio-Private-Security-Module-Contract.md`
+- registry v2 static read-plane protocol: `docs/registry/Spio-Registry-V2-Protocol.md`
+- registry v2 control-plane contract: `docs/registry/Spio-Registry-Control-Plane-Contract.md`
+- registry v2 publish-plane responsibilities: `docs/registry/Spio-Registry-V2-Publish-Control-Plane.md`
 - registry client contract: `docs/registry/Spio-Registry-Client-Contract.md`
-- registry server contract: `docs/registry/Spio-Registry-Server-Contract.md`
 - registry deployment baseline: `docs/registry/Spio-Registry-Deployment-Baseline.md`
 - design and implementation decision records: `docs/adr/INDEX.md`
 - overall roadmap: `docs/planning/Spio-Master-Plan.md`
-- three-repo milestone mirror and program exits: `docs/planning/Styio-Ecosystem-Delivery-Master-Plan.md`
-- three-repo file-governance alignment mirror: `docs/planning/Styio-Ecosystem-File-Governance-Alignment-Plan.md`
-- current active-state summary: `docs/rollups/CURRENT-STATE.md`
-- active gap ledger: `docs/rollups/NEXT-STAGE-GAP-LEDGER.md`
-- active recovery notes: `docs/history/`
-- archive lifecycle ledger: `docs/archive/ARCHIVE-LEDGER.md`
 - stage review and future feature priorities: `docs/planning/Spio-Stage-Review-and-Future-Features.md`
 - future direction and cross-team coordination: `docs/planning/Spio-Future-Direction-and-Styio-Coordination.md`
 - workstream TODOs: `docs/planning/Spio-Workstreams-and-TODOs.md`
@@ -187,10 +125,9 @@ Must not:
 - gate definitions and commands: `docs/operations/Spio-Verification-Matrix.md`
 - registry server operational validation: `docs/operations/Spio-Registry-Server-Runbook.md`
 - split procedure: `docs/operations/Spio-Repo-Split-Runbook.md`
-- team ownership and review routing: `docs/teams/COORDINATION-RUNBOOK.md`
-- `styio` developer knowledge: `docs/styio/Styio-for-Spio-Developers.md`
-- `styio` handoff interface spec: `docs/styio/Styio-External-Interface-Requirement-Spec.md`
-- `styio` public interface expectations: `docs/styio/Styio-Public-Interface-Roadmap.md`
+- `styio` developer knowledge: `docs/external/for-styio/Styio-for-Spio-Developers.md`
+- `styio` handoff interface spec: `docs/external/for-styio/Styio-External-Interface-Requirement-Spec.md`
+- `styio` public interface expectations: `docs/external/for-styio/Styio-Public-Interface-Roadmap.md`
 
 ## 3. Drift Prevention Rules
 
@@ -199,10 +136,7 @@ Must not:
 - Named gate commands live only in `docs/operations/Spio-Verification-Matrix.md`.
 - The split runbook may reference preflight and copy commands, but must not become a second verification matrix.
 - Workstream files may name gates, but gate pass commands must stay in operations.
-- Team runbooks may describe owned surfaces, review triggers, and handoff expectations, but they must not become the owner of CLI, registry, compatibility, or security rules.
-- Rollups may summarize active state and gaps, but they must not become the owner of policy or gate commands.
-- History files may record recovery notes, but they must not become the only place a rule or plan is defined.
-- Archive files may preserve provenance, but they must not become a dumping ground for unresolved active documents.
+- Documentation automation entrypoints `scripts/docs-index.py`, `scripts/docs-lifecycle.py`, and `scripts/docs-audit.py` must stay indexed in `Spio-Entry-Argument-Index.md`.
 - `styio` knowledge docs may describe published compiler behavior, but they must not define `spio` compatibility policy.
 - registry docs may specialize client or server responsibilities, but they must not redefine the shared registry object layout.
 - security docs may define private-boundary rules, but they must not carry deployment secrets or environment-owned credentials.
@@ -214,26 +148,13 @@ When a change happens:
 
 - CLI or exit-code change: update governance first, then tests, then planning/operations references if needed
 - argument or helper-script parameter change: update `Spio-Entry-Argument-Index.md` first, then the owning contract/script/tests
+- delivery gate change: update operations for `scripts/submit-gate.py`, `scripts/perf-gate.py`, `scripts/repo-hygiene-check.py`, and `scripts/delivery-gate.sh` before changing CI wiring
 - new public workflow-boundary or implementation-scope decision: add or update an ADR in `docs/adr/` with the same change
 - compatibility change: update governance plus `contracts/compat/*`, then verification coverage
 - gate command change: update operations first, then any summaries that link to the gate
-- docs-tree topology, index-generation, or lifecycle change: update this model first, then the file-governance mirror, then affected READMEs, runbooks, and scripts
 - migration procedure change: update operations runbook and preflight script together
-- ownership, review-route, or handoff change: update the affected `docs/teams/*.md` file and `docs/teams/COORDINATION-RUNBOOK.md`
-- cross-repo milestone, repo-exit, or checkpoint-ID change: update the authoritative nightly plan first, then `docs/planning/Styio-Ecosystem-Delivery-Master-Plan.md`, then the affected local planning, team, and handoff docs
-- docs tree topology, index-generation, lifecycle, ignore-policy, or fixture-negate rule change: update the authoritative nightly file-governance plan first, then `docs/planning/Styio-Ecosystem-File-Governance-Alignment-Plan.md`, then the affected governance, planning, team, and operations docs
-- new `styio` public interface: update `docs/styio/Styio-External-Interface-Requirement-Spec.md` first, then compatibility or workflow docs as needed
+- new `styio` public interface: update `docs/external/for-styio/Styio-External-Interface-Requirement-Spec.md` first, then compatibility or workflow docs as needed
 - security boundary change: update `docs/security/Spio-Private-Security-Module-Contract.md` first, then the affected public contract, tests, and private-module scaffolding
-
-## 4.1 File-Governance Automation
-
-The current file-governance automation surface is:
-
-- `scripts/docs-index.py`
-- `scripts/docs-lifecycle.py`
-- `scripts/docs-audit.py`
-
-These scripts do not own policy, but they enforce freshness, lifecycle consistency, and required docs skeletons for the tracked tree.
 
 ## 5. Known Defects
 

@@ -1,0 +1,251 @@
+{
+  "config": {
+    "schema_version": 1,
+    "protocol": "spio-static-registry",
+    "protocol_version": 2,
+    "registry_name": "example-spio",
+    "generated_at": "2026-04-21T00:00:00Z",
+    "capabilities": {
+      "append_only_index": true,
+      "source_artifacts": true,
+      "binary_artifacts": true,
+      "transparency_log": true
+    },
+    "paths": {
+      "root": "trust/root.json",
+      "timestamp": "trust/timestamp.json",
+      "snapshot": "trust/snapshot.json",
+      "targets_prefix": "trust/targets/",
+      "index_prefix": "index/",
+      "source_artifact_prefix": "artifacts/source/",
+      "binary_artifact_prefix": "artifacts/binary/",
+      "transparency_checkpoint": "log/checkpoint.json",
+      "transparency_leaves_prefix": "log/leaves/"
+    }
+  },
+  "root": {
+    "signed": {
+      "type": "root",
+      "spec_version": "1",
+      "version": 1,
+      "expires": "2027-04-21T00:00:00Z",
+      "keys": {
+        "root-key-id": {
+          "keytype": "ed25519",
+          "scheme": "ed25519",
+          "keyval": {
+            "public": "-----BEGIN PUBLIC KEY-----\nEXAMPLE\n-----END PUBLIC KEY-----\n"
+          }
+        }
+      },
+      "roles": {
+        "root": {
+          "keyids": [
+            "root-key-id"
+          ],
+          "threshold": 1
+        },
+        "timestamp": {
+          "keyids": [
+            "root-key-id"
+          ],
+          "threshold": 1
+        },
+        "snapshot": {
+          "keyids": [
+            "root-key-id"
+          ],
+          "threshold": 1
+        },
+        "targets": {
+          "keyids": [
+            "root-key-id"
+          ],
+          "threshold": 1
+        },
+        "log": {
+          "keyids": [
+            "root-key-id"
+          ],
+          "threshold": 1
+        }
+      }
+    },
+    "signatures": [
+      {
+        "keyid": "root-key-id",
+        "sig": "AA=="
+      }
+    ]
+  },
+  "timestamp": {
+    "signed": {
+      "type": "timestamp",
+      "spec_version": "1",
+      "version": 1,
+      "expires": "2026-04-22T00:00:00Z",
+      "meta": {
+        "trust/snapshot.json": {
+          "version": 1,
+          "length": 256,
+          "hashes": {
+            "sha256": "4444444444444444444444444444444444444444444444444444444444444444"
+          }
+        }
+      }
+    },
+    "signatures": [
+      {
+        "keyid": "timestamp-key-id",
+        "sig": "AA=="
+      }
+    ]
+  },
+  "snapshot": {
+    "signed": {
+      "type": "snapshot",
+      "spec_version": "1",
+      "version": 1,
+      "expires": "2026-04-28T00:00:00Z",
+      "meta": {
+        "index/acme/util.jsonl": {
+          "version": 1,
+          "length": 512,
+          "hashes": {
+            "sha256": "5555555555555555555555555555555555555555555555555555555555555555"
+          }
+        },
+        "trust/targets/acme.json": {
+          "version": 1,
+          "length": 512,
+          "hashes": {
+            "sha256": "6666666666666666666666666666666666666666666666666666666666666666"
+          }
+        }
+      },
+      "log_meta": {
+        "log/checkpoint.json": {
+          "version": 1,
+          "length": 128,
+          "hashes": {
+            "sha256": "7777777777777777777777777777777777777777777777777777777777777777"
+          }
+        }
+      }
+    },
+    "signatures": [
+      {
+        "keyid": "snapshot-key-id",
+        "sig": "AA=="
+      }
+    ]
+  },
+  "namespace_targets": {
+    "signed": {
+      "type": "targets",
+      "spec_version": "1",
+      "version": 1,
+      "expires": "2026-05-21T00:00:00Z",
+      "namespace": "acme",
+      "packages": {
+        "acme/util": {
+          "index_path": "index/acme/util.jsonl",
+          "latest_version": "1.2.0",
+          "releases": {
+            "1.2.0": {
+              "release_revision": 1,
+              "index_record_sha256": "3333333333333333333333333333333333333333333333333333333333333333",
+              "source_artifact_sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+              "source_artifact_path": "artifacts/source/sha256/01/23/0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef.spio.src.tar",
+              "binary_artifact_count": 1
+            }
+          }
+        }
+      }
+    },
+    "signatures": [
+      {
+        "keyid": "targets-key-id",
+        "sig": "AA=="
+      }
+    ]
+  },
+  "package_index_record": {
+    "schema_version": 1,
+    "package": "acme/util",
+    "version": "1.2.0",
+    "release_revision": 1,
+    "published_at": "2026-04-21T00:00:00Z",
+    "publisher_id": "publisher-123",
+    "yanked": false,
+    "deprecated_message": "",
+    "source_artifact": {
+      "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      "size_bytes": 4096,
+      "path": "artifacts/source/sha256/01/23/0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef.spio.src.tar",
+      "archive_format": "tar",
+      "compression": "none"
+    },
+    "binary_artifacts": [
+      {
+        "sha256": "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789",
+        "size_bytes": 2048,
+        "path": "artifacts/binary/x86_64-unknown-linux-gnu/sha256/ab/cd/abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789.spio.bin.tar.zst",
+        "target_triple": "x86_64-unknown-linux-gnu",
+        "abi": "gnu",
+        "libc": "glibc",
+        "build_profile": "release",
+        "features_fingerprint": "default",
+        "archive_format": "tar",
+        "compression": "zstd"
+      }
+    ],
+    "dependencies": [
+      {
+        "alias": "base",
+        "package": "acme/base",
+        "version_req": "^1.0.0",
+        "registry": "https://packages.example.test",
+        "kind": "runtime",
+        "optional": false,
+        "target_condition": "",
+        "features": []
+      }
+    ],
+    "dev_dependencies": [],
+    "features": {
+      "default": [],
+      "optional": []
+    },
+    "manifest_digest": "1111111111111111111111111111111111111111111111111111111111111111",
+    "metadata_digest": "2222222222222222222222222222222222222222222222222222222222222222"
+  },
+  "checkpoint": {
+    "signed": {
+      "type": "checkpoint",
+      "spec_version": "1",
+      "version": 1,
+      "generated_at": "2026-04-21T00:00:00Z",
+      "tree_size": 1,
+      "root_hash": "8888888888888888888888888888888888888888888888888888888888888888"
+    },
+    "signatures": [
+      {
+        "keyid": "log-key-id",
+        "sig": "AA=="
+      }
+    ]
+  },
+  "transparency_log_leaf": {
+    "schema_version": 1,
+    "sequence": 1,
+    "namespace": "acme",
+    "package": "acme/util",
+    "version": "1.2.0",
+    "release_revision": 1,
+    "index_path": "index/acme/util.jsonl",
+    "index_record_sha256": "3333333333333333333333333333333333333333333333333333333333333333",
+    "source_artifact_sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+    "source_artifact_path": "artifacts/source/sha256/01/23/0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef.spio.src.tar"
+  }
+}

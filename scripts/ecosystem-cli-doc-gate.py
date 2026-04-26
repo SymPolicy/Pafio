@@ -24,7 +24,6 @@ def main(argv: list[str] | None = None) -> int:
         else:
             print(f"[SKIP] {payload['reason']}")
         return 0
-
     proc = subprocess.run([sys.executable, str(CANONICAL_GATE), *args], cwd=ROOT)
     return proc.returncode
 

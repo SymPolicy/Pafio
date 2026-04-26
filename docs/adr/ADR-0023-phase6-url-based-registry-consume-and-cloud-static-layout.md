@@ -5,6 +5,8 @@
 **Date:** 2026-04-12  
 **Purpose:** Record the decision to make the existing filesystem-registry layout the canonical package-repository contract for both local and cloud deployment, and to activate client-side registry dependency resolution against URL-addressable registry roots.
 
+**Last updated:** 2026-04-12
+
 ## Context
 
 `spio` already had deterministic source packaging and a local filesystem-registry publish transport:

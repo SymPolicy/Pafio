@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://spio.dev/contracts/registry-v2/v1/transparency-log-leaf.schema.json",
+  "title": "spio Registry V2 Transparency Log Leaf",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "sequence",
+    "namespace",
+    "package",
+    "version",
+    "release_revision",
+    "index_path",
+    "index_record_sha256",
+    "source_artifact_sha256",
+    "source_artifact_path"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "sequence": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "namespace": {
+      "type": "string",
+      "minLength": 1
+    },
+    "package": {
+      "type": "string",
+      "pattern": "^[^/]+/[^/]+$"
+    },
+    "version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "release_revision": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "index_path": {
+      "type": "string",
+      "pattern": "^index/.+\\.jsonl$"
+    },
+    "index_record_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "source_artifact_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "source_artifact_path": {
+      "type": "string",
+      "pattern": "^artifacts/source/"
+    }
+  }
+}

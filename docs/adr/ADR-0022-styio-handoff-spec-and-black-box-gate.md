@@ -27,7 +27,7 @@ Without that, the project keeps accumulating the same failure mode:
 
 ## Decision
 
-1. `docs/styio/Styio-External-Interface-Requirement-Spec.md` becomes the handoff specification for the compiler-side published interface required by `spio`.
+1. `docs/external/for-styio/Styio-External-Interface-Requirement-Spec.md` becomes the handoff specification for the compiler-side published interface required by `spio`.
 2. The handoff spec defines:
    - required published commands
    - required machine-info fields and types

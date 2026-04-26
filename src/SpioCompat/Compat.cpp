@@ -2,6 +2,7 @@
 
 #include "SpioCore/Errors.hpp"
 #include "SpioCore/Paths.hpp"
+#include "SpioCore/Process.hpp"
 
 #include <algorithm>
 #include <array>
@@ -16,194 +17,11 @@
 #include <nlohmann/json.hpp>
 #include <toml++/toml.h>
 
-#include <fcntl.h>
-#include <poll.h>
-#include <sys/types.h>
-#include <sys/wait.h>
-#include <unistd.h>
-
 namespace fs = std::filesystem;
 using json = nlohmann::json;
 
 namespace
 {
-
-struct ChildProcessResult
-{
-  int exit_code = 0;
-  std::string stdout_text;
-  std::string stderr_text;
-};
-
-void CloseFd(int &fd)
-{
-  if (fd >= 0)
-  {
-    close(fd);
-    fd = -1;
-  }
-}
-
-bool SetNonBlocking(int fd)
-{
-  const int flags = fcntl(fd, F_GETFL, 0);
-  return flags >= 0 && fcntl(fd, F_SETFL, flags | O_NONBLOCK) == 0;
-}
-
-void DrainReadablePipe(int &fd, std::string &text)
-{
-  std::array<char, 4096> buffer{};
-  while (fd >= 0)
-  {
-    const ssize_t read_size = read(fd, buffer.data(), buffer.size());
-    if (read_size > 0)
-    {
-      text.append(buffer.data(), static_cast<size_t>(read_size));
-      continue;
-    }
-    if (read_size == 0)
-    {
-      CloseFd(fd);
-      return;
-    }
-    if (errno == EINTR)
-    {
-      continue;
-    }
-    if (errno == EAGAIN || errno == EWOULDBLOCK)
-    {
-      return;
-    }
-    CloseFd(fd);
-    return;
-  }
-}
-
-void ReapChildBestEffort(const pid_t child)
-{
-  int status = 0;
-  while (waitpid(child, &status, 0) < 0)
-  {
-    if (errno != EINTR)
-    {
-      return;
-    }
-  }
-}
-
-int WaitForChildExit(const pid_t child)
-{
-  int status = 0;
-  while (waitpid(child, &status, 0) < 0)
-  {
-    if (errno != EINTR)
-    {
-      return 1;
-    }
-  }
-  if (WIFEXITED(status))
-  {
-    return WEXITSTATUS(status);
-  }
-  return 1;
-}
-
-ChildProcessResult RunChildProcess(const fs::path &binary, const std::vector<std::string> &args)
-{
-  int stdout_pipe[2];
-  int stderr_pipe[2];
-  if (pipe(stdout_pipe) != 0 || pipe(stderr_pipe) != 0)
-  {
-    throw spio::CompilerProbeError("failed to create pipes for compiler probe");
-  }
-
-  const pid_t child = fork();
-  if (child < 0)
-  {
-    close(stdout_pipe[0]);
-    close(stdout_pipe[1]);
-    close(stderr_pipe[0]);
-    close(stderr_pipe[1]);
-    throw spio::CompilerProbeError("failed to fork compiler probe process");
-  }
-
-  if (child == 0)
-  {
-    dup2(stdout_pipe[1], STDOUT_FILENO);
-    dup2(stderr_pipe[1], STDERR_FILENO);
-    close(stdout_pipe[0]);
-    close(stdout_pipe[1]);
-    close(stderr_pipe[0]);
-    close(stderr_pipe[1]);
-
-    std::vector<char *> argv;
-    argv.reserve(args.size() + 2U);
-    argv.push_back(const_cast<char *>(binary.c_str()));
-    for (const std::string &arg : args)
-    {
-      argv.push_back(const_cast<char *>(arg.c_str()));
-    }
-    argv.push_back(nullptr);
-
-    execv(binary.c_str(), argv.data());
-    _exit(127);
-  }
-
-  close(stdout_pipe[1]);
-  close(stderr_pipe[1]);
-  if (!SetNonBlocking(stdout_pipe[0]) || !SetNonBlocking(stderr_pipe[0]))
-  {
-    CloseFd(stdout_pipe[0]);
-    CloseFd(stderr_pipe[0]);
-    ReapChildBestEffort(child);
-    throw spio::CompilerProbeError("failed to configure compiler probe pipes");
-  }
-
-  ChildProcessResult result;
-  std::array<pollfd, 2> poll_fds{};
-  while (stdout_pipe[0] >= 0 || stderr_pipe[0] >= 0)
-  {
-    nfds_t poll_count = 0;
-    int stdout_index = -1;
-    int stderr_index = -1;
-    if (stdout_pipe[0] >= 0)
-    {
-      stdout_index = static_cast<int>(poll_count);
-      poll_fds[poll_count++] = pollfd{stdout_pipe[0], static_cast<short>(POLLIN | POLLHUP | POLLERR), 0};
-    }
-    if (stderr_pipe[0] >= 0)
-    {
-      stderr_index = static_cast<int>(poll_count);
-      poll_fds[poll_count++] = pollfd{stderr_pipe[0], static_cast<short>(POLLIN | POLLHUP | POLLERR), 0};
-    }
-
-    int ready = 0;
-    while ((ready = poll(poll_fds.data(), poll_count, -1)) < 0)
-    {
-      if (errno != EINTR)
-      {
-        CloseFd(stdout_pipe[0]);
-        CloseFd(stderr_pipe[0]);
-        ReapChildBestEffort(child);
-        throw spio::CompilerProbeError("failed to read compiler probe output");
-      }
-    }
-    if (ready == 0)
-    {
-      continue;
-    }
-    if (stdout_index >= 0 && poll_fds[stdout_index].revents != 0)
-    {
-      DrainReadablePipe(stdout_pipe[0], result.stdout_text);
-    }
-    if (stderr_index >= 0 && poll_fds[stderr_index].revents != 0)
-    {
-      DrainReadablePipe(stderr_pipe[0], result.stderr_text);
-    }
-  }
-  result.exit_code = WaitForChildExit(child);
-  return result;
-}
 
 std::tuple<int, int, int> ParseSemver(const std::string &version)
 {
@@ -243,10 +61,16 @@ toml::table LoadCompatMatrix()
 
 json ProbeMachineInfo(const fs::path &binary)
 {
-  const ChildProcessResult result = RunChildProcess(binary, {"--machine-info=json"});
+  const spio::ProcessResult result = spio::RunProcess<spio::CompilerProbeError>({
+      .program = binary.string(),
+      .args = {"--machine-info=json"},
+      .search_path = false,
+      .timeout = spio::kExternalProcessProbeTimeout,
+      .error_context = "compiler probe process",
+  });
   if (result.exit_code != 0)
   {
-    const std::string detail = result.stderr_text.empty() ? result.stdout_text : result.stderr_text;
+    const std::string detail = spio::DescribeProcessFailure(result);
     throw spio::CompilerProbeError("compiler '" + binary.string() + "' rejected --machine-info=json" + (detail.empty() ? "" : ": " + detail));
   }
 
@@ -264,11 +88,7 @@ json ProbeMachineInfo(const fs::path &binary)
       "tool",
       "compiler_version",
       "channel",
-      "active_integration_phase",
       "supported_contracts",
-      "supported_contract_versions",
-      "supported_adapter_modes",
-      "feature_flags",
       "capabilities",
       "edition_max",
   };
@@ -282,18 +102,6 @@ json ProbeMachineInfo(const fs::path &binary)
   if (!payload["supported_contracts"].is_object())
   {
     throw spio::CompatibilityError("compiler handshake field 'supported_contracts' must be an object");
-  }
-  if (!payload["supported_contract_versions"].is_object())
-  {
-    throw spio::CompatibilityError("compiler handshake field 'supported_contract_versions' must be an object");
-  }
-  if (!payload["supported_adapter_modes"].is_array())
-  {
-    throw spio::CompatibilityError("compiler handshake field 'supported_adapter_modes' must be an array");
-  }
-  if (!payload["feature_flags"].is_object())
-  {
-    throw spio::CompatibilityError("compiler handshake field 'feature_flags' must be an object");
   }
   if (!payload["capabilities"].is_array())
   {

@@ -13,4 +13,4 @@ required_capabilities = [
 ]
 supported_compile_plan_versions = [1]
 integration_phase = "compile-plan-live"
-notes = "Published compatibility now requires compile-plan v1 so spio build/run/test can hand off live plans to released styio binaries."
+notes = "Current compatibility requires a styio compiler that advertises compile-plan v1 and accepts styio --compile-plan for build/run/test orchestration."

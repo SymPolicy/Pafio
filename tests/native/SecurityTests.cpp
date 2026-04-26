@@ -147,3 +147,34 @@ TEST(SecurityTests, ResolveRegistryReadSecurityUsesDefaultChainWhenNoOverrideIsR
   EXPECT_EQ(decision.registry_root, "https://packages.example.test");
   EXPECT_EQ(decision.provider_name, "public-default");
 }
+
+TEST(SecurityTests, ValidatesRegistryPackageIdentitySegments)
+{
+  EXPECT_NO_THROW(spio::ValidateRegistryPackageIdentity("acme/util"));
+  const spio::RegistryPackageNameParts parts = spio::SplitRegistryPackageName("acme-corp/util_core", "registry package");
+  EXPECT_EQ(parts.namespace_name, "acme-corp");
+  EXPECT_EQ(parts.short_name, "util_core");
+
+  EXPECT_THROW(spio::ValidateRegistryPackageIdentity("acme"), spio::FetchError);
+  EXPECT_THROW(spio::ValidateRegistryPackageIdentity("acme/util/extra"), spio::FetchError);
+  EXPECT_THROW(spio::ValidateRegistryPackageIdentity("Acme/util"), spio::FetchError);
+  EXPECT_THROW(spio::ValidateRegistryPackageIdentity("acme/util.core"), spio::FetchError);
+  EXPECT_THROW(spio::ValidateRegistryPackageIdentity("../util"), spio::FetchError);
+  EXPECT_THROW(spio::ValidateRegistryPackageIdentity("acme/.."), spio::FetchError);
+  EXPECT_THROW(spio::ValidateRegistryPackageIdentity("acme\\evil/util"), spio::FetchError);
+  EXPECT_TRUE(spio::IsRegistrySha256Digest("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"));
+  EXPECT_FALSE(spio::IsRegistrySha256Digest("0123456789ABCDEF0123456789abcdef0123456789abcdef0123456789abcdef"));
+}
+
+TEST(SecurityTests, NormalizesRegistryObjectPathWithPythonCompatiblePolicy)
+{
+  EXPECT_EQ(spio::NormalizeRegistryObjectPath("trust/targets/acme.json", "test").generic_string(), "trust/targets/acme.json");
+
+  EXPECT_THROW(spio::NormalizeRegistryObjectPath("../trust/root.json", "test"), spio::FetchError);
+  EXPECT_THROW(spio::NormalizeRegistryObjectPath("trust/../root.json", "test"), spio::FetchError);
+  EXPECT_THROW(spio::NormalizeRegistryObjectPath("trust/./root.json", "test"), spio::FetchError);
+  EXPECT_THROW(spio::NormalizeRegistryObjectPath("trust//root.json", "test"), spio::FetchError);
+  EXPECT_THROW(spio::NormalizeRegistryObjectPath("/trust/root.json", "test"), spio::FetchError);
+  EXPECT_THROW(spio::NormalizeRegistryObjectPath("trust/root.json/", "test"), spio::FetchError);
+  EXPECT_THROW(spio::NormalizeRegistryObjectPath("trust\\root.json", "test"), spio::FetchError);
+}

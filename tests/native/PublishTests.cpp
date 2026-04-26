@@ -17,6 +17,38 @@ using json = nlohmann::json;
 namespace
 {
 
+class ScopedEnvVar
+{
+public:
+  ScopedEnvVar(const std::string &name, const std::string &value)
+      : name_(name)
+  {
+    if (const char *existing = std::getenv(name.c_str()); existing != nullptr)
+    {
+      had_previous_ = true;
+      previous_value_ = existing;
+    }
+    setenv(name.c_str(), value.c_str(), 1);
+  }
+
+  ~ScopedEnvVar()
+  {
+    if (had_previous_)
+    {
+      setenv(name_.c_str(), previous_value_.c_str(), 1);
+    }
+    else
+    {
+      unsetenv(name_.c_str());
+    }
+  }
+
+private:
+  std::string name_;
+  bool had_previous_ = false;
+  std::string previous_value_;
+};
+
 fs::path MakeTempDir(const std::string &label)
 {
   const fs::path root = fs::temp_directory_path() / "spio-native-publish-tests" / label;
@@ -40,6 +72,20 @@ std::string ReadFile(const fs::path &path)
   std::ostringstream buffer;
   buffer << in.rdbuf();
   return buffer.str();
+}
+
+json ReadSingleJsonLineFile(const fs::path &path)
+{
+  std::istringstream in(ReadFile(path));
+  std::string line;
+  while (std::getline(in, line))
+  {
+    if (!line.empty())
+    {
+      return json::parse(line);
+    }
+  }
+  throw std::runtime_error("jsonl file did not contain a record: " + path.string());
 }
 
 }  // namespace
@@ -261,6 +307,7 @@ TEST(PublishCliTests, NonDryRunPublishRequiresExplicitRegistryRoot)
 TEST(PublishCliTests, PublishesToFilesystemRegistry)
 {
   const fs::path root = MakeTempDir("publish-filesystem-registry");
+  const ScopedEnvVar spio_home("SPIO_HOME", (root / ".spio-home").string());
   const fs::path registry_root = root / "registry";
   WriteFile(
       root / "spio.toml",
@@ -294,16 +341,18 @@ TEST(PublishCliTests, PublishesToFilesystemRegistry)
   const json payload = json::parse(stdout_text);
   EXPECT_EQ(payload.at("command").get<std::string>(), "publish");
   EXPECT_EQ(payload.at("mode").get<std::string>(), "publish");
+  EXPECT_EQ(payload.at("registry_protocol").get<std::string>(), "v2");
   EXPECT_EQ(payload.at("package").get<std::string>(), "acme/app");
-  EXPECT_TRUE(fs::exists(payload.at("registry_blob_path").get<std::string>()));
-  EXPECT_TRUE(fs::exists(payload.at("registry_entry_path").get<std::string>()));
-  EXPECT_TRUE(fs::exists(payload.at("registry_marker_path").get<std::string>()));
+  EXPECT_TRUE(fs::exists(payload.at("registry_config_path").get<std::string>()));
+  EXPECT_TRUE(fs::exists(payload.at("registry_index_path").get<std::string>()));
+  EXPECT_TRUE(fs::exists(payload.at("registry_artifact_path").get<std::string>()));
+  EXPECT_TRUE(fs::exists(payload.at("registry_log_leaf_path").get<std::string>()));
 
-  const json entry = json::parse(ReadFile(payload.at("registry_entry_path").get<std::string>()));
+  const json entry = ReadSingleJsonLineFile(payload.at("registry_index_path").get<std::string>());
   EXPECT_EQ(entry.at("schema_version").get<int>(), 1);
   EXPECT_EQ(entry.at("package").get<std::string>(), "acme/app");
   EXPECT_EQ(entry.at("version").get<std::string>(), "0.1.0");
-  EXPECT_EQ(entry.at("sha256").get<std::string>(), payload.at("sha256").get<std::string>());
+  EXPECT_EQ(entry.at("source_artifact").at("sha256").get<std::string>(), payload.at("sha256").get<std::string>());
   EXPECT_EQ(entry.at("dependencies").size(), 0U);
   EXPECT_EQ(entry.at("dev_dependencies").size(), 0U);
 }
@@ -311,6 +360,7 @@ TEST(PublishCliTests, PublishesToFilesystemRegistry)
 TEST(PublishCliTests, PublishesToFilesystemRegistryViaFileUrl)
 {
   const fs::path root = MakeTempDir("publish-filesystem-registry-file-url");
+  const ScopedEnvVar spio_home("SPIO_HOME", (root / ".spio-home").string());
   const fs::path registry_root = root / "registry";
   const std::string registry_url = std::string("file://") + registry_root.string();
   WriteFile(
@@ -344,12 +394,14 @@ TEST(PublishCliTests, PublishesToFilesystemRegistryViaFileUrl)
   EXPECT_EQ(exit_code, spio::kExitSuccess);
   const json payload = json::parse(stdout_text);
   EXPECT_EQ(payload.at("transport").get<std::string>(), "filesystem");
-  EXPECT_TRUE(fs::exists(payload.at("registry_entry_path").get<std::string>()));
+  EXPECT_EQ(payload.at("registry_protocol").get<std::string>(), "v2");
+  EXPECT_TRUE(fs::exists(payload.at("registry_index_path").get<std::string>()));
 }
 
 TEST(PublishCliTests, PublishesRegistryDependencyMetadataToFilesystemRegistry)
 {
   const fs::path root = MakeTempDir("publish-registry-dependency-metadata");
+  const ScopedEnvVar spio_home("SPIO_HOME", (root / ".spio-home").string());
   const fs::path registry_root = root / "registry";
   const std::string registry_url = std::string("file://") + registry_root.string();
   WriteFile(
@@ -391,11 +443,11 @@ TEST(PublishCliTests, PublishesRegistryDependencyMetadataToFilesystemRegistry)
 
   EXPECT_EQ(exit_code, spio::kExitSuccess);
   const json payload = json::parse(stdout_text);
-  const json entry = json::parse(ReadFile(payload.at("registry_entry_path").get<std::string>()));
+  const json entry = ReadSingleJsonLineFile(payload.at("registry_index_path").get<std::string>());
   ASSERT_EQ(entry.at("dependencies").size(), 1U);
   EXPECT_EQ(entry.at("dependencies")[0].at("alias").get<std::string>(), "util");
   EXPECT_EQ(entry.at("dependencies")[0].at("package").get<std::string>(), "acme/util");
-  EXPECT_EQ(entry.at("dependencies")[0].at("version").get<std::string>(), "0.2.0");
+  EXPECT_EQ(entry.at("dependencies")[0].at("version_req").get<std::string>(), "0.2.0");
   EXPECT_EQ(entry.at("dependencies")[0].at("registry").get<std::string>(), registry_url);
   ASSERT_EQ(entry.at("dev_dependencies").size(), 1U);
   EXPECT_EQ(entry.at("dev_dependencies")[0].at("alias").get<std::string>(), "fixture");
@@ -405,6 +457,7 @@ TEST(PublishCliTests, PublishesRegistryDependencyMetadataToFilesystemRegistry)
 TEST(PublishCliTests, RejectsRepublishingExistingFilesystemRegistryVersion)
 {
   const fs::path root = MakeTempDir("publish-duplicate-version");
+  const ScopedEnvVar spio_home("SPIO_HOME", (root / ".spio-home").string());
   const fs::path registry_root = root / "registry";
   WriteFile(
       root / "spio.toml",

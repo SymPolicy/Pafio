@@ -1,0 +1,754 @@
+{
+  "openWorkspace": {
+    "request": {
+      "workspace_root": "/workspace/demo",
+      "manifest_path": "/workspace/demo/spio.toml",
+      "platform": "ios"
+    },
+    "success": {
+      "returncode": 0,
+      "message": "opened hosted workspace",
+      "stdout": "",
+      "stderr": "",
+      "payload": {
+        "id": "/workspace/demo/spio.toml",
+        "title": "demo/app",
+        "kind": "hosted",
+        "workspace_root": "/workspace/demo",
+        "workspace_members": [],
+        "manifest_path": "/workspace/demo/spio.toml",
+        "lockfile_path": "/workspace/demo/spio.lock",
+        "toolchain_pin_path": "/workspace/demo/spio-toolchain.toml",
+        "styio_config_path": "/workspace/demo/styio.toml",
+        "vendor_root": "/workspace/demo/.spio/vendor",
+        "build_root": "/workspace/demo/.spio/build",
+        "packages": [
+          {
+            "package_name": "demo/app",
+            "version": "0.1.0",
+            "root_path": "/workspace/demo",
+            "manifest_path": "/workspace/demo/spio.toml",
+            "targets": [
+              {
+                "id": "demo/app:bin:demo",
+                "package_name": "demo/app",
+                "kind": "bin",
+                "name": "demo",
+                "file_path": "/workspace/demo/src/main.styio"
+              }
+            ],
+            "dependencies": [
+              {
+                "source_package_name": "demo/app",
+                "dependency_name": "palette",
+                "kind": "runtime",
+                "requirement": "registry:https://packages.example.test@1.0.0",
+                "source_kind": "registry",
+                "registry": "https://packages.example.test",
+                "package": "palette",
+                "version": "1.0.0",
+                "publish_blocking": false
+              }
+            ],
+            "is_workspace_member": false,
+            "publish_enabled": true
+          }
+        ],
+        "dependencies": [
+          {
+            "source_package_name": "demo/app",
+            "dependency_name": "palette",
+            "kind": "runtime",
+            "requirement": "registry:https://packages.example.test@1.0.0",
+            "source_kind": "registry",
+            "registry": "https://packages.example.test",
+            "package": "palette",
+            "version": "1.0.0",
+            "publish_blocking": false
+          }
+        ],
+        "targets": [
+          {
+            "id": "demo/app:bin:demo",
+            "package_name": "demo/app",
+            "kind": "bin",
+            "name": "demo",
+            "file_path": "/workspace/demo/src/main.styio"
+          }
+        ],
+        "editor_files": [
+          "/workspace/demo/src/main.styio"
+        ],
+        "toolchain": {
+          "source": "project-pin",
+          "detail": "Pinned compiler is active.",
+          "pin_path": "/workspace/demo/spio-toolchain.toml",
+          "channel": "stable",
+          "version": "0.0.1"
+        },
+        "lock_state": "fresh",
+        "vendor_state": "present",
+        "active_compiler": {
+          "binary_path": "/workspace/demo/.spio/tools/styio/current/bin/styio",
+          "tool": "styio",
+          "compiler_version": "0.0.1",
+          "channel": "stable",
+          "variant": "full",
+          "capabilities": [
+            "machine_info_json",
+            "compile_plan"
+          ],
+          "supported_contract_versions": {
+            "compile_plan": [
+              1
+            ],
+            "runtime_events": [
+              1
+            ]
+          },
+          "integration_phase": "hosted-product",
+          "supported_adapter_modes": [
+            "cloud",
+            "cli"
+          ],
+          "feature_flags": {
+            "runtime_events": true
+          }
+        },
+        "managed_toolchains": {
+          "spio_home": "/workspace/demo/.spio",
+          "current_binary": "/workspace/demo/.spio/tools/styio/current/bin/styio",
+          "current_metadata_path": "/workspace/demo/.spio/tools/styio/current/metadata.json",
+          "installed": [
+            {
+              "channel": "stable",
+              "compiler_version": "0.0.1",
+              "install_root": "/workspace/demo/.spio/tools/styio/0.0.1",
+              "install_binary_path": "/workspace/demo/.spio/tools/styio/0.0.1/bin/styio",
+              "install_metadata_path": "/workspace/demo/.spio/tools/styio/0.0.1/metadata.json"
+            }
+          ]
+        },
+        "package_distribution": {
+          "schema_version": 1,
+          "packages": [
+            {
+              "package_name": "demo/app",
+              "manifest_path": "/workspace/demo/spio.toml",
+              "publish_enabled": true,
+              "publish_ready": true,
+              "blocking_reasons": [],
+              "runtime_registry_dependencies": 1,
+              "runtime_path_dependencies": 0,
+              "runtime_git_dependencies": 0,
+              "dev_registry_dependencies": 0,
+              "dev_path_dependencies": 0,
+              "dev_git_dependencies": 0
+            }
+          ],
+          "registry_sources": [
+            {
+              "registry_root": "https://packages.example.test",
+              "transport": "https",
+              "dependency_refs": 1,
+              "packages": [
+                "palette"
+              ]
+            }
+          ],
+          "publishable_packages": 1,
+          "blocked_packages": 0
+        },
+        "source_state": {
+          "schema_version": 1,
+          "spio_home": "/workspace/demo/.spio",
+          "declared_git_dependencies": 0,
+          "declared_registry_dependencies": 1,
+          "git_cache": {
+            "repos_root": "/workspace/demo/.spio/git/repos",
+            "checkouts_root": "/workspace/demo/.spio/git/checkouts",
+            "repos_present": true,
+            "checkouts_present": true
+          },
+          "registry_cache": {
+            "cache_root": "/workspace/demo/.spio/registry",
+            "index_root": "/workspace/demo/.spio/registry/index",
+            "blob_root": "/workspace/demo/.spio/registry/blobs",
+            "checkout_root": "/workspace/demo/.spio/registry/checkouts",
+            "index_present": true,
+            "blobs_present": true,
+            "checkouts_present": true
+          },
+          "vendor": {
+            "vendor_root": "/workspace/demo/.spio/vendor",
+            "metadata_path": "/workspace/demo/.spio/vendor/vendor.json",
+            "vendor_present": true,
+            "metadata_present": true,
+            "git_snapshots": 0
+          }
+        },
+        "notes": [
+          "Hosted project graph ready."
+        ]
+      },
+      "workspace": {
+        "workspaceId": "demo-workspace",
+        "schemaVersion": "1",
+        "ownerRef": "styio-view",
+        "status": "active",
+        "entryUrl": "https://hosted.example.test/workspaces/demo-workspace",
+        "createdAt": "2026-04-21T00:00:00Z",
+        "lastActiveAt": "2026-04-21T00:00:10Z",
+        "retentionDays": 7,
+        "exportState": "not_requested"
+      }
+    },
+    "failure": {
+      "returncode": 1,
+      "message": "workspace root was rejected",
+      "stdout": "",
+      "stderr": "workspace root was rejected",
+      "error_payload": {
+        "code": "workspace.invalid_root",
+        "reason": "Workspace root does not exist.",
+        "retryable": false,
+        "details": {
+          "workspace_root": "/workspace/missing"
+        }
+      }
+    }
+  },
+  "projectGraph": {
+    "request": null,
+    "success": {
+      "returncode": 0,
+      "message": "refreshed hosted project graph",
+      "stdout": "",
+      "stderr": "",
+      "payload": {
+        "id": "/workspace/demo/spio.toml",
+        "title": "demo/app",
+        "kind": "hosted",
+        "workspace_root": "/workspace/demo",
+        "workspace_members": [],
+        "manifest_path": "/workspace/demo/spio.toml",
+        "packages": [
+          {
+            "package_name": "demo/app",
+            "version": "0.1.0",
+            "root_path": "/workspace/demo",
+            "manifest_path": "/workspace/demo/spio.toml",
+            "targets": [
+              {
+                "id": "demo/app:bin:demo",
+                "package_name": "demo/app",
+                "kind": "bin",
+                "name": "demo",
+                "file_path": "/workspace/demo/src/main.styio"
+              }
+            ],
+            "dependencies": [],
+            "is_workspace_member": false,
+            "publish_enabled": true
+          }
+        ],
+        "dependencies": [],
+        "targets": [
+          {
+            "id": "demo/app:bin:demo",
+            "package_name": "demo/app",
+            "kind": "bin",
+            "name": "demo",
+            "file_path": "/workspace/demo/src/main.styio"
+          }
+        ],
+        "editor_files": [
+          "/workspace/demo/src/main.styio"
+        ],
+        "toolchain": {
+          "source": "project-pin",
+          "detail": "Pinned compiler is active."
+        },
+        "lock_state": "fresh",
+        "vendor_state": "present",
+        "notes": [
+          "Hosted project graph refreshed."
+        ]
+      },
+      "workspace": {
+        "workspaceId": "demo-workspace",
+        "schemaVersion": "1",
+        "ownerRef": "styio-view",
+        "status": "active",
+        "entryUrl": "https://hosted.example.test/workspaces/demo-workspace",
+        "createdAt": "2026-04-21T00:00:00Z",
+        "lastActiveAt": "2026-04-21T00:00:10Z",
+        "retentionDays": 7,
+        "exportState": "not_requested"
+      }
+    },
+    "failure": {
+      "returncode": 1,
+      "message": "workspace could not be loaded",
+      "stdout": "",
+      "stderr": "workspace could not be loaded",
+      "error_payload": {
+        "code": "workspace.not_found",
+        "reason": "The hosted workspace no longer exists.",
+        "retryable": false
+      }
+    }
+  },
+  "toolInstall": {
+    "request": {
+      "styio_binary_path": "/opt/styio/bin/styio"
+    },
+    "success": {
+      "returncode": 0,
+      "message": "installed managed compiler",
+      "stdout": "",
+      "stderr": "",
+      "payload": {
+        "compiler_version": "0.0.1",
+        "channel": "stable",
+        "spio_home": "/workspace/demo/.spio",
+        "current_binary": "/workspace/demo/.spio/tools/styio/current/bin/styio",
+        "current_metadata_path": "/workspace/demo/.spio/tools/styio/current/metadata.json",
+        "installed": [
+          {
+            "channel": "stable",
+            "compiler_version": "0.0.1",
+            "install_root": "/workspace/demo/.spio/tools/styio/0.0.1",
+            "install_binary_path": "/workspace/demo/.spio/tools/styio/0.0.1/bin/styio",
+            "install_metadata_path": "/workspace/demo/.spio/tools/styio/0.0.1/metadata.json"
+          }
+        ]
+      }
+    },
+    "failure": {
+      "returncode": 1,
+      "message": "styio binary failed validation",
+      "stdout": "",
+      "stderr": "styio binary failed validation",
+      "error_payload": {
+        "code": "tool.install.invalid_binary",
+        "reason": "The provided styio binary does not advertise the required contracts.",
+        "retryable": false
+      }
+    }
+  },
+  "toolUse": {
+    "request": {
+      "compiler_version": "0.0.1",
+      "channel": "stable"
+    },
+    "success": {
+      "returncode": 0,
+      "message": "activated managed compiler",
+      "stdout": "",
+      "stderr": "",
+      "payload": {
+        "compiler_version": "0.0.1",
+        "channel": "stable",
+        "current_binary": "/workspace/demo/.spio/tools/styio/current/bin/styio",
+        "installed": [
+          {
+            "channel": "stable",
+            "compiler_version": "0.0.1",
+            "install_root": "/workspace/demo/.spio/tools/styio/0.0.1",
+            "install_binary_path": "/workspace/demo/.spio/tools/styio/0.0.1/bin/styio"
+          }
+        ]
+      }
+    },
+    "failure": {
+      "returncode": 1,
+      "message": "requested compiler is not installed",
+      "stdout": "",
+      "stderr": "requested compiler is not installed",
+      "error_payload": {
+        "code": "tool.use.missing_install",
+        "reason": "The requested managed compiler version is not installed.",
+        "retryable": false
+      }
+    }
+  },
+  "toolPin": {
+    "request": {
+      "compiler_version": "0.0.1",
+      "channel": "stable"
+    },
+    "success": {
+      "returncode": 0,
+      "message": "pinned managed compiler",
+      "stdout": "",
+      "stderr": "",
+      "payload": {
+        "compiler_version": "0.0.1",
+        "channel": "stable",
+        "current_binary": "/workspace/demo/.spio/tools/styio/current/bin/styio",
+        "installed": [
+          {
+            "channel": "stable",
+            "compiler_version": "0.0.1",
+            "install_root": "/workspace/demo/.spio/tools/styio/0.0.1",
+            "install_binary_path": "/workspace/demo/.spio/tools/styio/0.0.1/bin/styio"
+          }
+        ]
+      }
+    },
+    "failure": {
+      "returncode": 1,
+      "message": "project pin could not be written",
+      "stdout": "",
+      "stderr": "project pin could not be written",
+      "error_payload": {
+        "code": "tool.pin.write_failed",
+        "reason": "The hosted workspace rejected the pin write.",
+        "retryable": true
+      }
+    }
+  },
+  "toolClearPin": {
+    "request": {},
+    "success": {
+      "returncode": 0,
+      "message": "cleared pinned compiler",
+      "stdout": "",
+      "stderr": "",
+      "payload": {
+        "installed": [
+          {
+            "channel": "stable",
+            "compiler_version": "0.0.1",
+            "install_root": "/workspace/demo/.spio/tools/styio/0.0.1",
+            "install_binary_path": "/workspace/demo/.spio/tools/styio/0.0.1/bin/styio"
+          }
+        ]
+      }
+    },
+    "failure": {
+      "returncode": 1,
+      "message": "project pin was already absent",
+      "stdout": "",
+      "stderr": "project pin was already absent",
+      "error_payload": {
+        "code": "tool.pin.missing",
+        "reason": "No hosted project pin was present to clear.",
+        "retryable": false
+      }
+    }
+  },
+  "fetchDependencies": {
+    "request": {
+      "locked": true,
+      "offline": false
+    },
+    "success": {
+      "returncode": 0,
+      "message": "fetched hosted dependencies",
+      "stdout": "",
+      "stderr": "",
+      "payload": {
+        "packages": [
+          "demo/app"
+        ],
+        "vendor_root": "/workspace/demo/.spio/vendor",
+        "metadata_path": "/workspace/demo/.spio/vendor/vendor.json"
+      }
+    },
+    "failure": {
+      "returncode": 1,
+      "message": "dependency fetch failed",
+      "stdout": "",
+      "stderr": "dependency fetch failed",
+      "error_payload": {
+        "code": "dependencies.fetch.failed",
+        "reason": "The registry source could not satisfy the requested version.",
+        "retryable": true
+      }
+    }
+  },
+  "vendorDependencies": {
+    "request": {
+      "output_path": "/workspace/demo/vendor-cache",
+      "locked": true,
+      "offline": false
+    },
+    "success": {
+      "returncode": 0,
+      "message": "vendored hosted dependencies",
+      "stdout": "",
+      "stderr": "",
+      "payload": {
+        "packages": [
+          "demo/app"
+        ],
+        "vendor_root": "/workspace/demo/vendor-cache",
+        "metadata_path": "/workspace/demo/vendor-cache/vendor.json"
+      }
+    },
+    "failure": {
+      "returncode": 1,
+      "message": "dependency vendoring failed",
+      "stdout": "",
+      "stderr": "dependency vendoring failed",
+      "error_payload": {
+        "code": "dependencies.vendor.failed",
+        "reason": "The vendor output path could not be created.",
+        "retryable": true
+      }
+    }
+  },
+  "runWorkflow": {
+    "request": {
+      "active_file_path": "/workspace/demo/src/main.styio",
+      "document_text": ">_(1 + 1)\n",
+      "package_name": "demo/app",
+      "target_name": "demo",
+      "target_kind": "bin"
+    },
+    "success": {
+      "returncode": 0,
+      "message": "run completed",
+      "stdout": "",
+      "stderr": "",
+      "payload": {
+        "session_id": "hosted-run-session",
+        "stdout": "2\n",
+        "stderr": "",
+        "diagnostics": [],
+        "runtime_events": [
+          {
+            "schemaVersion": 1,
+            "sessionId": "hosted-run-session",
+            "sequence": 1,
+            "timestamp": "2026-04-21T00:01:00Z",
+            "eventKind": "runtime.completed",
+            "origin": "styio.hosted",
+            "payload": {
+              "target": "demo",
+              "status": "succeeded"
+            }
+          }
+        ]
+      }
+    },
+    "failure": {
+      "returncode": 1,
+      "message": "run failed",
+      "stdout": "",
+      "stderr": "",
+      "error_payload": {
+        "session_id": "hosted-run-session",
+        "stdout": "",
+        "stderr": "",
+        "diagnostics": [
+          {
+            "message": "unexpected end of file",
+            "severity": "error",
+            "category": "parse",
+            "code": "parse:eof",
+            "file": "/workspace/demo/src/main.styio"
+          }
+        ],
+        "runtime_events": []
+      }
+    }
+  },
+  "buildWorkflow": {
+    "request": {
+      "active_file_path": "/workspace/demo/src/main.styio",
+      "document_text": ">_(1 + 1)\n",
+      "package_name": "demo/app",
+      "target_name": "demo",
+      "target_kind": "bin"
+    },
+    "success": {
+      "returncode": 0,
+      "message": "build completed",
+      "stdout": "",
+      "stderr": "",
+      "payload": {
+        "session_id": "hosted-build-session",
+        "stdout": "artifact ready\n",
+        "stderr": "",
+        "diagnostics": [],
+        "runtime_events": [
+          {
+            "schemaVersion": 1,
+            "sessionId": "hosted-build-session",
+            "sequence": 1,
+            "timestamp": "2026-04-21T00:01:10Z",
+            "eventKind": "runtime.completed",
+            "origin": "styio.hosted",
+            "payload": {
+              "target": "demo",
+              "status": "succeeded"
+            }
+          }
+        ]
+      }
+    },
+    "failure": {
+      "returncode": 1,
+      "message": "build failed",
+      "stdout": "",
+      "stderr": "",
+      "error_payload": {
+        "session_id": "hosted-build-session",
+        "stdout": "",
+        "stderr": "",
+        "diagnostics": [
+          {
+            "message": "build target is blocked",
+            "severity": "error",
+            "category": "compile",
+            "code": "compile:blocked",
+            "file": "/workspace/demo/src/main.styio"
+          }
+        ],
+        "runtime_events": []
+      }
+    }
+  },
+  "testWorkflow": {
+    "request": {
+      "active_file_path": "/workspace/demo/tests/demo_test.styio",
+      "document_text": ">_(1 + 1)\n",
+      "package_name": "demo/app",
+      "target_name": "demo_test",
+      "target_kind": "test"
+    },
+    "success": {
+      "returncode": 0,
+      "message": "test completed",
+      "stdout": "",
+      "stderr": "",
+      "payload": {
+        "session_id": "hosted-test-session",
+        "stdout": "1 test passed\n",
+        "stderr": "",
+        "diagnostics": [],
+        "runtime_events": [
+          {
+            "schemaVersion": 1,
+            "sessionId": "hosted-test-session",
+            "sequence": 1,
+            "timestamp": "2026-04-21T00:01:20Z",
+            "eventKind": "runtime.completed",
+            "origin": "styio.hosted",
+            "payload": {
+              "target": "demo_test",
+              "status": "succeeded"
+            }
+          }
+        ]
+      }
+    },
+    "failure": {
+      "returncode": 1,
+      "message": "test failed",
+      "stdout": "",
+      "stderr": "",
+      "error_payload": {
+        "session_id": "hosted-test-session",
+        "stdout": "",
+        "stderr": "",
+        "diagnostics": [
+          {
+            "message": "assertion failed",
+            "severity": "error",
+            "category": "runtime",
+            "code": "runtime:assert",
+            "file": "/workspace/demo/tests/demo_test.styio"
+          }
+        ],
+        "runtime_events": []
+      }
+    }
+  },
+  "packProject": {
+    "request": {
+      "package_name": "demo/app",
+      "output_path": "/workspace/demo/dist"
+    },
+    "success": {
+      "returncode": 0,
+      "message": "pack completed",
+      "stdout": "",
+      "stderr": "",
+      "payload": {
+        "package": "demo/app",
+        "archive_path": "/workspace/demo/dist/demo-app-0.1.0.tar"
+      }
+    },
+    "failure": {
+      "returncode": 1,
+      "message": "pack failed",
+      "stdout": "",
+      "stderr": "",
+      "error_payload": {
+        "code": "deployment.pack.failed",
+        "reason": "The package could not be materialized.",
+        "retryable": true
+      }
+    }
+  },
+  "preparePublish": {
+    "request": {
+      "package_name": "demo/app",
+      "output_path": "/workspace/demo/dist"
+    },
+    "success": {
+      "returncode": 0,
+      "message": "publish preflight completed",
+      "stdout": "",
+      "stderr": "",
+      "payload": {
+        "package": "demo/app",
+        "archive_path": "/workspace/demo/dist/demo-app-0.1.0.tar"
+      }
+    },
+    "failure": {
+      "returncode": 1,
+      "message": "publish preflight failed",
+      "stdout": "",
+      "stderr": "",
+      "error_payload": {
+        "code": "deployment.preflight.failed",
+        "reason": "The package is not publish-ready.",
+        "retryable": false
+      }
+    }
+  },
+  "publishToRegistry": {
+    "request": {
+      "registry_root": "https://packages.example.test",
+      "package_name": "demo/app",
+      "output_path": "/workspace/demo/dist"
+    },
+    "success": {
+      "returncode": 0,
+      "message": "publish completed",
+      "stdout": "",
+      "stderr": "",
+      "payload": {
+        "package": "demo/app",
+        "archive_path": "/workspace/demo/dist/demo-app-0.1.0.tar",
+        "registry_root": "https://packages.example.test"
+      }
+    },
+    "failure": {
+      "returncode": 1,
+      "message": "publish failed",
+      "stdout": "",
+      "stderr": "",
+      "error_payload": {
+        "code": "deployment.publish.failed",
+        "reason": "The registry rejected the publish attempt.",
+        "retryable": true
+      }
+    }
+  }
+}

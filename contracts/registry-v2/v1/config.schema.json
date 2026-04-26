@@ -1,0 +1,106 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://spio.dev/contracts/registry-v2/v1/config.schema.json",
+  "title": "spio Registry V2 Config",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "protocol",
+    "protocol_version",
+    "registry_name",
+    "generated_at",
+    "capabilities",
+    "paths"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "protocol": {
+      "type": "string",
+      "const": "spio-static-registry"
+    },
+    "protocol_version": {
+      "type": "integer",
+      "const": 2
+    },
+    "registry_name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "capabilities": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "append_only_index",
+        "source_artifacts",
+        "binary_artifacts",
+        "transparency_log"
+      ],
+      "properties": {
+        "append_only_index": {
+          "type": "boolean"
+        },
+        "source_artifacts": {
+          "type": "boolean"
+        },
+        "binary_artifacts": {
+          "type": "boolean"
+        },
+        "transparency_log": {
+          "type": "boolean"
+        }
+      }
+    },
+    "paths": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "root",
+        "timestamp",
+        "snapshot",
+        "targets_prefix",
+        "index_prefix",
+        "source_artifact_prefix",
+        "binary_artifact_prefix",
+        "transparency_checkpoint",
+        "transparency_leaves_prefix"
+      ],
+      "properties": {
+        "root": {
+          "type": "string"
+        },
+        "timestamp": {
+          "type": "string"
+        },
+        "snapshot": {
+          "type": "string"
+        },
+        "targets_prefix": {
+          "type": "string"
+        },
+        "index_prefix": {
+          "type": "string"
+        },
+        "source_artifact_prefix": {
+          "type": "string"
+        },
+        "binary_artifact_prefix": {
+          "type": "string"
+        },
+        "transparency_checkpoint": {
+          "type": "string"
+        },
+        "transparency_leaves_prefix": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

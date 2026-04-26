@@ -1,6 +1,6 @@
 # Security Index
 
-**Purpose:** Provide the generated inventory for `docs/security/`; public/private boundary rules live in [README.md](./README.md).
+**Purpose:** Provide the generated inventory for `docs/security/`; public/private security boundary docs live in [README.md](./README.md).
 
 **Last updated:** 2026-04-13
 

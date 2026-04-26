@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://spio.dev/contracts/registry-v2/v1/signed-checkpoint.schema.json",
+  "title": "spio Registry V2 Signed Transparency Checkpoint",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "signed",
+    "signatures"
+  ],
+  "properties": {
+    "signed": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "spec_version",
+        "version",
+        "generated_at",
+        "tree_size",
+        "root_hash"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "checkpoint"
+        },
+        "spec_version": {
+          "type": "string",
+          "const": "1"
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "generated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tree_size": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "root_hash": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    },
+    "signatures": {
+      "$ref": "#/$defs/signatures"
+    }
+  },
+  "$defs": {
+    "signatures": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "keyid",
+          "sig"
+        ],
+        "properties": {
+          "keyid": {
+            "type": "string",
+            "minLength": 1
+          },
+          "sig": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    }
+  }
+}

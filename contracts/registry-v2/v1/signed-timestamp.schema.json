@@ -1,0 +1,113 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://spio.dev/contracts/registry-v2/v1/signed-timestamp.schema.json",
+  "title": "spio Registry V2 Signed Timestamp Metadata",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "signed",
+    "signatures"
+  ],
+  "properties": {
+    "signed": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "spec_version",
+        "version",
+        "expires",
+        "meta"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "timestamp"
+        },
+        "spec_version": {
+          "type": "string",
+          "const": "1"
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "expires": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "meta": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "trust/snapshot.json"
+          ],
+          "properties": {
+            "trust/snapshot.json": {
+              "$ref": "#/$defs/fileMeta"
+            }
+          }
+        }
+      }
+    },
+    "signatures": {
+      "$ref": "#/$defs/signatures"
+    }
+  },
+  "$defs": {
+    "fileMeta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "version",
+        "length",
+        "hashes"
+      ],
+      "properties": {
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "length": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "hashes": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "sha256"
+          ],
+          "properties": {
+            "sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          }
+        }
+      }
+    },
+    "signatures": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "keyid",
+          "sig"
+        ],
+        "properties": {
+          "keyid": {
+            "type": "string",
+            "minLength": 1
+          },
+          "sig": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    }
+  }
+}

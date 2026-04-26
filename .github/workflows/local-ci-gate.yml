@@ -1,0 +1,122 @@
+name: local-ci-gate
+
+on:
+  pull_request:
+  push:
+    branches:
+      - ai-dev
+      - nightly
+      - stable
+      - main
+      - master
+  merge_group:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  local-ci-gate:
+    name: local-ci-gate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 75
+    env:
+      STYIO_LLVM_MAJOR: "18"
+      STYIO_CMAKE_VERSION: "3.31.6"
+      STYIO_PYTHON_VERSION: "3.13.5"
+
+    steps:
+      - name: Checkout styio-spio
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          path: styio-spio
+
+      - name: Checkout styio-nightly sibling repository
+        uses: actions/checkout@v5
+        with:
+          repository: Unka-Malloc/styio-nightly
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.ref_type == 'branch' && github.ref_name || 'nightly' }}
+          path: styio-nightly
+
+      - name: Checkout styio-view sibling repository
+        uses: actions/checkout@v5
+        with:
+          repository: Unka-Malloc/styio-view
+          ref: nightly
+          path: styio-view
+
+      - name: Set up standardized Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.STYIO_PYTHON_VERSION }}
+
+      - name: Install standardized CMake / CTest
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install --user "cmake==${STYIO_CMAKE_VERSION}"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Install native dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            ninja-build \
+            clang-${STYIO_LLVM_MAJOR} \
+            lld-${STYIO_LLVM_MAJOR} \
+            llvm-${STYIO_LLVM_MAJOR}-dev \
+            llvm-${STYIO_LLVM_MAJOR}-tools
+
+      - name: Verify standardized toolchain
+        run: |
+          python3 --version
+          cmake --version | head -n1
+          ctest --version | head -n1
+          clang-${STYIO_LLVM_MAJOR} --version | head -n1
+          llvm-config-${STYIO_LLVM_MAJOR} --version
+
+      - name: Resolve CI refs
+        id: ci_refs
+        shell: bash
+        working-directory: styio-spio
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            git fetch --no-tags origin "+refs/heads/${{ github.event.pull_request.base.ref }}:refs/remotes/origin/${{ github.event.pull_request.base.ref }}"
+            BASE_REF="origin/${{ github.event.pull_request.base.ref }}"
+            RANGE="${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}"
+          elif [[ "${{ github.event_name }}" == "merge_group" ]]; then
+            if git rev-parse --verify HEAD^ >/dev/null 2>&1; then
+              BASE_REF="HEAD^"
+              RANGE="HEAD^..HEAD"
+            else
+              BASE_REF="HEAD"
+              RANGE="HEAD"
+            fi
+          elif [[ "${{ github.event.before }}" == "0000000000000000000000000000000000000000" ]]; then
+            if git rev-parse --verify HEAD^ >/dev/null 2>&1; then
+              BASE_REF="HEAD^"
+            else
+              BASE_REF="HEAD"
+            fi
+            RANGE="HEAD"
+          else
+            BASE_REF="${{ github.event.before }}"
+            RANGE="${{ github.event.before }}..${{ github.sha }}"
+          fi
+
+          echo "base_ref=${BASE_REF}" >> "$GITHUB_OUTPUT"
+          echo "range=${RANGE}" >> "$GITHUB_OUTPUT"
+
+      - name: Run styio-spio local CI gate
+        working-directory: styio-spio
+        run: >
+          ./scripts/delivery-gate.sh
+          --mode push
+          --base "${{ steps.ci_refs.outputs.base_ref }}"
+          --range "${{ steps.ci_refs.outputs.range }}"
+          --skip-audit
+          --skip-health
+
+      - name: Run unified submit gate
+        working-directory: styio-spio
+        run: python3 scripts/submit-gate.py --profile ci --json

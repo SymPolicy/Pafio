@@ -2,7 +2,7 @@
 
 **Purpose:** Define the client-side rules for consuming packages from a `spio` registry without mixing them with server upload or deployment concerns.
 
-**Last updated:** 2026-04-12
+**Last updated:** 2026-04-24
 
 ## 1. Scope
 
@@ -14,7 +14,7 @@ This document owns:
 - offline and lock-related client expectations
 - the public read-side security hook boundary only at the level of interface
 
-Shared repository layout remains owned by [../governance/Spio-Registry-Repository-Contract.md](../governance/Spio-Registry-Repository-Contract.md).
+Shared `v2` static read-plane layout remains owned by [./Spio-Registry-V2-Protocol.md](./Spio-Registry-V2-Protocol.md).
 
 ## 2. Supported Registry Roots
 
@@ -24,7 +24,11 @@ Registry clients may consume packages from:
 - `http://<registry-root>`
 - `https://<registry-root>`
 
-The client consumes the same marker, version-entry, and blob paths regardless of transport.
+The client consumes the same `v2` config, namespace-targets, append-only index, and source-artifact paths regardless of transport.
+HTTP roots may be platform-hosted mirrors or direct registry read origins, but
+the client treats them as read roots only. Mirror freshness, replay, and
+regional routing are platform responsibilities; local cache and offline
+behavior remain valid when no mirror is reachable.
 
 Any environment-specific trust policy, credential injection, or allowlist enforcement belongs behind the private security boundary documented in [../security/Spio-Private-Security-Module-Contract.md](../security/Spio-Private-Security-Module-Contract.md).
 
@@ -33,37 +37,41 @@ Any environment-specific trust policy, credential injection, or allowlist enforc
 For `package@version`, the client must:
 
 1. normalize the registry root
-2. load and validate `<registry-root>/spio-registry.json`
-3. load `index/<namespace>/<name>/<version>.json`
-4. read `sha256`, `size_bytes`, and `blob_path`
-5. fetch or reuse the immutable blob
-6. verify the blob digest against the version entry
-7. extract the snapshot locally and resolve `spio.toml`
+2. load and validate `<registry-root>/config.json`
+3. load `trust/targets/<namespace>.json` and resolve the package `index_path`
+4. load `index/<namespace>/<name>.jsonl`
+5. select the exact record for `package@version`
+6. read `source_artifact.sha256`, `size_bytes`, and `path`
+7. fetch or reuse the immutable source artifact
+8. verify the artifact digest against the selected index record
+9. extract the snapshot locally and resolve `spio.toml`
 
-The client must not trust the transport alone; the blob digest check is mandatory before use.
+The client must not trust the transport alone; the source-artifact digest check is mandatory before use.
 
 ## 4. Local Client State
 
 Registry client state lives under `SPIO_HOME/registry/`:
 
-- marker and entry cache: `registry/index/`
-- immutable blob cache: `registry/blobs/`
+- config / targets / index cache: `registry/index/`
+- immutable artifact cache: `registry/blobs/`
 - extracted snapshots: `registry/checkouts/`
 
 Behavior rules:
 
-- blobs are keyed by `sha256`
-- cached blobs must be re-verified before reuse
+- artifacts are keyed by `sha256`
+- cached artifacts must be re-verified before reuse
 - offline mode may use only cached metadata, cached blobs, extracted snapshots, vendored state, or `file://` registries
+- cached state must not silently relax digest checks, even when the package was originally fetched from a trusted platform mirror
 
 ## 5. Client Failure Semantics
 
 Client-side fetch must fail when:
 
-- the marker is missing or invalid
-- the version entry is missing or invalid
-- the blob cannot be fetched
-- the blob digest does not match the recorded `sha256`
+- the registry `config.json` is missing or invalid
+- namespace targets metadata is missing the requested package/version
+- the append-only package index is missing or invalid
+- the source artifact cannot be fetched
+- the source-artifact digest does not match the selected record
 - offline mode requires a network fetch
 
 ## 6. Non-Goals
@@ -74,4 +82,4 @@ This document does not define:
 - registry deployment topology
 - account policy
 - private registry allowlists or credentials
-- signatures or transparency policy
+- full trust-metadata signature verification policy
