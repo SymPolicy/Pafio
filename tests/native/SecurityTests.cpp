@@ -1,4 +1,6 @@
 #include "SpioSecurity/RegistrySecurity.hpp"
+#include "SpioSecurity/RegistryTrust.hpp"
+#include "BuildTestSupport.hpp"
 
 #include "SpioCore/Errors.hpp"
 
@@ -9,6 +11,9 @@
 #include <gtest/gtest.h>
 
 namespace fs = std::filesystem;
+using spio::testsupport::MakeTempDir;
+using spio::testsupport::ScopedEnvVar;
+using spio::testsupport::WriteFile;
 
 namespace
 {
@@ -177,4 +182,36 @@ TEST(SecurityTests, NormalizesRegistryObjectPathWithPythonCompatiblePolicy)
   EXPECT_THROW(spio::NormalizeRegistryObjectPath("/trust/root.json", "test"), spio::FetchError);
   EXPECT_THROW(spio::NormalizeRegistryObjectPath("trust/root.json/", "test"), spio::FetchError);
   EXPECT_THROW(spio::NormalizeRegistryObjectPath("trust\\root.json", "test"), spio::FetchError);
+}
+
+TEST(SecurityTests, ImportsAndResolvesRegistryTrustDescriptor)
+{
+  const fs::path root = MakeTempDir("registry-trust-import");
+  const ScopedEnvVar spio_home("SPIO_HOME", (root / ".spio-home").string());
+  const fs::path descriptor_path = root / "descriptor.json";
+  const std::string root_digest = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+  WriteFile(
+      descriptor_path,
+      "{\n"
+      "  \"schema_version\": 1,\n"
+      "  \"registry_root\": \"https://packages.example.test/spio/\",\n"
+      "  \"registry_name\": \"unit-registry\",\n"
+      "  \"root_sha256\": \"" + root_digest + "\",\n"
+      "  \"control_plane_base_url\": \"https://packages.example.test/api/spio-registry-control/v1\",\n"
+      "  \"issued_at\": \"2026-05-02T00:00:00Z\",\n"
+      "  \"expires\": \"2026-06-02T00:00:00Z\"\n"
+      "}\n");
+
+  const spio::RegistryTrustPin imported =
+      spio::ImportRegistryTrustDescriptor(root / ".spio-home", descriptor_path.string());
+  EXPECT_EQ(imported.registry_root, "https://packages.example.test/spio");
+  EXPECT_EQ(imported.root_sha256, root_digest);
+  EXPECT_EQ(imported.registry_name, "unit-registry");
+  EXPECT_EQ(imported.descriptor_sha256.size(), 64U);
+
+  const std::optional<spio::RegistryTrustPin> resolved =
+      spio::ResolveRegistryTrustPin(root / ".spio-home", "https://packages.example.test/spio/");
+  ASSERT_TRUE(resolved.has_value());
+  EXPECT_EQ(resolved->root_sha256, root_digest);
+  EXPECT_TRUE(fs::exists(root / ".spio-home" / "registry" / "trust" / "registry-trust.json"));
 }

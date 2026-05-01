@@ -17,5 +17,6 @@ int HandleTree(const std::vector<std::string> &args, bool as_json);
 int HandleVendor(const std::vector<std::string> &args, bool as_json);
 int HandlePack(const std::vector<std::string> &args, bool as_json);
 int HandlePublish(const std::vector<std::string> &args, bool as_json);
+int HandleRegistry(const std::vector<std::string> &args, bool as_json);
 
 }  // namespace spio

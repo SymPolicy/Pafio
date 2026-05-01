@@ -2,7 +2,7 @@
 
 **Purpose:** Provide the executable validation and deployment procedure for a shared `spio` registry `v2` origin without mixing it with client cache behavior or hosted publish-service policy.
 
-**Last updated:** 2026-04-21
+**Last updated:** 2026-05-02
 
 ## 1. Scope
 
@@ -31,7 +31,7 @@ Recommended local build entry:
 Use this when one origin handles both publish and fetch:
 
 ```text
-./scripts/registry-server-gate.py --registry-root https://registry.example.internal --spio-bin ./build-codex/bin/spio --json
+./scripts/registry-server-gate.py --registry-root https://registry.example.internal --fetch-trust-descriptor https://platform.example.internal/api/spio-registry-control/v1/descriptor --spio-bin ./build-codex/bin/spio --json
 ```
 
 What it proves:
@@ -39,17 +39,19 @@ What it proves:
 - publish commits a valid registry `v2` release
 - duplicate publish is rejected
 - the new package is immediately fetchable from the same static root
+- remote HTTP fetches are validated only after importing a platform registry
+  trust descriptor for the read root
 
 If the write origin sits behind an upload gateway that expects fixed headers, pass them explicitly:
 
 ```text
-./scripts/registry-server-gate.py --registry-root https://registry-upload.example.internal --publish-header 'X-Spio-Write-Token: dev-token' --spio-bin ./build-codex/bin/spio --json
+./scripts/registry-server-gate.py --registry-root https://registry-upload.example.internal --fetch-trust-descriptor https://platform.example.internal/api/spio-registry-control/v1/descriptor --publish-header 'X-Spio-Write-Token: dev-token' --spio-bin ./build-codex/bin/spio --json
 ```
 
 If the deployment links a private security module and the write-origin rules should live in a reusable file instead of command-line headers:
 
 ```text
-./scripts/registry-server-gate.py --registry-root https://registry-upload.example.internal --publish-policy-file /etc/spio/publish-policy.toml --spio-bin ./build-codex/bin/spio --json
+./scripts/registry-server-gate.py --registry-root https://registry-upload.example.internal --fetch-trust-descriptor https://platform.example.internal/api/spio-registry-control/v1/descriptor --publish-policy-file /etc/spio/publish-policy.toml --spio-bin ./build-codex/bin/spio --json
 ```
 
 If the deployment links a private security module and already provisions a named profile under `SPIO_HOME/server/registry/publish-profiles/`, validate that path directly:
@@ -63,11 +65,13 @@ spio publish --manifest-path path/to/spio.toml --registry https://registry-uploa
 Use this when write traffic goes to an upload origin and read traffic goes to a download origin or CDN:
 
 ```text
-./scripts/registry-server-gate.py --publish-root https://registry-upload.example.internal --fetch-root https://registry.example.internal --sync-timeout-seconds 30 --spio-bin ./build-codex/bin/spio --json
+./scripts/registry-server-gate.py --publish-root https://registry-upload.example.internal --fetch-root https://registry.example.internal --fetch-trust-descriptor https://platform.example.internal/api/spio-registry-control/v1/descriptor --sync-timeout-seconds 30 --spio-bin ./build-codex/bin/spio --json
 ```
 
 Notes:
 
+- `--fetch-trust-descriptor` imports the platform-owned read-root descriptor
+  into the gate's isolated `SPIO_HOME` before fetch validation
 - `--sync-timeout-seconds` is the publish-to-fetch visibility budget
 - keep it at `0` when the read root should be immediately consistent
 - raise it only when the read root is populated by asynchronous replication or CDN propagation

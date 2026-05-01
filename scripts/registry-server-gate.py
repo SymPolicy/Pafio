@@ -323,6 +323,7 @@ def main(argv: list[str] | None = None) -> int:
         help="registry publish profile name written into the isolated SPIO_HOME and used only for remote publish requests",
     )
     parser.add_argument("--sync-timeout-seconds", type=float, default=0.0, help="time budget for publish-to-fetch sync")
+    parser.add_argument("--fetch-trust-descriptor", help="registry trust descriptor imported before remote fetch validation")
     parser.add_argument("--spio-bin", default=str(DEFAULT_SPIO), help="spio wrapper used for publish/fetch checks")
     parser.add_argument("--json", action="store_true", help="emit machine-readable summary")
     args = parser.parse_args(argv)
@@ -343,6 +344,7 @@ def main(argv: list[str] | None = None) -> int:
     validation_errors: list[str] = []
 
     duplicate_rejected = False
+    trust_import_succeeded = not args.fetch_trust_descriptor
     fetch_succeeded = False
 
     with tempfile.TemporaryDirectory(prefix="spio-registry-server-gate-") as temp_dir:
@@ -420,6 +422,25 @@ def main(argv: list[str] | None = None) -> int:
                     validation_errors.append(str(err))
 
             consumer_manifest = write_consumer_package(temp_root / "consume", fetch_root)
+            if args.fetch_trust_descriptor:
+                trust_step = run_step(
+                    "trust_import",
+                    [
+                        spio_bin,
+                        "--json",
+                        "registry",
+                        "trust",
+                        "import",
+                        args.fetch_trust_descriptor,
+                    ],
+                    cwd=temp_root,
+                    env=isolated_env,
+                )
+                steps.append(trust_step)
+                trust_import_succeeded = trust_step["ok"]
+                if not trust_step["ok"]:
+                    validation_errors.append("fetch trust descriptor import failed")
+
             fetch_deadline = time.monotonic() + max(args.sync_timeout_seconds, 0.0)
 
             while True:
@@ -448,7 +469,7 @@ def main(argv: list[str] | None = None) -> int:
                 except RuntimeError as err:
                     validation_errors.append(str(err))
 
-    ok = publish_step["ok"] and duplicate_rejected and fetch_succeeded and not validation_errors
+    ok = publish_step["ok"] and duplicate_rejected and trust_import_succeeded and fetch_succeeded and not validation_errors
 
     summary = {
         "ok": ok,
@@ -458,6 +479,7 @@ def main(argv: list[str] | None = None) -> int:
         "publish_headers": args.publish_header,
         "publish_policy_file": os.path.abspath(args.publish_policy_file) if args.publish_policy_file else "",
         "publish_profile": args.publish_profile or "",
+        "fetch_trust_descriptor": args.fetch_trust_descriptor or "",
         "sync_timeout_seconds": args.sync_timeout_seconds,
         "validation_errors": validation_errors,
         "steps": steps,

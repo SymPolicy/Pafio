@@ -64,6 +64,34 @@ for _ in $(seq 1 30); do
 done
 curl -fsS "${REGISTRY_URL}/config.json" >/dev/null
 
+python3 - "$REGISTRY_URL" "$REGISTRY_ROOT/trust/root.json" "$ROOT/registry-descriptor.json" <<'PY'
+import hashlib
+import json
+import pathlib
+import sys
+
+registry_url = sys.argv[1]
+root_metadata = pathlib.Path(sys.argv[2]).read_bytes()
+descriptor_path = pathlib.Path(sys.argv[3])
+descriptor_path.write_text(
+    json.dumps(
+        {
+            "schema_version": 1,
+            "registry_name": "interop-registry",
+            "registry_root": registry_url,
+            "control_plane_base_url": "interop-local-fixture",
+            "root_sha256": hashlib.sha256(root_metadata).hexdigest(),
+            "issued_at": "2026-05-02T00:00:00Z",
+            "expires": "2026-06-02T00:00:00Z",
+        },
+        sort_keys=True,
+    )
+    + "\n",
+    encoding="utf-8",
+)
+PY
+"$SPIO_BIN" --json registry trust import "$ROOT/registry-descriptor.json" >/dev/null
+
 cat >"$ROOT/spio.toml" <<EOF
 [spio]
 manifest-version = 1

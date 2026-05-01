@@ -2,11 +2,11 @@
 
 **Purpose:** Define the first native JSON HTTP control-plane package for operating a `spio` registry `v2` root over a backend service boundary.
 
-**Last updated:** 2026-04-24
+**Last updated:** 2026-05-02
 
 ## Source Of Truth
 
-- `registry-control-plane.contract.json` is the canonical status, publish, and verify operation catalog.
+- `registry-control-plane.contract.json` is the canonical status, descriptor, publish, and verify operation catalog.
 - `registry-control-plane.examples.json` is the canonical request, success, and failure example pack.
 - Human-readable registry docs stay secondary to this package.
 
@@ -30,4 +30,7 @@ This package is shared by `styio-platform` and `styio-spio`.
 - Renaming operations, changing required fields, or changing envelope semantics requires `v2`.
 - Clients must treat undocumented fields as non-existent.
 - Services must preserve the published method, path, and envelope spelling exactly.
+- The descriptor operation is the public client trust handoff: it exposes the
+  read-root URL, control-plane base URL, and pinned `trust/root.json` SHA-256
+  that `styio-spio` imports before remote registry fetches.
 - Generated third-party API-description artifacts are not valid source of truth for this contract.

@@ -1431,7 +1431,7 @@ Behavior:
 Canonical form:
 
 ```text
-./scripts/registry-server-gate.py (--registry-root <path-or-url> | [--publish-root <path-or-url>] [--fetch-root <path-or-url>]) [--publish-profile <name>] [--publish-policy-file <path>] [--publish-header <name:value>] [--sync-timeout-seconds <seconds>] [--spio-bin <path>] [--json]
+./scripts/registry-server-gate.py (--registry-root <path-or-url> | [--publish-root <path-or-url>] [--fetch-root <path-or-url>]) [--publish-profile <name>] [--publish-policy-file <path>] [--publish-header <name:value>] [--fetch-trust-descriptor <path-or-url>] [--sync-timeout-seconds <seconds>] [--spio-bin <path>] [--json]
 ```
 
 Arguments:
@@ -1464,6 +1464,10 @@ Arguments:
   - optional
   - retry budget for publish-to-fetch synchronization when the read root lags the write root
   - defaults to `0`
+- `--fetch-trust-descriptor <path-or-url>`
+  - optional
+  - imports a platform registry trust descriptor into the gate's isolated `SPIO_HOME` before remote fetch validation
+  - required when validating public HTTP read roots that enforce descriptor-pinned trust
 - `--spio-bin <path>`
   - optional
   - `spio` wrapper or binary used for the black-box publish/fetch checks
@@ -1478,6 +1482,7 @@ Behavior:
 - publishes a temporary package into the configured write root
 - validates the publish JSON payload shape
 - verifies that duplicate publish is rejected
+- imports the fetch trust descriptor when `--fetch-trust-descriptor` is provided
 - fetches the newly published package from the configured read root
 - when a private security module is under test, can synthesize a write-origin profile under isolated `SPIO_HOME` through `--publish-profile <name>`
 - when a private security module is under test, can attach a write-origin policy file through `--publish-policy-file <path>`

@@ -124,6 +124,12 @@ constexpr std::array kUsageCommands = {
         "usage: spio publish [--manifest-path <path>] [--package <package-name>] [--output <path>] [--registry <path-or-url>] [--registry-profile <name>] [--registry-policy-file <path>] [--registry-header <name:value>] [--dry-run]\n",
     },
     UsageCommandEntry{
+        "registry",
+        "usage:\n"
+        "  spio registry trust import <descriptor-url|descriptor-file>\n"
+        "  spio registry trust status --json\n",
+    },
+    UsageCommandEntry{
         "tool",
         "usage:\n"
         "  spio tool install --styio-bin <path>\n"
@@ -223,6 +229,8 @@ int PrintGlobalHelp()
       << "  test [--manifest-path <path>] [--package <package-name>] [--test <name>] [--profile <dev|release>] [--dry-run] [--styio-bin <path>] [--source-root <path>] [--source-rev <rev>] [--yes|--no-fetch|--non-interactive] [--locked|--offline|--frozen]\n"
       << "  pack [--manifest-path <path>] [--package <package-name>] [--output <path>]\n"
       << "  publish [--manifest-path <path>] [--package <package-name>] [--output <path>] [--registry <path-or-url>] [--registry-profile <name>] [--registry-policy-file <path>] [--registry-header <name:value>] [--dry-run]\n"
+      << "  registry trust import <descriptor-url|descriptor-file>\n"
+      << "  registry trust status --json\n"
       << "  tool install --styio-bin <path>\n"
       << "  tool status --json [--manifest-path <path>]\n"
       << "  tool use --version <compiler-version> [--channel <channel>]\n"

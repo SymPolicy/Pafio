@@ -2,7 +2,7 @@
 
 **Purpose:** Freeze the HTTP control-plane contract used by backend services and automation to operate a `spio` registry `v2` root independently of the static read-plane contract.
 
-**Last updated:** 2026-04-24
+**Last updated:** 2026-05-02
 
 ## Source Of Truth
 
@@ -18,12 +18,14 @@ Human-readable docs explain those files. They do not replace them.
 `v1` currently freezes these control-plane operations:
 
 1. `GET /api/spio-registry-control/v1/status`
-2. `POST /api/spio-registry-control/v1/publish`
-3. `POST /api/spio-registry-control/v1/verify`
+2. `GET /api/spio-registry-control/v1/descriptor`
+3. `POST /api/spio-registry-control/v1/publish`
+4. `POST /api/spio-registry-control/v1/verify`
 
 This contract owns:
 
 - control-plane status and readiness discovery
+- registry trust descriptor publication for public client imports
 - publish requests that commit source packages into a `v2` root
 - verification requests for the static read plane
 
@@ -45,7 +47,7 @@ repository keeps the same native JSON contract package so the local
 package-manager client, publish automation, and offline-capable workflows can
 validate compatibility without owning the hosted service implementation.
 
-The shared contract is limited to status, publish, and verify envelopes.
+The shared contract is limited to status, descriptor, publish, and verify envelopes.
 Mirror freshness/replay belongs to platform docs; offline cache behavior
 belongs to [Spio-Registry-Client-Contract.md](./Spio-Registry-Client-Contract.md)
 and [../governance/Spio-Local-Offline-Package-Contract.md](../governance/Spio-Local-Offline-Package-Contract.md).
@@ -63,6 +65,11 @@ That server binds:
 - one `spio` binary for dry-run publish preparation
 
 It is the current executable reference for the contract package. It does not yet represent the final hosted multi-tenant service shape.
+
+The descriptor response is the platform-owned trust handoff to `styio-spio`.
+It names the registry read root, the control-plane base URL, and the SHA-256 of
+`trust/root.json`; public clients import that descriptor before remote fetches
+instead of trusting self-advertised registry metadata alone.
 
 ## Gate Rule
 

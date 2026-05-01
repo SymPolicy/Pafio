@@ -49,6 +49,7 @@ enum class TopLevelCommand
   Vendor,
   Pack,
   Publish,
+  Registry,
   Tool,
 };
 
@@ -158,6 +159,10 @@ std::optional<TopLevelCommand> ParseTopLevelCommand(std::string_view raw)
   if (raw == "publish")
   {
     return TopLevelCommand::Publish;
+  }
+  if (raw == "registry")
+  {
+    return TopLevelCommand::Registry;
   }
   if (raw == "tool")
   {
@@ -314,6 +319,8 @@ int RunCli(const std::vector<std::string> &argv)
       return HandlePack(args, global_json);
     case TopLevelCommand::Publish:
       return HandlePublish(args, global_json);
+    case TopLevelCommand::Registry:
+      return HandleRegistry(args, global_json);
     case TopLevelCommand::Tool:
       return HandleToolCommand(args, global_json);
   }

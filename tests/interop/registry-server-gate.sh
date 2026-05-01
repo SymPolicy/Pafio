@@ -49,10 +49,15 @@ mkdir -p "$REGISTRY_ROOT"
 
 python3 "$ROOT_DIR/scripts/registry-v2-keygen.py" --output-dir "$KEY_DIR" >/dev/null
 
+CONTROL_BASE="http://127.0.0.1:${CONTROL_PORT}/api/spio-registry-control/v1"
+STATIC_ROOT="http://127.0.0.1:${STATIC_PORT}"
+
 python3 "$ROOT_DIR/scripts/registry-v2-control-plane-server.py" \
   --root "$REGISTRY_ROOT" \
   --key-dir "$KEY_DIR" \
   --spio-bin "$SPIO_BIN" \
+  --read-root-url "$STATIC_ROOT" \
+  --control-plane-base-url "$CONTROL_BASE" \
   --bind 127.0.0.1 \
   --port "$CONTROL_PORT" >"$CONTROL_LOG" 2>&1 &
 CONTROL_PID="$!"
@@ -60,8 +65,6 @@ CONTROL_PID="$!"
 python3 -m http.server "$STATIC_PORT" --bind 127.0.0.1 --directory "$REGISTRY_ROOT" >"$STATIC_LOG" 2>&1 &
 STATIC_PID="$!"
 
-CONTROL_BASE="http://127.0.0.1:${CONTROL_PORT}/api/spio-registry-control/v1"
-STATIC_ROOT="http://127.0.0.1:${STATIC_PORT}"
 for _ in $(seq 1 30); do
   if curl -fsS "${CONTROL_BASE}/status" >/dev/null 2>&1 && curl -fsS "${STATIC_ROOT}/" >/dev/null 2>&1; then
     break
@@ -75,6 +78,7 @@ OUT_JSON="$TMP_ROOT/out.json"
 python3 "$ROOT_DIR/scripts/registry-server-gate.py" \
   --publish-root "$CONTROL_BASE" \
   --fetch-root "$STATIC_ROOT" \
+  --fetch-trust-descriptor "${CONTROL_BASE}/descriptor" \
   --spio-bin "$SPIO_BIN" \
   --json >"$OUT_JSON"
 
@@ -88,9 +92,10 @@ assert payload["ok"] is True
 assert payload["publish_root"].endswith("/api/spio-registry-control/v1")
 assert payload["fetch_root"].startswith("http://127.0.0.1:")
 step_names = [step["name"] for step in payload["steps"]]
-assert step_names == ["publish", "republish_conflict", "fetch"]
+assert step_names == ["publish", "republish_conflict", "trust_import", "fetch"]
 assert payload["steps"][0]["ok"] is True
 assert payload["steps"][1]["ok"] is False
 assert payload["steps"][2]["ok"] is True
+assert payload["steps"][3]["ok"] is True
 assert payload["validation_errors"] == []
 PY

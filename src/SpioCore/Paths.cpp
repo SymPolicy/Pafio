@@ -158,6 +158,16 @@ fs::path RegistryCacheRoot(const fs::path &spio_home)
   return CanonicalAbsolutePath(CanonicalAbsolutePath(spio_home) / "registry");
 }
 
+fs::path RegistryTrustRoot(const fs::path &spio_home)
+{
+  return CanonicalAbsolutePath(RegistryCacheRoot(spio_home) / "trust");
+}
+
+fs::path RegistryTrustStorePath(const fs::path &spio_home)
+{
+  return CanonicalAbsolutePath(RegistryTrustRoot(spio_home) / "registry-trust.json");
+}
+
 fs::path RegistryIndexCacheRoot(const fs::path &spio_home)
 {
   return CanonicalAbsolutePath(RegistryCacheRoot(spio_home) / "index");

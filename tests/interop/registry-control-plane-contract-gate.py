@@ -14,6 +14,7 @@ EXAMPLES_PATH = ROOT / "contracts/registry-control-plane/v1/registry-control-pla
 
 EXPECTED_OPERATION_SNAPSHOT = [
     ("registryStatus", "GET", "/status"),
+    ("registryDescriptor", "GET", "/descriptor"),
     ("publishRelease", "POST", "/publish"),
     ("verifyRegistry", "POST", "/verify"),
 ]
