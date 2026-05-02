@@ -5,6 +5,7 @@
 #include "SpioCore/Process.hpp"
 #include "SpioCore/Sha256.hpp"
 #include "SpioSecurity/RegistrySecurity.hpp"
+#include "SpioSecurity/RegistryTrust.hpp"
 
 #include <algorithm>
 #include <cstdlib>
@@ -760,6 +761,31 @@ RegistryMaterializationResult MaterializeRegistryPackage(
       .offline = offline,
   });
   const fs::path spio_home = ResolveSpioHome();
+
+  if (IsHttpRegistry(security.registry_root))
+  {
+    const std::optional<RegistryTrustPin> trust_pin = ResolveRegistryTrustPin(spio_home, security.registry_root);
+    if (!trust_pin.has_value())
+    {
+      throw FetchError(
+          "remote registry is not trusted: import a platform registry descriptor with 'spio registry trust import' before fetching " +
+          security.registry_root);
+    }
+    const std::string root_metadata = LoadRegistryObjectText(
+        spio_home,
+        security.registry_root,
+        security.request_headers,
+        "trust/root.json",
+        "registry v2 root metadata",
+        offline);
+    const std::string actual_root_sha256 = Sha256Text(root_metadata);
+    if (actual_root_sha256 != trust_pin->root_sha256)
+    {
+      throw FetchError(
+          "registry v2 root metadata does not match the imported platform descriptor pin for " +
+          security.registry_root);
+    }
+  }
 
   const RegistryConfig config = LoadConfig(spio_home, security.registry_root, security.request_headers, offline);
   const RegistryPackageMetadata metadata =

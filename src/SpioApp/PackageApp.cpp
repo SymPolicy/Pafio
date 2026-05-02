@@ -9,6 +9,7 @@
 #include "SpioPublish/Publish.hpp"
 #include "SpioResolve/Resolver.hpp"
 #include "SpioSecurity/RegistrySecurity.hpp"
+#include "SpioSecurity/RegistryTrust.hpp"
 #include "SpioTree/Render.hpp"
 #include "SpioVendor/Vendor.hpp"
 #include "SpioWorkflow/Dependencies.hpp"
@@ -1399,6 +1400,72 @@ int HandlePublish(const std::vector<std::string> &args, bool as_json)
   {
     return EmitError({"PublishError", kExitPublish, err.what(), "publish"}, as_json);
   }
+}
+
+int HandleRegistry(const std::vector<std::string> &args, bool as_json)
+{
+  if (args.size() == 1 && args.front() == "--help")
+  {
+    return PrintCommandUsage("registry");
+  }
+  if (args.size() < 2 || args.front() != "trust")
+  {
+    return EmitError({"UsageError", kExitUsage, "registry requires the 'trust' subcommand", "registry"}, as_json);
+  }
+
+  const std::string action = args[1];
+  try
+  {
+    const fs::path spio_home = ResolveSpioHome();
+    if (action == "import")
+    {
+      if (args.size() != 3)
+      {
+        return EmitError(
+            {"UsageError", kExitUsage, "registry trust import requires <descriptor-url|descriptor-file>", "registry"},
+            as_json);
+      }
+      const RegistryTrustPin pin = ImportRegistryTrustDescriptor(spio_home, args[2]);
+      return EmitSuccess(
+          {
+              {"command", "registry trust import"},
+              {"message", "imported registry trust descriptor for " + pin.registry_root},
+              {"spio_home", spio_home.string()},
+              {"pin", SerializeRegistryTrustPin(pin)},
+          },
+          as_json);
+    }
+    if (action == "status")
+    {
+      if (!(args.size() == 2 || (args.size() == 3 && args[2] == "--json")))
+      {
+        return EmitError({"UsageError", kExitUsage, "registry trust status accepts only --json", "registry"}, as_json);
+      }
+      json pins = json::array();
+      for (const RegistryTrustPin &pin : LoadRegistryTrustPins(spio_home))
+      {
+        pins.push_back(SerializeRegistryTrustPin(pin));
+      }
+      return EmitSuccess(
+          {
+              {"command", "registry trust status"},
+              {"message", "loaded registry trust pins"},
+              {"spio_home", spio_home.string()},
+              {"pins", pins},
+          },
+          as_json);
+    }
+  }
+  catch (const FetchError &err)
+  {
+    return EmitError({"FetchError", kExitFetch, err.what(), "registry"}, as_json);
+  }
+  catch (const CacheError &err)
+  {
+    return EmitError({"CacheError", kExitCache, err.what(), "registry"}, as_json);
+  }
+
+  return EmitError({"UsageError", kExitUsage, "registry trust supports only import and status", "registry"}, as_json);
 }
 
 }  // namespace spio

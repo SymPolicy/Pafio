@@ -50,10 +50,15 @@ PY
 
 python3 "$REPO_ROOT/scripts/registry-v2-keygen.py" --output-dir "$KEY_DIR" >/dev/null
 
+CONTROL_BASE="http://127.0.0.1:${CONTROL_PORT}/api/spio-registry-control/v1"
+REGISTRY_URL="http://127.0.0.1:${STATIC_PORT}"
+
 python3 "$REPO_ROOT/scripts/registry-v2-control-plane-server.py" \
   --root "$REGISTRY_ROOT" \
   --key-dir "$KEY_DIR" \
   --spio-bin "$SPIO_BIN" \
+  --read-root-url "$REGISTRY_URL" \
+  --control-plane-base-url "$CONTROL_BASE" \
   --bind 127.0.0.1 \
   --port "$CONTROL_PORT" >"$CONTROL_LOG" 2>&1 &
 CONTROL_PID="$!"
@@ -61,8 +66,6 @@ CONTROL_PID="$!"
 python3 -m http.server "$STATIC_PORT" --bind 127.0.0.1 --directory "$REGISTRY_ROOT" >"$STATIC_LOG" 2>&1 &
 STATIC_PID="$!"
 
-CONTROL_BASE="http://127.0.0.1:${CONTROL_PORT}/api/spio-registry-control/v1"
-REGISTRY_URL="http://127.0.0.1:${STATIC_PORT}"
 for _ in $(seq 1 30); do
   if curl -fsS "${CONTROL_BASE}/status" >/dev/null 2>&1 && curl -fsS "${REGISTRY_URL}/" >/dev/null 2>&1; then
     break
@@ -114,6 +117,7 @@ PY
 
 curl -fsS "${REGISTRY_URL}/config.json" >/dev/null
 curl -fsS "${REGISTRY_URL}/index/acme/util.jsonl" >/dev/null
+"$SPIO_BIN" --json registry trust import "${CONTROL_BASE}/descriptor" >/dev/null
 
 cat >"$ROOT/spio.toml" <<EOF
 [spio]

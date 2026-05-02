@@ -2,7 +2,7 @@
 
 **Purpose:** Provide the daily-work entrypoint for `spio` maintainers of external compiler contracts, compatibility boundaries, and compiler-facing handoff docs.
 
-**Last updated:** 2026-04-24
+**Last updated:** 2026-05-02
 
 ## Mission
 
@@ -36,6 +36,9 @@ without letting any path drift into undocumented behavior.
 8. Keep client/server HTTP contracts as native JSON packages only; `spio` gates must reject generated third-party API-description artifacts and stale route references.
 9. Keep the `spio` cloud-plan submit target aligned with `styio-platform`'s `submitJob` contract route, currently `POST /api/styio-platform/v1/jobs`.
 10. Keep `contracts/registry-control-plane/v1/` byte-aligned with the platform copy when only README/example governance wording changes; if JSON route shape changes, coordinate both repositories before claiming compatibility.
+11. Keep `registryDescriptor` as the client/server trust handoff operation:
+    `styio-platform` owns descriptor issuance and `styio-spio` owns descriptor
+    import, pin storage, and remote fetch enforcement.
 
 ## Change Classes
 
@@ -48,6 +51,7 @@ without letting any path drift into undocumented behavior.
 ```bash
 ./scripts/checkpoint-health.sh --styio-bin /absolute/path/to/styio
 python3 scripts/styio-interface-gate.py --styio-bin /absolute/path/to/styio --spio-bin ./build-codex/bin/spio --require-compile-plan --json
+python3 tests/interop/registry-control-plane-contract-gate.py
 ```
 
 ## Cross-Team Dependencies

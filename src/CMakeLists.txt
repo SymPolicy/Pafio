@@ -30,6 +30,7 @@ set(SPIO_RESOLUTION_SOURCES
     SpioRegistryClient/Client.cpp
     SpioResolve/Resolver.cpp
     SpioSecurity/RegistrySecurity.cpp
+    SpioSecurity/RegistryTrust.cpp
 )
 
 set(SPIO_TOOLCHAIN_SERVICE_SOURCES

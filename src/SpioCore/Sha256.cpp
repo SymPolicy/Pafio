@@ -210,4 +210,11 @@ std::string Sha256File(const fs::path &path)
   return sha256.FinalHex();
 }
 
+std::string Sha256Text(const std::string &text)
+{
+  Sha256 sha256;
+  sha256.Update(reinterpret_cast<const uint8_t *>(text.data()), text.size());
+  return sha256.FinalHex();
+}
+
 }  // namespace spio

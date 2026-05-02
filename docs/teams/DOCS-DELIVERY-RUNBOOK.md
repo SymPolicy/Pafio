@@ -2,7 +2,7 @@
 
 **Purpose:** Provide the daily-work entrypoint for `spio` docs tree, repo hygiene, docs gate, and delivery-facing workflow documentation.
 
-**Last updated:** 2026-04-26
+**Last updated:** 2026-05-02
 
 ## Mission
 
@@ -55,6 +55,12 @@ without redefining planning, registry, compiler, or service contract semantics.
 16. Maintain GitHub merge gates through Rulesets rather than legacy classic branch protection; audit effective branch rules when required status-check governance changes, and keep `local-ci-gate` as the spio repository's own CI status-check surface rather than treating it as the shared upstream `styio-ci-gate` ecosystem resource gate.
 17. Keep `local-ci-gate` sibling checkouts on downstream `nightly` branches when the downstream repositories have collapsed their branch set to `nightly`.
 18. Keep `docs/governance/Spio-Entry-Argument-Index.md`, `docs/governance/Docs-Maintenance-Model.md`, and `docs/operations/Spio-Verification-Matrix.md` aligned whenever delivery scripts or submit gates change.
+19. Keep `scripts/delivery-gate.sh` as the delivery-facing entrypoint with a
+    safe default. The no-argument command must cover dirty worktree changes
+    and PR push ranges, infer the fork-parent base when possible, and fail
+    when it cannot infer a delivery base.
+20. Keep `staged` checks as low-level hook/debugging tools only; do not use an
+    empty staged diff as evidence that a PR or local delivery is ready.
 
 ## Change Classes
 
@@ -72,7 +78,7 @@ python3 scripts/perf-gate.py
 python3 scripts/repo-hygiene-check.py --mode tracked
 python3 scripts/repo-hygiene-gate.py --mode tracked
 python3 scripts/delivery-gate.py --json
-./scripts/delivery-gate.sh --mode checkpoint --skip-health
+./scripts/delivery-gate.sh --skip-health
 ```
 
 ## Cross-Team Dependencies

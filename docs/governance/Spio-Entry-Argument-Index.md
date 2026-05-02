@@ -1340,17 +1340,25 @@ Behavior:
 Canonical form:
 
 ```text
-./scripts/delivery-gate.sh [--mode <checkpoint|push>] [--base <rev>] [--audit-bin <path>] [--skip-health]
+./scripts/delivery-gate.sh [--mode <auto|checkpoint|staged|push>] [--base <rev>] [--range <rev-range>] [--audit-bin <path>] [--skip-health]
 ```
 
 Arguments:
 
-- `--mode <checkpoint|push>`
+- `--mode <auto|checkpoint|staged|push>`
   - optional
-  - selects the checkpoint or push-ready verification bundle
+  - defaults to `auto`
+  - `auto` runs worktree checks when local changes exist and push-range checks when `HEAD` is ahead of the inferred delivery base
+  - `checkpoint` checks the current worktree, not only the staged index
+  - `staged` is a low-level hook/debugging mode and is not the delivery closure default
+  - `push` checks `base..HEAD` explicitly
 - `--base <rev>`
   - optional
-  - comparison base for push-mode hygiene validation
+  - comparison base for push-mode hygiene and docs ownership validation
+- `--range <rev-range>`
+  - optional
+  - explicit revision range for push-mode repository hygiene validation
+  - defaults to `<base>..HEAD` when omitted in push mode
 - `--audit-bin <path>`
   - optional
   - released `audit` entrypoint used by the local audit step
@@ -1361,6 +1369,8 @@ Arguments:
 Behavior:
 
 - orchestrates repository hygiene, documentation, audit, native, and delivery-specific checks for branch submission
+- refuses to silently pass when it cannot infer a delivery base in `auto` mode
+- can infer fork-parent `nightly`/branch bases through the GitHub CLI when no local `upstream/<branch>` ref exists
 
 ### `scripts/preflight-readiness-check.py`
 
@@ -1431,7 +1441,7 @@ Behavior:
 Canonical form:
 
 ```text
-./scripts/registry-server-gate.py (--registry-root <path-or-url> | [--publish-root <path-or-url>] [--fetch-root <path-or-url>]) [--publish-profile <name>] [--publish-policy-file <path>] [--publish-header <name:value>] [--sync-timeout-seconds <seconds>] [--spio-bin <path>] [--json]
+./scripts/registry-server-gate.py (--registry-root <path-or-url> | [--publish-root <path-or-url>] [--fetch-root <path-or-url>]) [--publish-profile <name>] [--publish-policy-file <path>] [--publish-header <name:value>] [--fetch-trust-descriptor <path-or-url>] [--sync-timeout-seconds <seconds>] [--spio-bin <path>] [--json]
 ```
 
 Arguments:
@@ -1464,6 +1474,10 @@ Arguments:
   - optional
   - retry budget for publish-to-fetch synchronization when the read root lags the write root
   - defaults to `0`
+- `--fetch-trust-descriptor <path-or-url>`
+  - optional
+  - imports a platform registry trust descriptor into the gate's isolated `SPIO_HOME` before remote fetch validation
+  - required when validating public HTTP read roots that enforce descriptor-pinned trust
 - `--spio-bin <path>`
   - optional
   - `spio` wrapper or binary used for the black-box publish/fetch checks
@@ -1478,6 +1492,7 @@ Behavior:
 - publishes a temporary package into the configured write root
 - validates the publish JSON payload shape
 - verifies that duplicate publish is rejected
+- imports the fetch trust descriptor when `--fetch-trust-descriptor` is provided
 - fetches the newly published package from the configured read root
 - when a private security module is under test, can synthesize a write-origin profile under isolated `SPIO_HOME` through `--publish-profile <name>`
 - when a private security module is under test, can attach a write-origin policy file through `--publish-policy-file <path>`

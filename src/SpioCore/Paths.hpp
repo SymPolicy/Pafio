@@ -37,6 +37,8 @@ std::filesystem::path SourceToolchainBuildRoot(
     const std::string &identity,
     const std::string &build_mode);
 std::filesystem::path RegistryCacheRoot(const std::filesystem::path &spio_home);
+std::filesystem::path RegistryTrustRoot(const std::filesystem::path &spio_home);
+std::filesystem::path RegistryTrustStorePath(const std::filesystem::path &spio_home);
 std::filesystem::path RegistryIndexCacheRoot(const std::filesystem::path &spio_home);
 std::filesystem::path RegistryBlobCacheRoot(const std::filesystem::path &spio_home);
 std::filesystem::path RegistryCheckoutRoot(const std::filesystem::path &spio_home);

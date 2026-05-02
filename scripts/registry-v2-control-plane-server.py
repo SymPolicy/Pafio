@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -88,11 +89,24 @@ def failure_envelope(message: str, detail: str, *, category: str, returncode: in
     }
 
 
+def sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        while True:
+            chunk = handle.read(1024 * 1024)
+            if not chunk:
+                break
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
 class RegistryControlPlaneHandler(BaseHTTPRequestHandler):
     registry_root: str
     key_dir: str
     registry_name: str
     spio_bin: str
+    read_root_url: str = ""
+    control_plane_base_url: str = ""
 
     def setup(self) -> None:
         super().setup()
@@ -110,9 +124,15 @@ class RegistryControlPlaneHandler(BaseHTTPRequestHandler):
         return
 
     def do_GET(self) -> None:
-        if self.path != f"{BASE_PATH}/status":
-            self.send_error(404, "not found")
+        if self.path == f"{BASE_PATH}/status":
+            self._handle_status()
             return
+        if self.path == f"{BASE_PATH}/descriptor":
+            self._handle_descriptor()
+            return
+        self.send_error(404, "not found")
+
+    def _handle_status(self) -> None:
         root_path = Path(self.registry_root)
         payload = {
             "registry_root": "<redacted>",
@@ -123,8 +143,36 @@ class RegistryControlPlaneHandler(BaseHTTPRequestHandler):
             "root_metadata_present": (root_path / "trust" / "root.json").exists(),
             "publish_endpoint": f"{BASE_PATH}/publish",
             "verify_endpoint": f"{BASE_PATH}/verify",
+            "descriptor_endpoint": f"{BASE_PATH}/descriptor",
         }
         self._send_json(200, success_envelope("registry control plane is ready", payload))
+
+    def _handle_descriptor(self) -> None:
+        root_path = Path(self.registry_root)
+        root_metadata = root_path / "trust" / "root.json"
+        if not root_metadata.exists():
+            self._send_json(
+                422,
+                failure_envelope(
+                    "registry descriptor failed",
+                    "registry root metadata is not initialized",
+                    category="RegistryDescriptorError",
+                ),
+            )
+            return
+        registry_root = self.read_root_url or root_path.resolve().as_uri()
+        control_plane_base = self.control_plane_base_url or BASE_PATH
+        payload = {
+            "schema_version": 1,
+            "registry_name": self.registry_name,
+            "registry_root": registry_root,
+            "control_plane_base_url": control_plane_base,
+            "root_sha256": sha256_file(root_metadata),
+            "issued_at": "2026-05-02T00:00:00Z",
+            "expires": "2026-06-02T00:00:00Z",
+            "descriptor_signature": "platform-control-plane-mtls",
+        }
+        self._send_json(200, success_envelope("published registry trust descriptor", payload))
 
     def do_POST(self) -> None:
         if self.path == f"{BASE_PATH}/publish":
@@ -195,6 +243,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--key-dir", required=True, help="Directory containing the registry v2 role keys.")
     parser.add_argument("--registry-name", default="spio-registry-v2", help="Registry name used when the root is initialized.")
     parser.add_argument("--spio-bin", default=str(ROOT / "scripts" / "spio"), help="spio executable used for dry-run publish preparation.")
+    parser.add_argument("--read-root-url", default="", help="Public static read root written into registry trust descriptors.")
+    parser.add_argument("--control-plane-base-url", default="", help="Public control-plane base URL written into registry trust descriptors.")
     parser.add_argument("--bind", default="127.0.0.1")
     parser.add_argument("--port", type=int, required=True)
     return parser.parse_args()
@@ -206,6 +256,8 @@ def main() -> int:
     RegistryControlPlaneHandler.key_dir = str(Path(args.key_dir).resolve())
     RegistryControlPlaneHandler.registry_name = args.registry_name
     RegistryControlPlaneHandler.spio_bin = str(Path(args.spio_bin).resolve())
+    RegistryControlPlaneHandler.read_root_url = args.read_root_url
+    RegistryControlPlaneHandler.control_plane_base_url = args.control_plane_base_url
     server = ThreadingHTTPServer((args.bind, args.port), RegistryControlPlaneHandler)
     server.serve_forever()
     return 0

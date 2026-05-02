@@ -13,6 +13,14 @@
       "failure_shape": "FailureEnvelope"
     },
     {
+      "id": "registryDescriptor",
+      "method": "GET",
+      "path": "/descriptor",
+      "request_shape": "NoRequestBody",
+      "success_shape": "RegistryDescriptorEnvelope",
+      "failure_shape": "FailureEnvelope"
+    },
+    {
       "id": "publishRelease",
       "method": "POST",
       "path": "/publish",
@@ -105,6 +113,10 @@
         "verify_endpoint": {
           "type": "string",
           "min_length": 1
+        },
+        "descriptor_endpoint": {
+          "type": "string",
+          "min_length": 1
         }
       },
       "optional": {}
@@ -127,6 +139,65 @@
         },
         "payload": {
           "ref": "StatusPayload"
+        }
+      },
+      "optional": {}
+    },
+    "RegistryDescriptorPayload": {
+      "kind": "object",
+      "required": {
+        "schema_version": {
+          "type": "integer"
+        },
+        "registry_name": {
+          "type": "string",
+          "min_length": 1
+        },
+        "registry_root": {
+          "type": "string",
+          "min_length": 1
+        },
+        "control_plane_base_url": {
+          "type": "string",
+          "min_length": 1
+        },
+        "root_sha256": {
+          "type": "string",
+          "min_length": 64
+        },
+        "issued_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "expires": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "descriptor_signature": {
+          "type": "string",
+          "min_length": 1
+        }
+      },
+      "optional": {}
+    },
+    "RegistryDescriptorEnvelope": {
+      "kind": "object",
+      "required": {
+        "returncode": {
+          "type": "integer"
+        },
+        "message": {
+          "type": "string",
+          "min_length": 1
+        },
+        "stdout": {
+          "type": "string"
+        },
+        "stderr": {
+          "type": "string"
+        },
+        "payload": {
+          "ref": "RegistryDescriptorPayload"
         }
       },
       "optional": {}

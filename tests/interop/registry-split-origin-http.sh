@@ -51,19 +51,21 @@ PY
 
 python3 "$ROOT_DIR/scripts/registry-v2-keygen.py" --output-dir "$KEY_DIR" >/dev/null
 
+WRITE_URL="http://127.0.0.1:${write_port}/api/spio-registry-control/v1"
+READ_URL="http://127.0.0.1:${read_port}"
+
 python3 "$ROOT_DIR/scripts/registry-v2-control-plane-server.py" \
   --root "$WRITE_ROOT" \
   --key-dir "$KEY_DIR" \
   --spio-bin "$SPIO_BIN" \
+  --read-root-url "$READ_URL" \
+  --control-plane-base-url "$WRITE_URL" \
   --bind 127.0.0.1 \
   --port "$write_port" >"$WRITE_LOG" 2>&1 &
 WRITE_SERVER_PID="$!"
 
 python3 -m http.server "$read_port" --bind 127.0.0.1 --directory "$READ_ROOT" >"$READ_LOG" 2>&1 &
 READ_SERVER_PID="$!"
-
-WRITE_URL="http://127.0.0.1:${write_port}/api/spio-registry-control/v1"
-READ_URL="http://127.0.0.1:${read_port}"
 
 for _ in $(seq 1 30); do
   if curl -fsS "${WRITE_URL}/status" >/dev/null 2>&1 && curl -fsS "${READ_URL}/" >/dev/null 2>&1; then
@@ -152,6 +154,8 @@ assert payload["packages"] == ["acme/util@0.2.0"]
 assert payload["files_total"] >= 1
 assert payload["verified"]["ok"] is True
 PY
+
+"$SPIO_BIN" --json registry trust import "${WRITE_URL}/descriptor" >/dev/null
 
 FETCH_JSON="$("$SPIO_BIN" --json fetch --manifest-path "$TMP_ROOT/spio.toml")"
 python3 - "$FETCH_JSON" <<'PY'
