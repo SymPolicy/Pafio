@@ -1340,17 +1340,25 @@ Behavior:
 Canonical form:
 
 ```text
-./scripts/delivery-gate.sh [--mode <checkpoint|push>] [--base <rev>] [--audit-bin <path>] [--skip-health]
+./scripts/delivery-gate.sh [--mode <auto|checkpoint|staged|push>] [--base <rev>] [--range <rev-range>] [--audit-bin <path>] [--skip-health]
 ```
 
 Arguments:
 
-- `--mode <checkpoint|push>`
+- `--mode <auto|checkpoint|staged|push>`
   - optional
-  - selects the checkpoint or push-ready verification bundle
+  - defaults to `auto`
+  - `auto` runs worktree checks when local changes exist and push-range checks when `HEAD` is ahead of the inferred delivery base
+  - `checkpoint` checks the current worktree, not only the staged index
+  - `staged` is a low-level hook/debugging mode and is not the delivery closure default
+  - `push` checks `base..HEAD` explicitly
 - `--base <rev>`
   - optional
-  - comparison base for push-mode hygiene validation
+  - comparison base for push-mode hygiene and docs ownership validation
+- `--range <rev-range>`
+  - optional
+  - explicit revision range for push-mode repository hygiene validation
+  - defaults to `<base>..HEAD` when omitted in push mode
 - `--audit-bin <path>`
   - optional
   - released `audit` entrypoint used by the local audit step
@@ -1361,6 +1369,8 @@ Arguments:
 Behavior:
 
 - orchestrates repository hygiene, documentation, audit, native, and delivery-specific checks for branch submission
+- refuses to silently pass when it cannot infer a delivery base in `auto` mode
+- can infer fork-parent `nightly`/branch bases through the GitHub CLI when no local `upstream/<branch>` ref exists
 
 ### `scripts/preflight-readiness-check.py`
 

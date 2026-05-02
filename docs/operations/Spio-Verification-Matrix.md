@@ -2,7 +2,7 @@
 
 **Purpose:** Define the named gates, required commands, and pass conditions that close each `spio` implementation stream.
 
-**Last updated:** 2026-04-23
+**Last updated:** 2026-05-02
 
 ## Gate Matrix
 
@@ -20,7 +20,7 @@ python3 scripts/submit-gate.py --profile ci --json
 python3 scripts/perf-gate.py
 python3 scripts/repo-hygiene-check.py --mode tracked
 python3 scripts/delivery-gate.py --json
-./scripts/delivery-gate.sh --mode push --base origin/nightly
+./scripts/delivery-gate.sh
 ```
 
 Pass conditions:
@@ -30,11 +30,11 @@ Pass conditions:
 - `scripts/perf-gate.py` keeps configured performance smoke checks within budget
 - `scripts/repo-hygiene-check.py` reports no tracked hygiene or policy drift
 - `scripts/delivery-gate.py` validates the extractable delivery tree
-- `scripts/delivery-gate.sh` runs the consolidated push gate stack for the branch under submission
+- `scripts/delivery-gate.sh` runs the consolidated local and push-range gate stack for the branch under submission
 
 Defect:
 
-- the push base must be selected for the target branch policy under review
+- auto mode must infer the target branch base or fail before reporting success
 
 ### `spio_manifest_lock_gate`
 

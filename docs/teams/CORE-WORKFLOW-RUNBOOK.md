@@ -2,7 +2,7 @@
 
 **Purpose:** Provide the daily-work entrypoint for `spio` core workflow maintainers covering the native CLI, manifests, lockfiles, resolver, offline package paths, local import/export, and build/test flow.
 
-**Last updated:** 2026-04-24
+**Last updated:** 2026-05-02
 
 ## Mission
 
@@ -37,6 +37,9 @@ compiler contracts.
 9. Keep `spio cloud plan --json` targeting the native JSON `styio-platform` submit-job route, currently `POST /api/styio-platform/v1/jobs`, and update native tests when that route changes.
 10. Keep registry package identity, registry object paths, HTTP read limits, and tar pre-extraction checks aligned between the native client and Python registry v2 helpers.
 11. Preserve offline package operation: cache reads must not require platform connectivity once metadata and artifacts are available locally.
+12. Treat remote HTTP registry trust as a core fetch invariant: public clients
+    must import a platform descriptor and validate the pinned root metadata
+    before materializing registry packages.
 
 ## Change Classes
 
@@ -48,6 +51,7 @@ compiler contracts.
 
 ```bash
 ./scripts/checkpoint-health.sh
+./scripts/delivery-gate.sh --skip-audit --skip-health
 ctest --test-dir build-codex -R spio_installer_bootstrap_smoke --output-on-failure
 python3 tests/unit/test_registry_v2.py
 ./build-codex/bin/spio_native_tests --gtest_filter='SecurityTests.*'

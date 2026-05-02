@@ -2,14 +2,14 @@
 
 **Purpose:** Define the common delivery-floor entrypoint for `spio` so contributors can run repository hygiene, the unified docs gate, and checkpoint health through one command before checkpoint merge or branch delivery.
 
-**Last updated:** 2026-04-19
+**Last updated:** 2026-05-02
 
 ## Command
 
-Checkpoint delivery floor:
+Unified delivery floor:
 
 ```bash
-./scripts/delivery-gate.sh --mode checkpoint
+./scripts/delivery-gate.sh
 ```
 
 Push or branch-delivery floor:
@@ -21,11 +21,17 @@ Push or branch-delivery floor:
 Docs/process-only delivery:
 
 ```bash
-./scripts/delivery-gate.sh --mode checkpoint --skip-health
+./scripts/delivery-gate.sh --skip-health
 ```
 
 ## What It Runs
 
-1. `python3 scripts/repo-hygiene-gate.py`
-2. `./scripts/docs-gate.sh`
-3. `./scripts/checkpoint-health.sh`
+1. worktree hygiene and docs ownership checks when local changes exist
+2. push-range hygiene and docs ownership checks when `HEAD` is ahead of the delivery base
+3. `./scripts/audit-gate.sh`
+4. `./scripts/checkpoint-health.sh`
+
+`auto` mode is the default. It must not report success from an empty staged
+diff when unstaged worktree changes or PR-range changes exist. Low-level
+`staged`, `checkpoint`, and `push` modes are retained for hooks and targeted
+debugging, but the delivery-facing command is the no-argument entrypoint.

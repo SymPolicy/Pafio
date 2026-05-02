@@ -102,6 +102,25 @@ def staged_files() -> list[str]:
     return [line for line in run_git("diff", "--cached", "--name-only", "--diff-filter=ACMR").splitlines() if line]
 
 
+def worktree_files() -> list[str]:
+    result = subprocess.run(
+        ["git", "-C", str(REPO_ROOT), "status", "--porcelain=v1", "--untracked-files=all"],
+        check=True,
+        text=True,
+        capture_output=True,
+    )
+    paths: list[str] = []
+    for line in result.stdout.splitlines():
+        if not line:
+            continue
+        raw = line[3:]
+        if " -> " in raw:
+            raw = raw.split(" -> ", 1)[1]
+        if raw:
+            paths.append(raw.strip().strip('"'))
+    return sorted(set(paths))
+
+
 def tracked_files() -> list[str]:
     return [line for line in run_git("ls-files").splitlines() if line]
 
@@ -316,7 +335,7 @@ def print_report(header: str, problems: list[str]) -> int:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="spio repository hygiene gate")
-    parser.add_argument("--mode", choices=("staged", "tracked", "push"), default="staged")
+    parser.add_argument("--mode", choices=("worktree", "staged", "tracked", "push"), default="staged")
     parser.add_argument("--range", dest="rev_range")
     parser.add_argument("--max-file-bytes", type=int, default=DEFAULT_MAX_FILE_BYTES)
     args = parser.parse_args()
@@ -328,7 +347,12 @@ def main() -> int:
         problems.extend(doc_reference_violations())
         return print_report(f"push range {rev_range}", sorted(set(problems)))
 
-    files = staged_files() if args.mode == "staged" else tracked_files()
+    if args.mode == "staged":
+        files = staged_files()
+    elif args.mode == "worktree":
+        files = worktree_files()
+    else:
+        files = tracked_files()
     if not files:
         print(f"[repo-hygiene] {args.mode}: nothing to check")
         return 0

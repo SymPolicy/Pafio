@@ -2,7 +2,7 @@
 
 **Purpose:** Provide the daily-work entrypoint for `spio` registry and publish maintainers covering registry client docs, offline package expectations, publish/fetch flows, and promotion tooling.
 
-**Last updated:** 2026-04-24
+**Last updated:** 2026-05-02
 
 ## Mission
 
@@ -14,8 +14,10 @@ contracts, or `styio-platform` server control-plane behavior.
 
 1. `docs/registry/`
 2. `scripts/registry-promote.py`
-3. compatibility references to registry server gates until platform gates replace them
-4. local offline package client expectations that interact with registry sources
+3. `scripts/registry-server-gate.py`
+4. compatibility references to registry server gates until platform gates replace them
+5. local offline package client expectations that interact with registry sources
+6. public registry trust descriptor import and read-root pin validation from the client side
 
 ## Daily Workflow
 
@@ -27,6 +29,9 @@ contracts, or `styio-platform` server control-plane behavior.
 6. Keep `RegistryHttpTransport` as a transport-only strategy boundary. Registry semantics stay in `RemotePublish` / publish domain code, and external process execution stays in `SpioCore::Process`.
 7. Keep registry control-plane references on native JSON contract and example packs; do not reintroduce generated API-description artifacts or lint gates.
 8. Keep the minimum measurable registry-management checklist visible in registry docs: publish, verify, mirror handoff, offline behavior, cache reuse, and security boundary.
+9. For HTTP read-root validation, import the platform descriptor through
+   `spio registry trust import` or `registry-server-gate.py --fetch-trust-descriptor`
+   before claiming fetch coverage.
 
 ## Change Classes
 
@@ -40,6 +45,7 @@ contracts, or `styio-platform` server control-plane behavior.
 ./scripts/checkpoint-health.sh
 python3 ./tests/interop/registry-control-plane-contract-gate.py
 python3 ./tests/interop/native-contract-source-gate.py
+./scripts/delivery-gate.sh --skip-audit --skip-health
 ```
 
 ## Cross-Team Dependencies
