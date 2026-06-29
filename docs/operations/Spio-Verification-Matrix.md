@@ -93,7 +93,7 @@ Objective:
 Commands:
 
 ```text
-./scripts/styio-interface-gate.py --styio-bin $HOME/styio-nightly/build-codex/bin/styio --spio-bin ./build-codex/bin/spio --require-compile-plan --json
+./scripts/styio-interface-gate.py --styio-bin <styio-workspace>/build-codex/bin/styio --spio-bin ./build-codex/bin/spio --require-compile-plan --json
 ```
 
 Pass conditions:
@@ -166,7 +166,7 @@ Commands:
 ctest --test-dir build-codex -R spio_installer_bootstrap_smoke --output-on-failure
 python3 -m http.server <port> --bind 127.0.0.1
 curl -fsSL http://127.0.0.1:<port>/install-spio.sh | sh -s -- --base-url http://127.0.0.1:<port> --install-dir /usr/local/bin
-SPIO_STYIO_SOURCE_ORIGIN=file://$HOME/styio-nightly SPIO_STYIO_SOURCE_REF=ai-dev spio install styio@latest
+SPIO_STYIO_SOURCE_ORIGIN=file://<styio-workspace> SPIO_STYIO_SOURCE_REF=ai-dev spio install styio@latest
 styio --file /tmp/hello.styio
 ```
 

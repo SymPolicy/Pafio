@@ -14,7 +14,7 @@ This backlog migrates the ignored `docs/audit/defects/STYIO-SPIO-2026-04-22.md` 
 2. Do not close an item with documentation alone when the finding describes unsafe runtime behavior.
 3. Closure evidence must name the code change, regression coverage, data or resource lifecycle proof, and gate command.
 4. If a finding moves to a GitHub issue or downstream platform task, record the durable link before removing it from this backlog.
-5. Run `./scripts/delivery-gate.sh --mode checkpoint` and external `audit gate --repo $HOME/styio-spio --project styio-spio` before declaring the backlog migration complete.
+5. Run `./scripts/delivery-gate.sh --mode checkpoint` and external `audit gate --repo <spio-workspace> --project styio-spio` before declaring the backlog migration complete.
 
 ## Backlog
 

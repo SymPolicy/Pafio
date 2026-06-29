@@ -88,7 +88,7 @@ spio publish --manifest-path path/to/spio.toml --registry https://packages.examp
 # private security-module builds only:
 spio publish --manifest-path path/to/spio.toml --registry https://packages.example.test --registry-profile write-dev
 spio publish --manifest-path path/to/spio.toml --registry https://packages.example.test --registry-policy-file path/to/publish-policy.toml
-spio publish --manifest-path path/to/spio.toml --registry https://packages.example.test --registry-header 'X-Spio-Write-Token: dev-token'
+spio publish --manifest-path path/to/spio.toml --registry https://packages.example.test --registry-header 'X-Spio-Write-Token: <write-token>'
 ```
 
 Managed local compiler installation is also part of the active command surface:

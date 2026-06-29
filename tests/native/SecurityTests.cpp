@@ -112,7 +112,7 @@ TEST(SecurityTests, DefaultWriteSecurityRejectsPrivateHooksInOpenSourceCore)
   EXPECT_THROW(
       spio::ResolveDefaultRegistryWriteSecurity({
           .registry_root = "https://upload.example.test",
-          .explicit_request_headers = {"X-Spio-Write-Token: dev-token"},
+          .explicit_request_headers = {"X-Spio-Write-Token: example-write-token"},
       }),
       spio::PublishError);
 }

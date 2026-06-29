@@ -35,12 +35,12 @@ The unsafe integration boundary is:
 
 Current local checkout references:
 
-- compiler CLI entry: [src/main.cpp]($HOME/DevSpace/Unka-Malloc/styio/src/main.cpp)
-- compilation session shell: [src/StyioSession/CompilationSession.hpp]($HOME/DevSpace/Unka-Malloc/styio/src/StyioSession/CompilationSession.hpp)
-- parser public header: [src/StyioParser/Parser.hpp]($HOME/DevSpace/Unka-Malloc/styio/src/StyioParser/Parser.hpp)
-- tokenizer public header: [src/StyioParser/Tokenizer.hpp]($HOME/DevSpace/Unka-Malloc/styio/src/StyioParser/Tokenizer.hpp)
-- pipeline test harness: [src/StyioTesting/PipelineCheck.cpp]($HOME/DevSpace/Unka-Malloc/styio/src/StyioTesting/PipelineCheck.cpp)
-- compiler tests: [tests/styio_test.cpp]($HOME/DevSpace/Unka-Malloc/styio/tests/styio_test.cpp)
+- compiler CLI entry: [src/main.cpp](<styio-workspace>/src/main.cpp)
+- compilation session shell: [src/StyioSession/CompilationSession.hpp](<styio-workspace>/src/StyioSession/CompilationSession.hpp)
+- parser public header: [src/StyioParser/Parser.hpp](<styio-workspace>/src/StyioParser/Parser.hpp)
+- tokenizer public header: [src/StyioParser/Tokenizer.hpp](<styio-workspace>/src/StyioParser/Tokenizer.hpp)
+- pipeline test harness: [src/StyioTesting/PipelineCheck.cpp](<styio-workspace>/src/StyioTesting/PipelineCheck.cpp)
+- compiler tests: [tests/styio_test.cpp](<styio-workspace>/tests/styio_test.cpp)
 
 When `spio` moves to its own repository, these should be interpreted as canonical paths inside the separate `styio` repository checkout, not as local sibling imports.
 
@@ -48,24 +48,24 @@ When `spio` moves to its own repository, these should be interpreted as canonica
 
 Language and syntax SSOT:
 
-- [docs/design/Styio-Language-Design.md]($HOME/DevSpace/Unka-Malloc/styio/docs/design/Styio-Language-Design.md)
-- [docs/design/Styio-EBNF.md]($HOME/DevSpace/Unka-Malloc/styio/docs/design/Styio-EBNF.md)
-- [docs/design/Styio-Symbol-Reference.md]($HOME/DevSpace/Unka-Malloc/styio/docs/design/Styio-Symbol-Reference.md)
+- [docs/design/Styio-Language-Design.md](<styio-workspace>/docs/design/Styio-Language-Design.md)
+- [docs/design/Styio-EBNF.md](<styio-workspace>/docs/design/Styio-EBNF.md)
+- [docs/design/Styio-Symbol-Reference.md](<styio-workspace>/docs/design/Styio-Symbol-Reference.md)
 
 Resource and standard-library model:
 
-- [docs/design/Styio-Resource-Topology.md]($HOME/DevSpace/Unka-Malloc/styio/docs/design/Styio-Resource-Topology.md)
-- [docs/design/Styio-Resource-Driver.md]($HOME/DevSpace/Unka-Malloc/styio/docs/design/Styio-Resource-Driver.md)
-- [docs/design/Styio-StdLib-Intrinsics.md]($HOME/DevSpace/Unka-Malloc/styio/docs/design/Styio-StdLib-Intrinsics.md)
+- [docs/design/Styio-Resource-Topology.md](<styio-workspace>/docs/design/Styio-Resource-Topology.md)
+- [docs/design/Styio-Resource-Driver.md](<styio-workspace>/docs/design/Styio-Resource-Driver.md)
+- [docs/design/Styio-StdLib-Intrinsics.md](<styio-workspace>/docs/design/Styio-StdLib-Intrinsics.md)
 
 Known contradictions and implementation gaps:
 
-- [docs/review/Logic-Conflicts.md]($HOME/DevSpace/Unka-Malloc/styio/docs/review/Logic-Conflicts.md)
+- [docs/review/Logic-Conflicts.md](<styio-workspace>/docs/review/Logic-Conflicts.md)
 
 Testing and workflow discipline:
 
-- [docs/assets/workflow/TEST-CATALOG.md]($HOME/DevSpace/Unka-Malloc/styio/docs/assets/workflow/TEST-CATALOG.md)
-- [docs/specs/AGENT-SPEC.md]($HOME/DevSpace/Unka-Malloc/styio/docs/specs/AGENT-SPEC.md)
+- [docs/assets/workflow/TEST-CATALOG.md](<styio-workspace>/docs/assets/workflow/TEST-CATALOG.md)
+- [docs/specs/AGENT-SPEC.md](<styio-workspace>/docs/specs/AGENT-SPEC.md)
 
 ## 4. Stable Things Spio May Rely On
 
@@ -129,7 +129,7 @@ That means `spio` developers should continue to treat compiler internals as a mo
 
 ## 7. Migration Guidance
 
-Before moving `spio` to `$HOME/DevSpace/Unka-Malloc/styio-spio`, keep this document and update it to point at the standalone `styio` repository checkout location used by the team.
+Before moving `spio` to `<spio-workspace>`, keep this document and update it to point at the standalone `styio` repository checkout location used by the team.
 
 ## 8. Commands Spio Developers Should Know
 
@@ -166,14 +166,14 @@ ctest --test-dir build-codex -L styio_pipeline
 
 Useful supporting material for compatibility work:
 
-- [docs/adr/INDEX.md]($HOME/DevSpace/Unka-Malloc/styio/docs/adr/INDEX.md)
-- [docs/adr/ADR-0002-jsonl-diagnostics.md]($HOME/DevSpace/Unka-Malloc/styio/docs/adr/ADR-0002-jsonl-diagnostics.md)
-- [docs/adr/ADR-0060-runtime-last-error-and-top-level-diagnostic-unification.md]($HOME/DevSpace/Unka-Malloc/styio/docs/adr/ADR-0060-runtime-last-error-and-top-level-diagnostic-unification.md)
-- [docs/adr/ADR-0061-runtime-subcode-taxonomy-freeze.md]($HOME/DevSpace/Unka-Malloc/styio/docs/adr/ADR-0061-runtime-subcode-taxonomy-freeze.md)
+- [docs/adr/INDEX.md](<styio-workspace>/docs/adr/INDEX.md)
+- [docs/adr/ADR-0002-jsonl-diagnostics.md](<styio-workspace>/docs/adr/ADR-0002-jsonl-diagnostics.md)
+- [docs/adr/ADR-0060-runtime-last-error-and-top-level-diagnostic-unification.md](<styio-workspace>/docs/adr/ADR-0060-runtime-last-error-and-top-level-diagnostic-unification.md)
+- [docs/adr/ADR-0061-runtime-subcode-taxonomy-freeze.md](<styio-workspace>/docs/adr/ADR-0061-runtime-subcode-taxonomy-freeze.md)
 
 ## 9. Split-Repo Checklist
 
-Before the subtree moves to `$HOME/DevSpace/Unka-Malloc/styio-spio`, confirm:
+Before the subtree moves to `<spio-workspace>`, confirm:
 
 - all `spio` compiler integration goes through explicit `--styio-bin`, `SPIO_STYIO_BIN`, project-local `spio-toolchain.toml`, or managed current compiler selection
 - no `spio` code reads `styio/src` or `styio/tests` directly

@@ -8,7 +8,7 @@
 
 The open-source tree exposes security hooks only through:
 
-- [RegistrySecurity.hpp]($HOME/DevSpace/Unka-Malloc/styio-spio/src/SpioSecurity/RegistrySecurity.hpp)
+- [RegistrySecurity.hpp](<spio-workspace>/src/SpioSecurity/RegistrySecurity.hpp)
 
 The open-source build may also discover optional private sources under these gitignored paths:
 
@@ -32,7 +32,7 @@ The following logic must not live in the tracked public tree:
 
 ## 3. Read-Side Security Hook
 
-Registry consumption uses the public read-side interface in [RegistrySecurity.hpp]($HOME/DevSpace/Unka-Malloc/styio-spio/src/SpioSecurity/RegistrySecurity.hpp).
+Registry consumption uses the public read-side interface in [RegistrySecurity.hpp](<spio-workspace>/src/SpioSecurity/RegistrySecurity.hpp).
 
 The public default build currently does only this:
 
@@ -49,7 +49,7 @@ Closed-source implementations may override that behavior to:
 
 ## 4. Write-Side Security Hook
 
-Remote publish uses the public write-side interface in [RegistrySecurity.hpp]($HOME/DevSpace/Unka-Malloc/styio-spio/src/SpioSecurity/RegistrySecurity.hpp).
+Remote publish uses the public write-side interface in [RegistrySecurity.hpp](<spio-workspace>/src/SpioSecurity/RegistrySecurity.hpp).
 
 The public default build currently does only this:
 
@@ -72,8 +72,8 @@ Closed-source implementations may override that behavior to:
 
 Private implementations should prefer wrapping the public default helpers instead of copying the tracked open-source logic:
 
-- [ResolveDefaultRegistryReadSecurity]($HOME/DevSpace/Unka-Malloc/styio-spio/src/SpioSecurity/RegistrySecurity.hpp)
-- [ResolveDefaultRegistryWriteSecurity]($HOME/DevSpace/Unka-Malloc/styio-spio/src/SpioSecurity/RegistrySecurity.hpp)
+- [ResolveDefaultRegistryReadSecurity](<spio-workspace>/src/SpioSecurity/RegistrySecurity.hpp)
+- [ResolveDefaultRegistryWriteSecurity](<spio-workspace>/src/SpioSecurity/RegistrySecurity.hpp)
 
 Recommended rules:
 

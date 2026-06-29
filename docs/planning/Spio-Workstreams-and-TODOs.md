@@ -18,7 +18,7 @@ TODOs:
 
 - keep every `spio`-owned contract, test, and helper under the repository root without hidden compiler-side dependencies
 - prevent direct imports from `styio/src` and `styio/tests`
-- maintain a clean extraction path to `$HOME/DevSpace/Unka-Malloc/styio-spio`
+- maintain a clean extraction path to `<spio-workspace>`
 - keep migration instructions current as the subtree evolves
 
 Blocks:
@@ -273,7 +273,7 @@ Blocks:
 
 Feeds:
 
-- actual move to `$HOME/DevSpace/Unka-Malloc/styio-spio`
+- actual move to `<spio-workspace>`
 
 Gate:
 
@@ -296,7 +296,7 @@ Before declaring the planning stage complete, every workstream must have:
 
 ### Closed (Verified by Current Test Evidence)
 
-- `spio_styio_interface_gate_handshake` + `spio_styio_interface_gate_compile_plan` are passing, confirming the baseline `styio` machine-info/compile-plan handoff test path (`ctest --test-dir $HOME/styio-spio/build-codex --output-on-failure`).
+- `spio_styio_interface_gate_handshake` + `spio_styio_interface_gate_compile_plan` are passing, confirming the baseline `styio` machine-info/compile-plan handoff test path (`ctest --test-dir <spio-workspace>/build-codex --output-on-failure`).
 - Registry/control-plane and hosted API contract suites are passing in the same run (`spio_registry_*` and `spio_hosted_api_*` tests), which gives evidence that contract/interop lanes are stable.
 
 ### Open / Not Yet Closed

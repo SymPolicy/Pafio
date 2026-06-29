@@ -523,7 +523,7 @@ TEST(PublishCliTests, RejectsRegistryHeaderForFilesystemRegistry)
                 "--registry",
                 registry_root.string(),
                 "--registry-header",
-                "X-Spio-Write-Token: dev-token",
+                "X-Spio-Write-Token: example-write-token",
             }),
             spio::kExitUsage);
 }
@@ -554,7 +554,7 @@ TEST(PublishCliTests, RejectsRegistryHeaderInDryRun)
                 (root / "spio.toml").string(),
                 "--dry-run",
                 "--registry-header",
-                "X-Spio-Write-Token: dev-token",
+                "X-Spio-Write-Token: example-write-token",
             }),
             spio::kExitUsage);
 }
@@ -620,7 +620,7 @@ TEST(PublishCliTests, RejectsRegistryHeaderForRemoteRegistryWithoutPrivateSecuri
                 "--registry",
                 registry_url,
                 "--registry-header",
-                "X-Spio-Write-Token: dev-token",
+                "X-Spio-Write-Token: example-write-token",
             }),
             spio::kExitPublish);
 }
@@ -651,7 +651,7 @@ TEST(PublishCliTests, RejectsRegistryPolicyFileForFilesystemRegistry)
       "schema-version = 1\n\n"
       "[[registry]]\n"
       "root = \"https://packages.example.test\"\n"
-      "headers = [\"X-Spio-Write-Token: dev-token\"]\n");
+      "headers = [\"X-Spio-Write-Token: example-write-token\"]\n");
 
   EXPECT_EQ(spio::RunCli({
                 "publish",
@@ -690,7 +690,7 @@ TEST(PublishCliTests, RejectsRegistryPolicyFileInDryRun)
       "schema-version = 1\n\n"
       "[[registry]]\n"
       "root = \"https://packages.example.test\"\n"
-      "headers = [\"X-Spio-Write-Token: dev-token\"]\n");
+      "headers = [\"X-Spio-Write-Token: example-write-token\"]\n");
 
   EXPECT_EQ(spio::RunCli({
                 "publish",
@@ -729,7 +729,7 @@ TEST(PublishCliTests, RejectsRegistryPolicyFileForRemoteRegistryWithoutPrivateSe
       "schema-version = 2\n\n"
       "[[registry]]\n"
       "root = \"https://packages.example.test\"\n"
-      "headers = [\"X-Spio-Write-Token: dev-token\"]\n");
+      "headers = [\"X-Spio-Write-Token: example-write-token\"]\n");
 
   EXPECT_EQ(spio::RunCli({
                 "publish",
@@ -837,7 +837,7 @@ TEST(PublishCliTests, RejectsRegistryProfileForRemoteRegistryWithoutPrivateSecur
       "schema-version = 1\n\n"
       "[[registry]]\n"
       "root = \"https://packages.example.test\"\n"
-      "headers = [\"X-Spio-Write-Token: dev-token\"]\n");
+      "headers = [\"X-Spio-Write-Token: example-write-token\"]\n");
 
   EXPECT_EQ(spio::RunCli({
                 "publish",
@@ -886,7 +886,7 @@ TEST(PublishCliTests, RejectsRegistryProfileWhenPolicyFileAlsoProvided)
       "schema-version = 1\n\n"
       "[[registry]]\n"
       "root = \"https://packages.example.test\"\n"
-      "headers = [\"X-Spio-Write-Token: dev-token\"]\n");
+      "headers = [\"X-Spio-Write-Token: example-write-token\"]\n");
 
   EXPECT_EQ(spio::RunCli({
                 "publish",

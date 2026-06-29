@@ -219,7 +219,7 @@ Each workstream must end in a gate that can be run without hidden local state.
 
 `spio` is split-ready when all of the following are true:
 
-- the subtree copies cleanly to `$HOME/DevSpace/Unka-Malloc/styio-spio`
+- the subtree copies cleanly to `<spio-workspace>`
 - bootstrap and extractability checks pass in the copied tree
 - external `styio` handshake passes through `SPIO_STYIO_BIN` or `--styio-bin`
 - no `spio` code reads `styio/src` or `styio/tests`

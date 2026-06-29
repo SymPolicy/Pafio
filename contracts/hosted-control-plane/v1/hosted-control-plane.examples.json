@@ -301,7 +301,7 @@
   },
   "toolInstall": {
     "request": {
-      "styio_binary_path": "/opt/styio/bin/styio"
+      "styio_binary_path": "<styio-binary>"
     },
     "success": {
       "returncode": 0,

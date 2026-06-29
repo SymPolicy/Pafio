@@ -27,8 +27,8 @@ The current phase still defers real auth and account policy. However, remote wri
 schema-version = 1
 
 [[registry]]
-root = "https://registry-upload.example.internal"
-headers = ["X-Spio-Write-Token: dev-token"]
+root = "https://registry-upload.example.invalid"
+headers = ["X-Spio-Write-Token: <write-token>"]
 ```
 
 5. Policy-derived headers are applied only to remote publish-side `GET`, `HEAD`, and `PUT`.

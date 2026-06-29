@@ -62,7 +62,7 @@ spio/
 
 ## Transitional Note
 
-The current repository root still hosts the existing `styio` compiler project directly. This `spio/` subtree is being prepared so it can later be moved wholesale into `$HOME/DevSpace/Unka-Malloc/styio-spio` without dragging compiler source code along with it.
+The current repository root still hosts the existing `styio` compiler project directly. This `spio/` subtree is being prepared so it can later be moved wholesale into `<spio-workspace>` without dragging compiler source code along with it.
 
 ## Implementation Stack Note
 
@@ -80,7 +80,7 @@ Python remains in-tree only where it owns repository automation, contract gates,
 
 ## Developer Context Pack
 
-Before moving this subtree into `$HOME/DevSpace/Unka-Malloc/styio-spio`, `spio` developers should read:
+Before moving this subtree into `<spio-workspace>`, `spio` developers should read:
 
 - `docs/external/for-styio/Styio-for-Spio-Developers.md`
 - `docs/external/for-styio/Styio-Public-Interface-Roadmap.md`

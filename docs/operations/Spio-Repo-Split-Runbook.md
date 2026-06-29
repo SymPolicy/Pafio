@@ -1,6 +1,6 @@
 # Spio Repository Split Runbook
 
-**Purpose:** Describe the exact preflight, copy, and post-copy sequence for moving `spio` out of the current workspace into `$HOME/DevSpace/Unka-Malloc/styio-spio`.
+**Purpose:** Describe the exact preflight, copy, and post-copy sequence for moving `spio` out of the current workspace into `<spio-workspace>`.
 
 **Last updated:** 2026-04-24
 
@@ -25,7 +25,7 @@ Recommended combined preflight:
 Preferred command:
 
 ```text
-./scripts/copy-to-external-repo.sh $HOME/DevSpace/Unka-Malloc/styio-spio
+./scripts/copy-to-external-repo.sh <spio-workspace>
 ```
 
 This copies only the `spio` subtree and excludes:
@@ -39,7 +39,7 @@ This copies only the `spio` subtree and excludes:
 
 ## 3. Post-Copy Validation
 
-Inside `$HOME/DevSpace/Unka-Malloc/styio-spio`, run:
+Inside `<spio-workspace>`, run:
 
 ```text
 ./scripts/native-check.sh
