@@ -10,4 +10,4 @@
 
 | Path | Entry | Summary |
 |------|-------|---------|
-| `2026-04-17.md` | [2026-04-17 Development Log](./2026-04-17.md) | Record the spio bootstrap checkpoint that raises document/file governance from a planning-only structure toward the shared three-repo lifecycle expected by the file-governance alignment plan. |
+| `2026-04-17.md` | [2026-04-17 Development Log](./2026-04-17.md) | Record the pafio bootstrap checkpoint that raises document/file governance from a planning-only structure toward the shared three-repo lifecycle expected by the file-governance alignment plan. |

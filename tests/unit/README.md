@@ -1,4 +1,4 @@
-# spio Unit Tests
+# pafio Unit Tests
 
 **Purpose:** Hold fast, hermetic tests for manifest parsing, lockfiles, resolver logic, cache-key derivation, and compatibility decisions.
 

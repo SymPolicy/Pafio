@@ -1,6 +1,6 @@
 # History Docs
 
-**Purpose:** Hold active daily recovery notes for `spio`; these files track interrupted checkpoints, recovery commands, and rollback points before older provenance moves to `docs/archive/history/`.
+**Purpose:** Hold active daily recovery notes for `pafio`; these files track interrupted checkpoints, recovery commands, and rollback points before older provenance moves to `docs/archive/history/`.
 
 **Last updated:** 2026-04-17
 

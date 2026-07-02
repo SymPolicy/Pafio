@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SPIO_BIN="${1:?expected spio binary path}"
+PAFIO_BIN="${1:?expected pafio binary path}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 ROOT="$(mktemp -d)"
@@ -23,7 +23,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
-export SPIO_HOME="$ROOT/.spio-home"
+export PAFIO_HOME="$ROOT/.pafio-home"
 KEY_DIR="$ROOT/keys"
 REGISTRY_ROOT="$ROOT/registry-v2"
 mkdir -p "$REGISTRY_ROOT"
@@ -53,7 +53,7 @@ python3 "$REPO_ROOT/scripts/registry-v2-keygen.py" --output-dir "$KEY_DIR" >/dev
 python3 "$REPO_ROOT/scripts/registry-v2-control-plane-server.py" \
   --root "$REGISTRY_ROOT" \
   --key-dir "$KEY_DIR" \
-  --spio-bin "$SPIO_BIN" \
+  --pafio-bin "$PAFIO_BIN" \
   --bind 127.0.0.1 \
   --port "$CONTROL_PORT" >"$CONTROL_LOG" 2>&1 &
 CONTROL_PID="$!"
@@ -61,7 +61,7 @@ CONTROL_PID="$!"
 python3 -m http.server "$STATIC_PORT" --bind 127.0.0.1 --directory "$REGISTRY_ROOT" >"$STATIC_LOG" 2>&1 &
 STATIC_PID="$!"
 
-CONTROL_BASE="http://127.0.0.1:${CONTROL_PORT}/api/spio-registry-control/v1"
+CONTROL_BASE="http://127.0.0.1:${CONTROL_PORT}/api/pafio-registry-control/v1"
 REGISTRY_URL="http://127.0.0.1:${STATIC_PORT}"
 for _ in $(seq 1 30); do
   if curl -fsS "${CONTROL_BASE}/status" >/dev/null 2>&1 && curl -fsS "${REGISTRY_URL}/" >/dev/null 2>&1; then
@@ -73,8 +73,8 @@ curl -fsS "${CONTROL_BASE}/status" >/dev/null
 curl -fsS "${REGISTRY_URL}/" >/dev/null
 
 mkdir -p "$ROOT/publish/util/src"
-cat >"$ROOT/publish/util/spio.toml" <<'EOF'
-[spio]
+cat >"$ROOT/publish/util/pafio.toml" <<'EOF'
+[pafio]
 manifest-version = 1
 
 [package]
@@ -94,7 +94,7 @@ cat >"$ROOT/publish/util/src/lib.styio" <<'EOF'
 # util
 EOF
 
-PUBLISH_JSON="$("$SPIO_BIN" --json publish --manifest-path "$ROOT/publish/util/spio.toml" --registry "$CONTROL_BASE")"
+PUBLISH_JSON="$("$PAFIO_BIN" --json publish --manifest-path "$ROOT/publish/util/pafio.toml" --registry "$CONTROL_BASE")"
 python3 - "$PUBLISH_JSON" <<'PY'
 import json
 import sys
@@ -104,10 +104,10 @@ assert payload["mode"] == "publish"
 assert payload["transport"] == "http"
 assert payload["registry_protocol"] == "v2"
 assert payload["package"] == "acme/util"
-assert payload["control_plane_base_url"].endswith("/api/spio-registry-control/v1")
-assert payload["publish_endpoint"].endswith("/api/spio-registry-control/v1/publish")
+assert payload["control_plane_base_url"].endswith("/api/pafio-registry-control/v1")
+assert payload["publish_endpoint"].endswith("/api/pafio-registry-control/v1/publish")
 assert payload["registry_index_path"].endswith("index/acme/util.jsonl")
-assert payload["registry_artifact_path"].endswith(".spio.src.tar")
+assert payload["registry_artifact_path"].endswith(".pafio.src.tar")
 assert payload["registry_log_leaf_path"].endswith("log/leaves/000000000001.json")
 assert payload["created_root"] is True
 PY
@@ -115,8 +115,8 @@ PY
 curl -fsS "${REGISTRY_URL}/config.json" >/dev/null
 curl -fsS "${REGISTRY_URL}/index/acme/util.jsonl" >/dev/null
 
-cat >"$ROOT/spio.toml" <<EOF
-[spio]
+cat >"$ROOT/pafio.toml" <<EOF
+[pafio]
 manifest-version = 1
 
 [package]
@@ -136,7 +136,7 @@ path = "src/main.styio"
 util = { package = "acme/util", version = "0.2.0", registry = "${REGISTRY_URL}" }
 EOF
 
-FETCH_JSON="$("$SPIO_BIN" --json fetch --manifest-path "$ROOT/spio.toml")"
+FETCH_JSON="$("$PAFIO_BIN" --json fetch --manifest-path "$ROOT/pafio.toml")"
 python3 - "$FETCH_JSON" <<'PY'
 import json
 import sys
@@ -146,7 +146,7 @@ assert payload["registry_packages"] == 1
 assert payload["packages"] == 2
 PY
 
-if "$SPIO_BIN" publish --manifest-path "$ROOT/publish/util/spio.toml" --registry "$CONTROL_BASE" >/dev/null 2>&1; then
+if "$PAFIO_BIN" publish --manifest-path "$ROOT/publish/util/pafio.toml" --registry "$CONTROL_BASE" >/dev/null 2>&1; then
   echo "duplicate remote publish unexpectedly succeeded" >&2
   exit 1
 fi

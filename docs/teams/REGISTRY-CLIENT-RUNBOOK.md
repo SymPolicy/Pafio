@@ -12,17 +12,17 @@ Own client-side fetch, cache, extraction, and read-root materialization behavior
 
 Primary paths:
 
-1. `src/SpioRegistryClient/`
-2. `docs/registry/Spio-Registry-Client-Contract.md`
-3. `docs/registry/Spio-Registry-Deployment-Baseline.md`
+1. `src/PafioRegistryClient/`
+2. `docs/registry/Pafio-Registry-Client-Contract.md`
+3. `docs/registry/Pafio-Registry-Deployment-Baseline.md`
 4. `tests/interop/`
 5. `scripts/registry-promote.py`
 
 Key SSOTs:
 
-1. `Registry repository contract -> ../governance/Spio-Registry-Repository-Contract.md`
-2. `Registry client contract -> ../registry/Spio-Registry-Client-Contract.md`
-3. `Deployment baseline -> ../registry/Spio-Registry-Deployment-Baseline.md`
+1. `Registry repository contract -> ../governance/Pafio-Registry-Repository-Contract.md`
+2. `Registry client contract -> ../registry/Pafio-Registry-Client-Contract.md`
+3. `Deployment baseline -> ../registry/Pafio-Registry-Deployment-Baseline.md`
 
 ## Daily Workflow
 

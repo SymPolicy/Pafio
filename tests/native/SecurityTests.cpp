@@ -1,6 +1,6 @@
-#include "SpioSecurity/RegistrySecurity.hpp"
+#include "PafioSecurity/RegistrySecurity.hpp"
 
-#include "SpioCore/Errors.hpp"
+#include "PafioCore/Errors.hpp"
 
 #include <filesystem>
 #include <optional>
@@ -16,43 +16,43 @@ namespace
 class ScopedReadSecurityResolver
 {
 public:
-  explicit ScopedReadSecurityResolver(spio::RegistryReadSecurityResolver resolver)
-      : previous_(spio::RegisterRegistryReadSecurityResolver(resolver))
+  explicit ScopedReadSecurityResolver(pafio::RegistryReadSecurityResolver resolver)
+      : previous_(pafio::RegisterRegistryReadSecurityResolver(resolver))
   {
   }
 
   ~ScopedReadSecurityResolver()
   {
-    (void) spio::RegisterRegistryReadSecurityResolver(previous_);
+    (void) pafio::RegisterRegistryReadSecurityResolver(previous_);
   }
 
 private:
-  spio::RegistryReadSecurityResolver previous_ = nullptr;
+  pafio::RegistryReadSecurityResolver previous_ = nullptr;
 };
 
 class ScopedWriteSecurityResolver
 {
 public:
-  explicit ScopedWriteSecurityResolver(spio::RegistryWriteSecurityResolver resolver)
-      : previous_(spio::RegisterRegistryWriteSecurityResolver(resolver))
+  explicit ScopedWriteSecurityResolver(pafio::RegistryWriteSecurityResolver resolver)
+      : previous_(pafio::RegisterRegistryWriteSecurityResolver(resolver))
   {
   }
 
   ~ScopedWriteSecurityResolver()
   {
-    (void) spio::RegisterRegistryWriteSecurityResolver(previous_);
+    (void) pafio::RegisterRegistryWriteSecurityResolver(previous_);
   }
 
 private:
-  spio::RegistryWriteSecurityResolver previous_ = nullptr;
+  pafio::RegistryWriteSecurityResolver previous_ = nullptr;
 };
 
 int g_write_resolver_calls = 0;
 
-spio::RegistryWriteSecurityDecision DelegatingWriteResolver(const spio::RegistryWriteSecurityRequest &request)
+pafio::RegistryWriteSecurityDecision DelegatingWriteResolver(const pafio::RegistryWriteSecurityRequest &request)
 {
   ++g_write_resolver_calls;
-  spio::RegistryWriteSecurityDecision decision = spio::ResolveDefaultRegistryWriteSecurity(request);
+  pafio::RegistryWriteSecurityDecision decision = pafio::ResolveDefaultRegistryWriteSecurity(request);
   decision.provider_name = "private-test";
   decision.mode = "delegated";
   return decision;
@@ -62,14 +62,14 @@ spio::RegistryWriteSecurityDecision DelegatingWriteResolver(const spio::Registry
 
 TEST(SecurityTests, DefaultReadSecurityNormalizesSupportedRoots)
 {
-  const spio::RegistryReadSecurityDecision http_decision =
-      spio::ResolveDefaultRegistryReadSecurity({.registry_root = "https://packages.example.test/"});
+  const pafio::RegistryReadSecurityDecision http_decision =
+      pafio::ResolveDefaultRegistryReadSecurity({.registry_root = "https://packages.example.test/"});
   EXPECT_EQ(http_decision.registry_root, "https://packages.example.test");
   EXPECT_TRUE(http_decision.request_headers.empty());
   EXPECT_EQ(http_decision.provider_name, "public-default");
 
-  const spio::RegistryReadSecurityDecision file_decision =
-      spio::ResolveDefaultRegistryReadSecurity({.registry_root = "file:///tmp/registry/"});
+  const pafio::RegistryReadSecurityDecision file_decision =
+      pafio::ResolveDefaultRegistryReadSecurity({.registry_root = "file:///tmp/registry/"});
   EXPECT_EQ(file_decision.registry_root, "file:///tmp/registry");
   EXPECT_TRUE(file_decision.request_headers.empty());
   EXPECT_EQ(file_decision.provider_name, "public-default");
@@ -78,14 +78,14 @@ TEST(SecurityTests, DefaultReadSecurityNormalizesSupportedRoots)
 TEST(SecurityTests, DefaultReadSecurityRejectsUnsupportedSchemes)
 {
   EXPECT_THROW(
-      spio::ResolveDefaultRegistryReadSecurity({.registry_root = "ssh://packages.example.test"}),
-      spio::FetchError);
+      pafio::ResolveDefaultRegistryReadSecurity({.registry_root = "ssh://packages.example.test"}),
+      pafio::FetchError);
 }
 
 TEST(SecurityTests, DefaultWriteSecurityNormalizesAnonymousHttpsPublish)
 {
-  const spio::RegistryWriteSecurityDecision decision =
-      spio::ResolveDefaultRegistryWriteSecurity({.registry_root = "https://upload.example.test/"});
+  const pafio::RegistryWriteSecurityDecision decision =
+      pafio::ResolveDefaultRegistryWriteSecurity({.registry_root = "https://upload.example.test/"});
   EXPECT_EQ(decision.registry_root, "https://upload.example.test");
   EXPECT_TRUE(decision.request_headers.empty());
   EXPECT_EQ(decision.provider_name, "public-default");
@@ -96,25 +96,25 @@ TEST(SecurityTests, DefaultWriteSecurityNormalizesAnonymousHttpsPublish)
 TEST(SecurityTests, DefaultWriteSecurityRejectsPrivateHooksInOpenSourceCore)
 {
   EXPECT_THROW(
-      spio::ResolveDefaultRegistryWriteSecurity({
+      pafio::ResolveDefaultRegistryWriteSecurity({
           .registry_root = "https://upload.example.test",
           .profile_name = std::string("write-dev"),
       }),
-      spio::PublishError);
+      pafio::PublishError);
 
   EXPECT_THROW(
-      spio::ResolveDefaultRegistryWriteSecurity({
+      pafio::ResolveDefaultRegistryWriteSecurity({
           .registry_root = "https://upload.example.test",
           .policy_file = fs::path("/tmp/policy.toml"),
       }),
-      spio::PublishError);
+      pafio::PublishError);
 
   EXPECT_THROW(
-      spio::ResolveDefaultRegistryWriteSecurity({
+      pafio::ResolveDefaultRegistryWriteSecurity({
           .registry_root = "https://upload.example.test",
-          .explicit_request_headers = {"X-Spio-Write-Token: example-write-token"},
+          .explicit_request_headers = {"X-Pafio-Write-Token: example-write-token"},
       }),
-      spio::PublishError);
+      pafio::PublishError);
 }
 
 TEST(SecurityTests, RegisteredWriteResolverCanDelegateToDefaultChain)
@@ -124,8 +124,8 @@ TEST(SecurityTests, RegisteredWriteResolverCanDelegateToDefaultChain)
 
   {
     ScopedWriteSecurityResolver override_resolver(DelegatingWriteResolver);
-    const spio::RegistryWriteSecurityDecision decision =
-        spio::ResolveRegistryWriteSecurity({.registry_root = "https://upload.example.test/"});
+    const pafio::RegistryWriteSecurityDecision decision =
+        pafio::ResolveRegistryWriteSecurity({.registry_root = "https://upload.example.test/"});
     EXPECT_EQ(g_write_resolver_calls, 1);
     EXPECT_EQ(decision.registry_root, "https://upload.example.test");
     EXPECT_TRUE(decision.request_headers.empty());
@@ -133,8 +133,8 @@ TEST(SecurityTests, RegisteredWriteResolverCanDelegateToDefaultChain)
     EXPECT_EQ(decision.mode, "delegated");
   }
 
-  const spio::RegistryWriteSecurityDecision restored =
-      spio::ResolveRegistryWriteSecurity({.registry_root = "https://upload.example.test/"});
+  const pafio::RegistryWriteSecurityDecision restored =
+      pafio::ResolveRegistryWriteSecurity({.registry_root = "https://upload.example.test/"});
   EXPECT_EQ(restored.provider_name, "public-default");
   EXPECT_EQ(restored.mode, "anonymous");
 }
@@ -142,39 +142,39 @@ TEST(SecurityTests, RegisteredWriteResolverCanDelegateToDefaultChain)
 TEST(SecurityTests, ResolveRegistryReadSecurityUsesDefaultChainWhenNoOverrideIsRegistered)
 {
   ScopedReadSecurityResolver reset_to_default(nullptr);
-  const spio::RegistryReadSecurityDecision decision =
-      spio::ResolveRegistryReadSecurity({.registry_root = "https://packages.example.test/"});
+  const pafio::RegistryReadSecurityDecision decision =
+      pafio::ResolveRegistryReadSecurity({.registry_root = "https://packages.example.test/"});
   EXPECT_EQ(decision.registry_root, "https://packages.example.test");
   EXPECT_EQ(decision.provider_name, "public-default");
 }
 
 TEST(SecurityTests, ValidatesRegistryPackageIdentitySegments)
 {
-  EXPECT_NO_THROW(spio::ValidateRegistryPackageIdentity("acme/util"));
-  const spio::RegistryPackageNameParts parts = spio::SplitRegistryPackageName("acme-corp/util_core", "registry package");
+  EXPECT_NO_THROW(pafio::ValidateRegistryPackageIdentity("acme/util"));
+  const pafio::RegistryPackageNameParts parts = pafio::SplitRegistryPackageName("acme-corp/util_core", "registry package");
   EXPECT_EQ(parts.namespace_name, "acme-corp");
   EXPECT_EQ(parts.short_name, "util_core");
 
-  EXPECT_THROW(spio::ValidateRegistryPackageIdentity("acme"), spio::FetchError);
-  EXPECT_THROW(spio::ValidateRegistryPackageIdentity("acme/util/extra"), spio::FetchError);
-  EXPECT_THROW(spio::ValidateRegistryPackageIdentity("Acme/util"), spio::FetchError);
-  EXPECT_THROW(spio::ValidateRegistryPackageIdentity("acme/util.core"), spio::FetchError);
-  EXPECT_THROW(spio::ValidateRegistryPackageIdentity("../util"), spio::FetchError);
-  EXPECT_THROW(spio::ValidateRegistryPackageIdentity("acme/.."), spio::FetchError);
-  EXPECT_THROW(spio::ValidateRegistryPackageIdentity("acme\\evil/util"), spio::FetchError);
-  EXPECT_TRUE(spio::IsRegistrySha256Digest("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"));
-  EXPECT_FALSE(spio::IsRegistrySha256Digest("0123456789ABCDEF0123456789abcdef0123456789abcdef0123456789abcdef"));
+  EXPECT_THROW(pafio::ValidateRegistryPackageIdentity("acme"), pafio::FetchError);
+  EXPECT_THROW(pafio::ValidateRegistryPackageIdentity("acme/util/extra"), pafio::FetchError);
+  EXPECT_THROW(pafio::ValidateRegistryPackageIdentity("Acme/util"), pafio::FetchError);
+  EXPECT_THROW(pafio::ValidateRegistryPackageIdentity("acme/util.core"), pafio::FetchError);
+  EXPECT_THROW(pafio::ValidateRegistryPackageIdentity("../util"), pafio::FetchError);
+  EXPECT_THROW(pafio::ValidateRegistryPackageIdentity("acme/.."), pafio::FetchError);
+  EXPECT_THROW(pafio::ValidateRegistryPackageIdentity("acme\\evil/util"), pafio::FetchError);
+  EXPECT_TRUE(pafio::IsRegistrySha256Digest("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"));
+  EXPECT_FALSE(pafio::IsRegistrySha256Digest("0123456789ABCDEF0123456789abcdef0123456789abcdef0123456789abcdef"));
 }
 
 TEST(SecurityTests, NormalizesRegistryObjectPathWithPythonCompatiblePolicy)
 {
-  EXPECT_EQ(spio::NormalizeRegistryObjectPath("trust/targets/acme.json", "test").generic_string(), "trust/targets/acme.json");
+  EXPECT_EQ(pafio::NormalizeRegistryObjectPath("trust/targets/acme.json", "test").generic_string(), "trust/targets/acme.json");
 
-  EXPECT_THROW(spio::NormalizeRegistryObjectPath("../trust/root.json", "test"), spio::FetchError);
-  EXPECT_THROW(spio::NormalizeRegistryObjectPath("trust/../root.json", "test"), spio::FetchError);
-  EXPECT_THROW(spio::NormalizeRegistryObjectPath("trust/./root.json", "test"), spio::FetchError);
-  EXPECT_THROW(spio::NormalizeRegistryObjectPath("trust//root.json", "test"), spio::FetchError);
-  EXPECT_THROW(spio::NormalizeRegistryObjectPath("/trust/root.json", "test"), spio::FetchError);
-  EXPECT_THROW(spio::NormalizeRegistryObjectPath("trust/root.json/", "test"), spio::FetchError);
-  EXPECT_THROW(spio::NormalizeRegistryObjectPath("trust\\root.json", "test"), spio::FetchError);
+  EXPECT_THROW(pafio::NormalizeRegistryObjectPath("../trust/root.json", "test"), pafio::FetchError);
+  EXPECT_THROW(pafio::NormalizeRegistryObjectPath("trust/../root.json", "test"), pafio::FetchError);
+  EXPECT_THROW(pafio::NormalizeRegistryObjectPath("trust/./root.json", "test"), pafio::FetchError);
+  EXPECT_THROW(pafio::NormalizeRegistryObjectPath("trust//root.json", "test"), pafio::FetchError);
+  EXPECT_THROW(pafio::NormalizeRegistryObjectPath("/trust/root.json", "test"), pafio::FetchError);
+  EXPECT_THROW(pafio::NormalizeRegistryObjectPath("trust/root.json/", "test"), pafio::FetchError);
+  EXPECT_THROW(pafio::NormalizeRegistryObjectPath("trust\\root.json", "test"), pafio::FetchError);
 }

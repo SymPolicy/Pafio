@@ -1,6 +1,6 @@
-# spio Scripts
+# pafio Scripts
 
-**Purpose:** Hold repository-local helper scripts used to validate extractability, contract hygiene, and black-box test setup for `spio`.
+**Purpose:** Hold repository-local helper scripts used to validate extractability, contract hygiene, and black-box test setup for `pafio`.
 
 **Last updated:** 2026-04-24
 
@@ -16,7 +16,7 @@ For fresh-machine bootstrap and the common build/test flow, start with [../docs/
 - external `audit` gate
 - checkpoint health gate
 - delivery gate
-- curl-pipe installer for installing the `spio` binary and managed `styio` shim into a PATH directory
+- curl-pipe installer for installing the `pafio` binary and managed `styio` shim into a PATH directory
 - native configure/build/test entrypoint
 - Debian 13 / compatible Debian/Ubuntu dev environment bootstrap with the shared LLVM 18.1.x, CMake/CTest 3.31.6, and Python 3.13.5 baseline
 - extractability self-check

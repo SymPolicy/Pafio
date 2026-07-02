@@ -6,7 +6,7 @@
 
 ## Scope
 
-This spec applies to agent and maintainer work on `styio-spio` branches. It covers local pre-commit verification, post-push GitHub Actions monitoring, and failure recovery for repository-local and cross-repository gates.
+This spec applies to agent and maintainer work on `pafio` branches. It covers local pre-commit verification, post-push GitHub Actions monitoring, and failure recovery for repository-local and cross-repository gates.
 
 ## Commit-Time Verification
 
@@ -24,7 +24,7 @@ The GitHub Actions CI floor is the repository-local `local-ci-gate` workflow.
 It owns the range-aware docs/repo hygiene checks, native submit gate,
 extractability gate, performance smoke gate, and delivery package gate that
 were previously split across `styio-ci`, `repo-hygiene`, and `Submit Gate`.
-`local-ci-gate` is the spio repository's own CI surface; it is not the shared
+`local-ci-gate` is the pafio repository's own CI surface; it is not the shared
 Styio ecosystem resource gate modeled by upstream `styio-ci-gate`.
 
 Cross-repository contract or product changes must also run the matching ecosystem gate from `styio-nightly`, for example:
@@ -62,7 +62,7 @@ If `gh` is unavailable or unauthenticated, the agent must state that GitHub Acti
 
 ## Cross-Repository Work
 
-When one delivery touches `styio-nightly`, `styio-spio`, and `styio-view`, post-push verification applies to every pushed repository. The agent should check each repository's GitHub Actions status, not only the repository that received the last commit.
+When one delivery touches `styio-nightly`, `pafio`, and `styio-view`, post-push verification applies to every pushed repository. The agent should check each repository's GitHub Actions status, not only the repository that received the last commit.
 
 Cross-repository gates must use the same workspace checkout set that will be visible to CI. If a gate consumes another repository's branch, push that repository first or report that remote CI may still be using an older sibling checkout.
 
@@ -73,10 +73,10 @@ Required GitHub merge gates are maintained through GitHub Rulesets, not legacy c
 Gate audits must inspect effective branch rules, for example:
 
 ```bash
-gh api repos/Unka-Malloc/styio-spio/rules/branches/ai-dev
+gh api repos/SymPolicy/Pafio/rules/branches/release
 ```
 
-Do not use `branches/ai-dev/protection/required_status_checks` as the authority for this repository. That legacy classic endpoint can return 404 even when the Ruleset gate is active.
+Do not use `branches/<branch>/protection/required_status_checks` as the authority for this repository. That legacy classic endpoint can return 404 even when the Ruleset gate is active.
 
 ## Completion Criteria
 

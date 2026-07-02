@@ -16,11 +16,11 @@ import sys
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-from spio_registry_v2 import publish_to_registry_v2, verify_registry_root  # noqa: E402
-from spio_registry_v2.common import RegistryV2Error  # noqa: E402
+from pafio_registry_v2 import publish_to_registry_v2, verify_registry_root  # noqa: E402
+from pafio_registry_v2.common import RegistryV2Error  # noqa: E402
 
 
-BASE_PATH = "/api/spio-registry-control/v1"
+BASE_PATH = "/api/pafio-registry-control/v1"
 MAX_REQUEST_BYTES = 1 * 1024 * 1024
 REQUEST_TIMEOUT_SECONDS = 10.0
 
@@ -92,7 +92,7 @@ class RegistryControlPlaneHandler(BaseHTTPRequestHandler):
     registry_root: str
     key_dir: str
     registry_name: str
-    spio_bin: str
+    pafio_bin: str
 
     def setup(self) -> None:
         super().setup()
@@ -147,7 +147,7 @@ class RegistryControlPlaneHandler(BaseHTTPRequestHandler):
                 self.key_dir,
                 archive_path_value=request.get("archive_path"),
                 manifest_path_value=request.get("manifest_path"),
-                spio_bin_value=self.spio_bin,
+                pafio_bin_value=self.pafio_bin,
                 package_name=request.get("package"),
                 output_path_value=request.get("output_path"),
                 registry_name=self.registry_name,
@@ -190,11 +190,11 @@ class RegistryControlPlaneHandler(BaseHTTPRequestHandler):
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Run the local HTTP control plane for a spio registry v2 root.")
+    parser = argparse.ArgumentParser(description="Run the local HTTP control plane for a pafio registry v2 root.")
     parser.add_argument("--root", required=True, help="Local directory bound as the registry v2 static root.")
     parser.add_argument("--key-dir", required=True, help="Directory containing the registry v2 role keys.")
-    parser.add_argument("--registry-name", default="spio-registry-v2", help="Registry name used when the root is initialized.")
-    parser.add_argument("--spio-bin", default=str(ROOT / "scripts" / "spio"), help="spio executable used for dry-run publish preparation.")
+    parser.add_argument("--registry-name", default="pafio-registry-v2", help="Registry name used when the root is initialized.")
+    parser.add_argument("--pafio-bin", default=str(ROOT / "scripts" / "pafio"), help="pafio executable used for dry-run publish preparation.")
     parser.add_argument("--bind", default="127.0.0.1")
     parser.add_argument("--port", type=int, required=True)
     return parser.parse_args()
@@ -205,7 +205,7 @@ def main() -> int:
     RegistryControlPlaneHandler.registry_root = str(Path(args.root).resolve())
     RegistryControlPlaneHandler.key_dir = str(Path(args.key_dir).resolve())
     RegistryControlPlaneHandler.registry_name = args.registry_name
-    RegistryControlPlaneHandler.spio_bin = str(Path(args.spio_bin).resolve())
+    RegistryControlPlaneHandler.pafio_bin = str(Path(args.pafio_bin).resolve())
     server = ThreadingHTTPServer((args.bind, args.port), RegistryControlPlaneHandler)
     server.serve_forever()
     return 0

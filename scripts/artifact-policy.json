@@ -1,6 +1,6 @@
 {
   "forbidden_dirs": [
-    ".spio",
+    ".pafio",
     ".pytest_cache",
     "__pycache__",
     ".build",
@@ -44,7 +44,7 @@
     ".DS_Store",
     "__pycache__/",
     ".pytest_cache/",
-    ".spio/",
+    ".pafio/",
     ".build/",
     "build/",
     "build-codex/",
@@ -89,7 +89,7 @@
     ".build/",
     "build/",
     "build-codex/",
-    ".spio/",
+    ".pafio/",
     "__pycache__/",
     ".pytest_cache/",
     ".cache/",

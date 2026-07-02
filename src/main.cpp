@@ -1,4 +1,4 @@
-#include "SpioCLI/CLI.hpp"
+#include "PafioCLI/CLI.hpp"
 
 #include <string>
 #include <vector>
@@ -12,5 +12,5 @@ int main(int argc, char **argv)
     args.emplace_back(argv[i]);
   }
 
-  return spio::RunCli(args);
+  return pafio::RunCli(args);
 }

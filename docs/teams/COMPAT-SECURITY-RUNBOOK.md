@@ -1,6 +1,6 @@
 # Compat / Security Runbook
 
-**Purpose:** Provide the daily-work entrypoint for maintainers of external compiler compatibility, public machine contracts, and `spio`'s tracked security boundary.
+**Purpose:** Provide the daily-work entrypoint for maintainers of external compiler compatibility, public machine contracts, and `pafio`'s tracked security boundary.
 
 **Last updated:** 2026-04-16
 
@@ -12,8 +12,8 @@ Own published compatibility matrices, machine contracts, `styio` handshake expec
 
 Primary paths:
 
-1. `src/SpioCompat/`
-2. `src/SpioSecurity/`
+1. `src/PafioCompat/`
+2. `src/PafioSecurity/`
 3. `contracts/compat/`
 4. `contracts/compile-plan/`
 5. `docs/security/`
@@ -22,9 +22,9 @@ Primary paths:
 
 Key SSOTs:
 
-1. `Compatibility policy -> ../governance/Spio-Version-Decoupling-Constraints.md`
+1. `Compatibility policy -> ../governance/Pafio-Version-Decoupling-Constraints.md`
 2. `Public contracts -> ../../contracts/README.md`
-3. `Security boundary -> ../security/Spio-Private-Security-Module-Contract.md`
+3. `Security boundary -> ../security/Pafio-Private-Security-Module-Contract.md`
 4. `Styio handoff -> ../styio/Styio-External-Interface-Requirement-Spec.md`
 
 ## Daily Workflow

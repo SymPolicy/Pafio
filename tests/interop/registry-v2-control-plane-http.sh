@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SPIO_BIN="${1:?expected spio binary path}"
+PAFIO_BIN="${1:?expected pafio binary path}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 ROOT="$(mktemp -d)"
@@ -17,14 +17,14 @@ cleanup() {
 }
 trap cleanup EXIT
 
-export SPIO_HOME="$ROOT/.spio-home"
+export PAFIO_HOME="$ROOT/.pafio-home"
 KEY_DIR="$ROOT/keys"
 V2_ROOT="$ROOT/registry-v2"
 PACKAGE_ROOT="$ROOT/publish/app"
 mkdir -p "$PACKAGE_ROOT/src"
 
-cat >"$PACKAGE_ROOT/spio.toml" <<'EOF'
-[spio]
+cat >"$PACKAGE_ROOT/pafio.toml" <<'EOF'
+[pafio]
 manifest-version = 1
 
 [package]
@@ -60,13 +60,13 @@ PY
 python3 "$REPO_ROOT/scripts/registry-v2-control-plane-server.py" \
   --root "$V2_ROOT" \
   --key-dir "$KEY_DIR" \
-  --spio-bin "$SPIO_BIN" \
+  --pafio-bin "$PAFIO_BIN" \
   --registry-name "http-control-registry" \
   --bind 127.0.0.1 \
   --port "$PORT" >"$LOG_FILE" 2>&1 &
 SERVER_PID="$!"
 
-BASE_URL="http://127.0.0.1:${PORT}/api/spio-registry-control/v1"
+BASE_URL="http://127.0.0.1:${PORT}/api/pafio-registry-control/v1"
 for _ in $(seq 1 30); do
   if curl -fsS "${BASE_URL}/status" >/dev/null 2>&1; then
     break
@@ -88,7 +88,7 @@ PY
 PUBLISH_JSON="$(
   curl -fsS -X POST "${BASE_URL}/publish" \
     -H 'Content-Type: application/json' \
-    --data "{\"manifest_path\": \"${PACKAGE_ROOT}/spio.toml\", \"publisher_id\": \"http-test\"}"
+    --data "{\"manifest_path\": \"${PACKAGE_ROOT}/pafio.toml\", \"publisher_id\": \"http-test\"}"
 )"
 
 python3 - "$PUBLISH_JSON" <<'PY'
@@ -164,7 +164,7 @@ PY
 DUPLICATE_CODE="$(
   curl -sS -o "$ROOT/duplicate-response.json" -w '%{http_code}' -X POST "${BASE_URL}/publish" \
     -H 'Content-Type: application/json' \
-    --data "{\"manifest_path\": \"${PACKAGE_ROOT}/spio.toml\", \"publisher_id\": \"http-test\"}"
+    --data "{\"manifest_path\": \"${PACKAGE_ROOT}/pafio.toml\", \"publisher_id\": \"http-test\"}"
 )"
 
 test "$DUPLICATE_CODE" = "409"

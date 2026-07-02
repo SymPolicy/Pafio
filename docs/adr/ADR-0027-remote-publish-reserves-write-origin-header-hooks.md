@@ -21,11 +21,11 @@ That is enough for simple internal deployments, but many write origins sit behin
 - API-key enforcement at a reverse proxy
 - internal policy middleware that expects fixed request headers
 
-Waiting for a full auth/account system would leave no way to exercise those deployments through the native `spio publish` path.
+Waiting for a full auth/account system would leave no way to exercise those deployments through the native `pafio publish` path.
 
 ## Decision
 
-1. Add repeatable `spio publish --registry-header <name:value>`.
+1. Add repeatable `pafio publish --registry-header <name:value>`.
 2. Scope it only to remote publish against `http://` or `https://` write origins.
 3. Attach the configured header list to publish-side `GET`, `HEAD`, and `PUT` requests.
 4. Reject the flag for:

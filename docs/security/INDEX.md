@@ -10,4 +10,4 @@
 
 | Path | Entry | Summary |
 |------|-------|---------|
-| `Spio-Private-Security-Module-Contract.md` | [Spio Private Security Module Contract](./Spio-Private-Security-Module-Contract.md) | Define which security-sensitive responsibilities stay out of the open-source spio tree and how closed-source implementations are injected without changing the public command or repository contracts. |
+| `Pafio-Private-Security-Module-Contract.md` | [Pafio Private Security Module Contract](./Pafio-Private-Security-Module-Contract.md) | Define which security-sensitive responsibilities stay out of the open-source pafio tree and how closed-source implementations are injected without changing the public command or repository contracts. |

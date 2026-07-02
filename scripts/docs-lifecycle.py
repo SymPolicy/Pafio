@@ -6,17 +6,17 @@ import sys
 
 
 def refresh() -> int:
-    sys.stdout.write("spio docs lifecycle refresh: no archive metadata model is active\n")
+    sys.stdout.write("pafio docs lifecycle refresh: no archive metadata model is active\n")
     return 0
 
 
 def validate() -> int:
-    sys.stdout.write("spio docs lifecycle validation passed\n")
+    sys.stdout.write("pafio docs lifecycle validation passed\n")
     return 0
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Refresh or validate spio docs lifecycle metadata.")
+    parser = argparse.ArgumentParser(description="Refresh or validate pafio docs lifecycle metadata.")
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("refresh")
     sub.add_parser("validate")

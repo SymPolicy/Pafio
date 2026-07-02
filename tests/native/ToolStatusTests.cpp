@@ -1,6 +1,6 @@
-#include "SpioCLI/CLI.hpp"
-#include "SpioCore/Errors.hpp"
-#include "SpioTool/Install.hpp"
+#include "PafioCLI/CLI.hpp"
+#include "PafioCore/Errors.hpp"
+#include "PafioTool/Install.hpp"
 
 #include "ToolTestSupport.hpp"
 
@@ -12,26 +12,26 @@
 
 namespace fs = std::filesystem;
 using json = nlohmann::json;
-using namespace spio_test_support;
+using namespace pafio_test_support;
 
 TEST(ToolStatusTests, StatusReportsManagedCompilerPinAndCloudPolicy)
 {
   const fs::path root = MakeTempDir("tool-status-json");
-  const ScopedEnvVar spio_home("SPIO_HOME", (root / ".spio-home").string());
-  const fs::path manifest_path = root / "project/spio.toml";
+  const ScopedEnvVar pafio_home("PAFIO_HOME", (root / ".pafio-home").string());
+  const fs::path manifest_path = root / "project/pafio.toml";
   WriteSingleBinManifest(manifest_path);
 
   const fs::path fake_styio = root / "fake-styio";
   WriteFakeStyio(fake_styio, "0.0.5");
-  (void) spio::InstallManagedStyio({.styio_binary = fake_styio});
-  (void) spio::PinManagedStyio({
+  (void) pafio::InstallManagedStyio({.styio_binary = fake_styio});
+  (void) pafio::PinManagedStyio({
       .manifest_path = manifest_path,
       .compiler_version = std::string("0.0.5"),
       .compiler_channel = std::string("stable"),
   });
 
   EXPECT_EQ(
-      spio::RunCli({
+      pafio::RunCli({
           "set",
           "risk",
           "as",
@@ -39,9 +39,9 @@ TEST(ToolStatusTests, StatusReportsManagedCompilerPinAndCloudPolicy)
           "--manifest-path",
           manifest_path.string(),
       }),
-      spio::kExitSuccess);
+      pafio::kExitSuccess);
   EXPECT_EQ(
-      spio::RunCli({
+      pafio::RunCli({
           "set",
           "lane",
           "as",
@@ -49,10 +49,10 @@ TEST(ToolStatusTests, StatusReportsManagedCompilerPinAndCloudPolicy)
           "--manifest-path",
           manifest_path.string(),
       }),
-      spio::kExitSuccess);
+      pafio::kExitSuccess);
 
   testing::internal::CaptureStdout();
-  const int exit_code = spio::RunCli({
+  const int exit_code = pafio::RunCli({
       "--json",
       "tool",
       "status",
@@ -62,7 +62,7 @@ TEST(ToolStatusTests, StatusReportsManagedCompilerPinAndCloudPolicy)
   });
   const std::string stdout_text = testing::internal::GetCapturedStdout();
 
-  EXPECT_EQ(exit_code, spio::kExitSuccess);
+  EXPECT_EQ(exit_code, pafio::kExitSuccess);
   const json payload = json::parse(stdout_text);
   EXPECT_EQ(payload.at("command").get<std::string>(), "tool status");
   EXPECT_EQ(payload.at("project_pin").at("compiler_version").get<std::string>(), "0.0.5");

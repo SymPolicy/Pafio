@@ -1,4 +1,4 @@
-# spio Assets Docs
+# pafio Assets Docs
 
 **Purpose:** Define the reusable workflow and gate asset boundary under `docs/assets/`; concrete entries live in [INDEX.md](./INDEX.md).
 

@@ -12,15 +12,15 @@ Accepted
 
 Phase 3 now has a working resolver, lock generation, tree rendering, and hermetic git cache state. The remaining gap in the basic package-manager surface is that dependency manifests still have to be edited manually and cache warm-up still has to happen indirectly through other commands.
 
-Without native dependency edit and fetch commands, `spio` still behaves more like a validator plus resolver library than a practical package manager.
+Without native dependency edit and fetch commands, `pafio` still behaves more like a validator plus resolver library than a practical package manager.
 
 ## Decision
 
-1. Activate `spio add`, `spio remove`, and `spio fetch` in phase 3.
+1. Activate `pafio add`, `pafio remove`, and `pafio fetch` in phase 3.
 2. Freeze the minimal public surfaces as:
-   - `spio add <package-name> (--path <path> | --git <source> --rev <rev>) [--alias <name>] [--dev] [--manifest-path <path>]`
-   - `spio remove <alias-or-package> [--dev] [--manifest-path <path>]`
-   - `spio fetch [--manifest-path <path>]`
+   - `pafio add <package-name> (--path <path> | --git <source> --rev <rev>) [--alias <name>] [--dev] [--manifest-path <path>]`
+   - `pafio remove <alias-or-package> [--dev] [--manifest-path <path>]`
+   - `pafio fetch [--manifest-path <path>]`
 3. `add` and `remove` operate only on manifests that define `[package]`.
    - workspace-only manifests are valid overall, but they are not valid dependency-edit targets for this increment
 4. `add` defaults the dependency alias to the package short name when `--alias` is omitted.
@@ -32,15 +32,15 @@ Without native dependency edit and fetch commands, `spio` still behaves more lik
 8. `--dev` selects `[dev-dependencies]`; otherwise `add` writes to `[dependencies]` and `remove` searches both sections.
 9. Successful `add` and `remove` must:
    - rewrite the manifest canonically
-   - refresh the adjacent `spio.lock` through the active phase-3 resolver
+   - refresh the adjacent `pafio.lock` through the active phase-3 resolver
 10. If the post-edit resolver step fails, `add` and `remove` must roll back both the manifest and the adjacent lockfile to their pre-command state.
-11. `fetch` resolves the active graph and materializes dependency source state, especially pinned git caches under `SPIO_HOME`, but does not rewrite manifest or lock files.
+11. `fetch` resolves the active graph and materializes dependency source state, especially pinned git caches under `PAFIO_HOME`, but does not rewrite manifest or lock files.
 
 ## Alternatives
 
-1. Keep dependency edits as manual TOML changes plus explicit `spio lock`.
+1. Keep dependency edits as manual TOML changes plus explicit `pafio lock`.
    - Rejected because that leaves the package-manager core surface incomplete.
-2. Make `fetch` read only from an existing `spio.lock`.
+2. Make `fetch` read only from an existing `pafio.lock`.
    - Rejected because phase 3 already treats the resolver graph as authoritative and fetch should not require a preexisting lockfile.
 3. Let `add` and `remove` write the manifest even if lock refresh fails.
    - Rejected because that would leave the repository in a partially updated and harder-to-reason-about state.
@@ -49,7 +49,7 @@ Without native dependency edit and fetch commands, `spio` still behaves more lik
 
 Positive:
 
-1. `spio` now has a usable core package-management loop: edit dependencies, fetch sources, inspect tree, and refresh lockfiles.
+1. `pafio` now has a usable core package-management loop: edit dependencies, fetch sources, inspect tree, and refresh lockfiles.
 2. Dependency edits stay aligned with the resolver because `add` and `remove` refresh lockfiles through the same phase-3 graph path.
 3. Rollback keeps manifest and lock state coherent when resolution fails.
 

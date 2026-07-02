@@ -10,8 +10,8 @@
 
 | Path | Entry | Summary |
 |------|-------|---------|
-| `Spio-Artifact-Lifecycle-Runbook.md` | [Spio Artifact Lifecycle Runbook](./Spio-Artifact-Lifecycle-Runbook.md) | Define the enforceable lifecycle for generated files, artifact policy inputs, and delivery-tree exclusions so temporary outputs never leak into tracked sources or exported packages. |
-| `Spio-Cloud-Compile-Stress-Runbook.md` | [Spio Cloud Compile Stress Runbook](./Spio-Cloud-Compile-Stress-Runbook.md) | Provide the executable procedure for running the public multi-tenant compile-cloud stress framework and interpreting its JSON/JSONL output. |
-| `Spio-Registry-Server-Runbook.md` | [Spio Registry Origin Runbook](./Spio-Registry-Server-Runbook.md) | Provide the executable validation and deployment procedure for a shared spio registry v2 origin without mixing it with client cache behavior or hosted publish-service policy. |
-| `Spio-Repo-Split-Runbook.md` | [Spio Repository Split Runbook](./Spio-Repo-Split-Runbook.md) | Describe the exact preflight, copy, and post-copy sequence for moving spio out of the current workspace into <spio-workspace>. |
-| `Spio-Verification-Matrix.md` | [Spio Verification Matrix](./Spio-Verification-Matrix.md) | Define the named gates, required commands, and pass conditions that close each spio implementation stream. |
+| `Pafio-Artifact-Lifecycle-Runbook.md` | [Pafio Artifact Lifecycle Runbook](./Pafio-Artifact-Lifecycle-Runbook.md) | Define the enforceable lifecycle for generated files, artifact policy inputs, and delivery-tree exclusions so temporary outputs never leak into tracked sources or exported packages. |
+| `Pafio-Cloud-Compile-Stress-Runbook.md` | [Pafio Cloud Compile Stress Runbook](./Pafio-Cloud-Compile-Stress-Runbook.md) | Provide the executable procedure for running the public multi-tenant compile-cloud stress framework and interpreting its JSON/JSONL output. |
+| `Pafio-Registry-Server-Runbook.md` | [Pafio Registry Origin Runbook](./Pafio-Registry-Server-Runbook.md) | Provide the executable validation and deployment procedure for a shared pafio registry v2 origin without mixing it with client cache behavior or hosted publish-service policy. |
+| `Pafio-Repo-Split-Runbook.md` | [Pafio Repository Split Runbook](./Pafio-Repo-Split-Runbook.md) | Describe the exact preflight, copy, and post-copy sequence for moving pafio out of the current workspace into <pafio-workspace>. |
+| `Pafio-Verification-Matrix.md` | [Pafio Verification Matrix](./Pafio-Verification-Matrix.md) | Define the named gates, required commands, and pass conditions that close each pafio implementation stream. |

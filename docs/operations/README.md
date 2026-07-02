@@ -1,6 +1,6 @@
 # Operations Docs
 
-**Purpose:** Hold executable verification and migration procedures for `spio`.
+**Purpose:** Hold executable verification and migration procedures for `pafio`.
 
 **Last updated:** 2026-04-19
 

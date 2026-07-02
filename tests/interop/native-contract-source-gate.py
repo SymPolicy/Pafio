@@ -13,7 +13,7 @@ SKIP_DIRS = {
     ".mypy_cache",
     ".pytest_cache",
     ".ruff_cache",
-    ".spio",
+    ".pafio",
     ".venv",
     "build",
     "build-codex",

@@ -1,6 +1,6 @@
-# spio Tests
+# pafio Tests
 
-**Purpose:** Define the split between `spio` unit tests and black-box integration tests, with strict environment and cache isolation.
+**Purpose:** Define the split between `pafio` unit tests and black-box integration tests, with strict environment and cache isolation.
 
 **Last updated:** 2026-04-24
 
@@ -12,39 +12,39 @@
 
 ## Isolation Rules
 
-- Every test run must set a fresh temporary `SPIO_HOME`.
-- Integration tests must use `SPIO_STYIO_BIN` and must not assume a source checkout of `styio`.
+- Every test run must set a fresh temporary `PAFIO_HOME`.
+- Integration tests must use `PAFIO_STYIO_BIN` and must not assume a source checkout of `styio`.
 - Tests must not write into the repository root except under explicit temporary directories created for the run.
 
 ## Acceptance Gates
 
-- `spio_manifest_lock_gate`
+- `pafio_manifest_lock_gate`
 - `quality_no_binaries_gate`
 - `quality_repo_hygiene_gate`
 - `performance_baseline_gate`
 - `delivery_package_gate`
-- `spio_submit_gate`
+- `pafio_submit_gate`
 - `contract_schema_gate`
-- `spio_resolver_gate`
-- `spio_cli_gate`
-- `spio_workflow_gate`
-- `spio_extractability_gate`
-- `spio_registry_server_gate`
-- `spio_registry_promotion_gate`
-- `spio_registry_split_origin_http_gate`
-- `spio_registry_v2_unit_gate`
-- `spio_registry_v2_contract_gate`
-- `spio_registry_v2_publish_gate`
-- `spio_registry_v2_static_http_gate`
-- `spio_registry_control_plane_contract_gate`
-- `spio_registry_control_plane_http_gate`
-- `spio_native_contract_source_gate`
-- `spio_hosted_api_contract_unit_gate`
-- `spio_hosted_api_contract_integration_gate`
-- `spio_hosted_api_contract_regression_gate`
-- `spio_hosted_api_contract_smoke_gate`
-- `spio_hosted_api_contract_fuzz_gate`
-- `spio_cloud_compile_stress_gate`
+- `pafio_resolver_gate`
+- `pafio_cli_gate`
+- `pafio_workflow_gate`
+- `pafio_extractability_gate`
+- `pafio_registry_server_gate`
+- `pafio_registry_promotion_gate`
+- `pafio_registry_split_origin_http_gate`
+- `pafio_registry_v2_unit_gate`
+- `pafio_registry_v2_contract_gate`
+- `pafio_registry_v2_publish_gate`
+- `pafio_registry_v2_static_http_gate`
+- `pafio_registry_control_plane_contract_gate`
+- `pafio_registry_control_plane_http_gate`
+- `pafio_native_contract_source_gate`
+- `pafio_hosted_api_contract_unit_gate`
+- `pafio_hosted_api_contract_integration_gate`
+- `pafio_hosted_api_contract_regression_gate`
+- `pafio_hosted_api_contract_smoke_gate`
+- `pafio_hosted_api_contract_fuzz_gate`
+- `pafio_cloud_compile_stress_gate`
 - `styio_contract_compat_gate`
 - `styio_compile_plan_contract_gate`
 
@@ -55,7 +55,7 @@
 
 See also:
 
-- `../docs/operations/Spio-Verification-Matrix.md`
+- `../docs/operations/Pafio-Verification-Matrix.md`
 - `../scripts/preflight-readiness-check.py`
 - `../scripts/registry-server-gate.py`
 - `../scripts/styio-interface-gate.py`

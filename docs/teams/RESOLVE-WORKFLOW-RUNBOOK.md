@@ -12,21 +12,21 @@ Own resolver behavior, workflow planning, graph materialization, and local orche
 
 Primary paths:
 
-1. `src/SpioResolve/`
-2. `src/SpioPlan/`
-3. `src/SpioWorkflow/`
-4. `src/SpioCore/`
-5. `src/SpioTree/`
-6. `src/SpioVendor/`
-7. `src/SpioPack/`
-8. `docs/planning/Spio-Workstreams-and-TODOs.md`
+1. `src/PafioResolve/`
+2. `src/PafioPlan/`
+3. `src/PafioWorkflow/`
+4. `src/PafioCore/`
+5. `src/PafioTree/`
+6. `src/PafioVendor/`
+7. `src/PafioPack/`
+8. `docs/planning/Pafio-Workstreams-and-TODOs.md`
 
 Key SSOTs:
 
 1. `Ecosystem milestone mirror -> ../planning/Styio-Ecosystem-Delivery-Master-Plan.md`
-2. `Master plan -> ../planning/Spio-Master-Plan.md`
-3. `Workstreams -> ../planning/Spio-Workstreams-and-TODOs.md`
-4. `Verification matrix -> ../operations/Spio-Verification-Matrix.md`
+2. `Master plan -> ../planning/Pafio-Master-Plan.md`
+3. `Workstreams -> ../planning/Pafio-Workstreams-and-TODOs.md`
+4. `Verification matrix -> ../operations/Pafio-Verification-Matrix.md`
 
 ## Daily Workflow
 

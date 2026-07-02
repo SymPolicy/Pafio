@@ -22,14 +22,14 @@ FORBIDDEN_FILE_NAMES = set(POLICY.forbidden_file_names)
 FORBIDDEN_FILE_GLOBS = list(POLICY.forbidden_file_globs)
 REQUIRED_GITIGNORE_PATTERNS = list(POLICY.required_gitignore_patterns)
 REQUIRED_DOC_REFERENCES = {
-    pathlib.Path("docs/operations/Spio-Verification-Matrix.md"): [
+    pathlib.Path("docs/operations/Pafio-Verification-Matrix.md"): [
         "scripts/docs-audit.py",
         "scripts/submit-gate.py",
         "scripts/perf-gate.py",
         "scripts/repo-hygiene-check.py",
         "scripts/delivery-gate.py",
     ],
-    pathlib.Path("docs/governance/Spio-Entry-Argument-Index.md"): [
+    pathlib.Path("docs/governance/Pafio-Entry-Argument-Index.md"): [
         "scripts/docs-index.py",
         "scripts/docs-lifecycle.py",
         "scripts/docs-audit.py",

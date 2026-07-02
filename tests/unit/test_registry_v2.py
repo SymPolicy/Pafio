@@ -16,12 +16,12 @@ SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-import spio_registry_v2.common as common  # noqa: E402
-import spio_registry_v2.publisher as publisher  # noqa: E402
-from spio_registry_v2 import generate_key_directory, publish_to_registry_v2, verify_registry_root  # noqa: E402
-from spio_registry_v2.common import RegistryV2Error, sha256_file  # noqa: E402
-from spio_registry_v2 import validator  # noqa: E402
-from spio_registry_v2.validator import RootReader  # noqa: E402
+import pafio_registry_v2.common as common  # noqa: E402
+import pafio_registry_v2.publisher as publisher  # noqa: E402
+from pafio_registry_v2 import generate_key_directory, publish_to_registry_v2, verify_registry_root  # noqa: E402
+from pafio_registry_v2.common import RegistryV2Error, sha256_file  # noqa: E402
+from pafio_registry_v2 import validator  # noqa: E402
+from pafio_registry_v2.validator import RootReader  # noqa: E402
 
 
 CONTRACT_DIR = ROOT / "contracts" / "registry-v2" / "v1"
@@ -34,10 +34,10 @@ class RegistryV2Tests(unittest.TestCase):
             temp_root = pathlib.Path(temp_dir)
             package_root = temp_root / f"{short_name}-{version}"
             (package_root / "src").mkdir(parents=True, exist_ok=True)
-            (package_root / "spio.toml").write_text(
+            (package_root / "pafio.toml").write_text(
                 "\n".join(
                     [
-                        "[spio]",
+                        "[pafio]",
                         "manifest-version = 1",
                         "",
                         "[package]",
@@ -75,10 +75,10 @@ class RegistryV2Tests(unittest.TestCase):
             temp_root = pathlib.Path(temp_dir)
             package_root = temp_root / f"{short_name}-{version}"
             (package_root / "src").mkdir(parents=True, exist_ok=True)
-            (package_root / "spio.toml").write_text(
+            (package_root / "pafio.toml").write_text(
                 "\n".join(
                     [
-                        "[spio]",
+                        "[pafio]",
                         "manifest-version = 1",
                         "",
                         "[package]",
@@ -112,7 +112,7 @@ class RegistryV2Tests(unittest.TestCase):
 
     def test_contract_pack_inventory(self) -> None:
         contract = json.loads((CONTRACT_DIR / "registry-v2.contract.json").read_text(encoding="utf-8"))
-        self.assertEqual(contract["protocol"], "spio-static-registry")
+        self.assertEqual(contract["protocol"], "pafio-static-registry")
         self.assertEqual(contract["protocol_version"], 2)
         for schema_name, relative_path in contract["schemas"].items():
             with self.subTest(schema=schema_name):
@@ -181,13 +181,13 @@ class RegistryV2Tests(unittest.TestCase):
         try:
             validator.HTTP_READ_TIMEOUT_SECONDS = 0.25
             validator.urlopen = fake_urlopen
-            reader = RootReader("https://packages.example.test/spio/")
+            reader = RootReader("https://packages.example.test/pafio/")
             with self.assertRaises(RegistryV2Error):
                 reader.read_bytes("config.json")
         finally:
             validator.urlopen = original_urlopen
             validator.HTTP_READ_TIMEOUT_SECONDS = original_timeout
-        self.assertEqual(observed["location"], "https://packages.example.test/spio/config.json")
+        self.assertEqual(observed["location"], "https://packages.example.test/pafio/config.json")
         self.assertEqual(observed["timeout"], 0.25)
 
     def test_reader_rejects_oversized_remote_metadata(self) -> None:
@@ -209,7 +209,7 @@ class RegistryV2Tests(unittest.TestCase):
         try:
             validator.HTTP_METADATA_MAX_BYTES = 8
             validator.urlopen = lambda location, timeout=None: FakeResponse()
-            reader = RootReader("https://packages.example.test/spio/")
+            reader = RootReader("https://packages.example.test/pafio/")
             with self.assertRaises(RegistryV2Error):
                 reader.read_bytes("config.json")
         finally:
@@ -233,7 +233,7 @@ class RegistryV2Tests(unittest.TestCase):
 
         try:
             validator.urlopen = lambda location, timeout=None: FakeResponse()
-            reader = RootReader("https://packages.example.test/spio/")
+            reader = RootReader("https://packages.example.test/pafio/")
             with self.assertRaises(RegistryV2Error):
                 reader.read_bytes("config.json")
         finally:
@@ -292,12 +292,12 @@ class RegistryV2Tests(unittest.TestCase):
         try:
             publisher.subprocess.run = fake_run
             with self.assertRaises(RegistryV2Error) as ctx:
-                publisher._prepare_publish_candidate(pathlib.Path("/tmp/spio"), pathlib.Path("/tmp/spio.toml"), None, None)
+                publisher._prepare_publish_candidate(pathlib.Path("/tmp/pafio"), pathlib.Path("/tmp/pafio.toml"), None, None)
         finally:
             publisher.subprocess.run = original_run
 
-        self.assertIn("spio publish --dry-run timed out after", str(ctx.exception))
-        self.assertEqual(observed["command"], ["/tmp/spio", "--json", "publish", "--dry-run", "--manifest-path", "/tmp/spio.toml"])
+        self.assertIn("pafio publish --dry-run timed out after", str(ctx.exception))
+        self.assertEqual(observed["command"], ["/tmp/pafio", "--json", "publish", "--dry-run", "--manifest-path", "/tmp/pafio.toml"])
         self.assertEqual(observed["timeout"], common.REGISTRY_SUBPROCESS_TIMEOUT_SECONDS)
 
     def test_publish_rejects_archive_with_traversal_manifest_path(self) -> None:
@@ -310,7 +310,7 @@ class RegistryV2Tests(unittest.TestCase):
                 "acme/util",
                 "1.0.0",
                 archive,
-                [("../spio.toml", b'[package]\nname = "evil/pkg"\nversion = "9.9.9"\n')],
+                [("../pafio.toml", b'[package]\nname = "evil/pkg"\nversion = "9.9.9"\n')],
             )
             generate_key_directory(key_dir)
 
@@ -332,7 +332,7 @@ class RegistryV2Tests(unittest.TestCase):
                 "acme/util",
                 "1.0.0",
                 archive,
-                [("nested/spio.toml", b'[package]\nname = "evil/pkg"\nversion = "9.9.9"\n')],
+                [("nested/pafio.toml", b'[package]\nname = "evil/pkg"\nversion = "9.9.9"\n')],
             )
             generate_key_directory(key_dir)
 
@@ -352,7 +352,7 @@ class RegistryV2Tests(unittest.TestCase):
             archive = root / "artifacts" / "util-1.0.0.tar"
             archive.parent.mkdir(parents=True, exist_ok=True)
             with tarfile.open(archive, mode="w") as package:
-                info = tarfile.TarInfo(name="util-1.0.0/spio.toml")
+                info = tarfile.TarInfo(name="util-1.0.0/pafio.toml")
                 info.size = publisher.MAX_ARCHIVE_MANIFEST_BYTES + 1
                 info.mtime = 0
                 info.mode = 0o644
@@ -422,7 +422,7 @@ class RegistryV2Tests(unittest.TestCase):
                 publisher_id="unit-test",
             )
 
-            artifact_path = next((dest_root / "artifacts" / "source" / "sha256").rglob("*.spio.src.tar"))
+            artifact_path = next((dest_root / "artifacts" / "source" / "sha256").rglob("*.pafio.src.tar"))
             artifact_path.write_bytes(artifact_path.read_bytes() + b"tamper")
 
             with self.assertRaises(RegistryV2Error):
@@ -431,7 +431,7 @@ class RegistryV2Tests(unittest.TestCase):
     def test_reader_rejects_non_canonical_object_paths(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             local_reader = RootReader(temp_dir)
-            remote_reader = RootReader("https://packages.example.test/spio/")
+            remote_reader = RootReader("https://packages.example.test/pafio/")
             invalid_paths = [
                 "../trust/root.json",
                 "trust/../root.json",

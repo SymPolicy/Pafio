@@ -9,7 +9,7 @@
 
 ## Context
 
-`spio` now has both:
+`pafio` now has both:
 
 - registry client behavior
 - registry server-side publication behavior
@@ -26,9 +26,9 @@ But leaving them mixed in the same source/documentation layer makes it harder to
 
 1. Keep client and server registry logic in the same repository.
 2. Split source modules explicitly:
-   - registry client code lives under `src/SpioRegistryClient/`
-   - registry server/write code lives under `src/SpioRegistryServer/`
-   - publish-candidate preparation remains under `src/SpioPublish/` because it is shared package-preflight logic rather than server transport
+   - registry client code lives under `src/PafioRegistryClient/`
+   - registry server/write code lives under `src/PafioRegistryServer/`
+   - publish-candidate preparation remains under `src/PafioPublish/` because it is shared package-preflight logic rather than server transport
 3. Split documentation explicitly:
    - shared repository layout remains in governance
    - client contract lives under `docs/registry/`

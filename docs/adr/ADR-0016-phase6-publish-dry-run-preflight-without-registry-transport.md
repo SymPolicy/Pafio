@@ -1,4 +1,4 @@
-# ADR-0016: Phase-6 Activates `spio publish --dry-run` as Local Preflight Without Registry Transport
+# ADR-0016: Phase-6 Activates `pafio publish --dry-run` as Local Preflight Without Registry Transport
 
 **Purpose:** Record the decision, context, alternatives, and consequences for the first native `publish` surface and the explicit boundary between local publish preparation and later registry transport.
 
@@ -10,19 +10,19 @@ Accepted
 
 ## Context
 
-`spio` now has a native local package archive command through `spio pack`, but `publish` is still stubbed. Leaving it fully stubbed would keep the package-manager surface incomplete even though the project can already validate package metadata and stage a source artifact locally.
+`pafio` now has a native local package archive command through `pafio pack`, but `publish` is still stubbed. Leaving it fully stubbed would keep the package-manager surface incomplete even though the project can already validate package metadata and stage a source artifact locally.
 
 At the same time, this repository still does not define a registry transport contract, authentication flow, upload protocol, or registry dependency model. Any attempt to make `publish` talk to a real remote would be guesswork.
 
 ## Decision
 
 1. Activate `publish` in two layers:
-   - `spio publish --dry-run` is active now
-   - non-dry-run `spio publish` remains blocked until a real registry transport contract exists
+   - `pafio publish --dry-run` is active now
+   - non-dry-run `pafio publish` remains blocked until a real registry transport contract exists
 2. Freeze the first public surface as:
-   - `spio publish [--manifest-path <path>] [--package <package-name>] [--output <path>] [--dry-run]`
-3. `spio publish --dry-run` performs local publish preflight and stages a publish candidate archive.
-   - it reuses the `spio pack` source archive path
+   - `pafio publish [--manifest-path <path>] [--package <package-name>] [--output <path>] [--dry-run]`
+3. `pafio publish --dry-run` performs local publish preflight and stages a publish candidate archive.
+   - it reuses the `pafio pack` source archive path
    - default output is still `<package-root>/dist/<short-name>-<version>.tar`
 4. `publish --dry-run` selects packages using the same root-package rules as `pack`.
 5. `publish --dry-run` requires the selected package to opt in with `package.publish = true`.

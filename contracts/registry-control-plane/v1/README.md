@@ -1,6 +1,6 @@
 # registry-control-plane v1
 
-**Purpose:** Define the first native JSON HTTP control-plane package for operating a `spio` registry `v2` root over a backend service boundary.
+**Purpose:** Define the first native JSON HTTP control-plane package for operating a `pafio` registry `v2` root over a backend service boundary.
 
 **Last updated:** 2026-04-24
 
@@ -12,10 +12,10 @@
 
 ## Repository Boundary
 
-This package is shared by `styio-platform` and `styio-spio`.
+This package is shared by `pafio` and `pafio`.
 
-- `styio-platform` operates the hosted registry and mirror service side.
-- `styio-spio` consumes the package as the local package-manager compatibility contract.
+- `pafio` operates the hosted registry and mirror service side.
+- `pafio` consumes the package as the local package-manager compatibility contract.
 - Offline package resolution, cache reuse, and local import/export behavior stay client-side and must not depend on platform mirror availability.
 
 ## Package Workflow

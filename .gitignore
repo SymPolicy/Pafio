@@ -56,7 +56,7 @@ node_modules/
 build/
 build-codex/
 build-*/
-.spio/
+.pafio/
 tmp/
 dist/
 *.tar

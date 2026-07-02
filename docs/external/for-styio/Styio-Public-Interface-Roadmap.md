@@ -1,6 +1,6 @@
-# Styio Public Interface Roadmap for Spio
+# Styio Public Interface Roadmap for Pafio
 
-**Purpose:** Describe the exact compiler-facing interfaces that `spio` needs from `styio`, so future `spio` maintainers know what to request, test, and vendor without depending on compiler internals.
+**Purpose:** Describe the exact compiler-facing interfaces that `pafio` needs from `styio`, so future `pafio` maintainers know what to request, test, and vendor without depending on compiler internals.
 
 **Last updated:** 2026-04-23
 
@@ -20,7 +20,7 @@ Published bootstrap command:
 styio --machine-info=json
 ```
 
-Compile-plan-live fields needed by `spio`:
+Compile-plan-live fields needed by `pafio`:
 
 - tool identity
 - compiler version
@@ -32,8 +32,8 @@ Compile-plan-live fields needed by `spio`:
 Current handoff expectation:
 
 - compile-plan support advertises `[1]`
-- `spio` uses this command for handshake and compatibility gating
-- `spio` may use it as proof of project build orchestration only when the compatibility matrix also enables compile-plan v1
+- `pafio` uses this command for handshake and compatibility gating
+- `pafio` may use it as proof of project build orchestration only when the compatibility matrix also enables compile-plan v1
 
 ### 2. Compile Plan Entry
 
@@ -43,7 +43,7 @@ Published command:
 styio --compile-plan <path>
 ```
 
-`spio` needs:
+`pafio` needs:
 
 - explicit acceptance or rejection of a plan version
 - isolated output directories
@@ -57,7 +57,7 @@ Status:
 
 ### 3. JSON Diagnostics
 
-`spio` should consume only stable machine-readable diagnostics, not human-only stderr text.
+`pafio` should consume only stable machine-readable diagnostics, not human-only stderr text.
 
 ### 4. Handoff Gate
 
@@ -75,13 +75,13 @@ and the required compile-plan handoff gate:
 
 ## Interface Ownership
 
-- `spio` owns compile-plan schema source.
+- `pafio` owns compile-plan schema source.
 - `styio` owns compiler capability declarations.
 - compatibility is determined by handshake plus contract version support.
 
 ## Non-Goals
 
-`spio` does not need:
+`pafio` does not need:
 
 - direct AST access
 - direct parser access

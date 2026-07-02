@@ -1,6 +1,6 @@
 # Planning Docs
 
-**Purpose:** Hold delivery phases, workstreams, and planning summaries for `spio`.
+**Purpose:** Hold delivery phases, workstreams, and planning summaries for `pafio`.
 
 **Last updated:** 2026-04-19
 

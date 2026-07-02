@@ -10,7 +10,7 @@ Accepted
 
 ## Context
 
-`spio pack` and `spio publish --dry-run` already established deterministic source archives and local publish preflight. That made the front half of publishing real, but the back half was still missing.
+`pafio pack` and `pafio publish --dry-run` already established deterministic source archives and local publish preflight. That made the front half of publishing real, but the back half was still missing.
 
 At the same time, this repository still does not define:
 
@@ -25,14 +25,14 @@ That means the next useful step is not a full remote registry. It is the smalles
 ## Decision
 
 1. Activate non-dry-run `publish` only for an explicit local filesystem registry root:
-   - `spio publish [--manifest-path <path>] [--package <package-name>] [--output <path>] --registry <path>`
+   - `pafio publish [--manifest-path <path>] [--package <package-name>] [--output <path>] --registry <path>`
 2. Keep `publish --dry-run` unchanged as the local preflight path.
 3. Continue to require:
    - `package.publish = true`
    - zero dependency entries in `[dependencies]` and `[dev-dependencies]`
 4. Filesystem registry publish writes these paths under `<registry-root>`:
    - registry marker:
-     - `spio-registry.json`
+     - `pafio-registry.json`
    - immutable archive blob:
      - `blobs/sha256/<xx>/<yy>/<sha256>.tar`
    - version entry:

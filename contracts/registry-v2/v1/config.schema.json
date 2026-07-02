@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://spio.dev/contracts/registry-v2/v1/config.schema.json",
-  "title": "spio Registry V2 Config",
+  "$id": "https://pafio.dev/contracts/registry-v2/v1/config.schema.json",
+  "title": "pafio Registry V2 Config",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -20,7 +20,7 @@
     },
     "protocol": {
       "type": "string",
-      "const": "spio-static-registry"
+      "const": "pafio-static-registry"
     },
     "protocol_version": {
       "type": "integer",

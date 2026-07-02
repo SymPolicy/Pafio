@@ -1,6 +1,6 @@
 # ADR Docs
 
-**Purpose:** Define the conventions and scope for `spio/docs/adr/`, which holds durable design and implementation decisions for the standalone `spio` project.
+**Purpose:** Define the conventions and scope for `pafio/docs/adr/`, which holds durable design and implementation decisions for the standalone `pafio` project.
 
 **Last updated:** 2026-04-10
 

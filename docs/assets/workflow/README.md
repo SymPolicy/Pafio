@@ -1,4 +1,4 @@
-# spio Workflow Assets
+# pafio Workflow Assets
 
 **Purpose:** Define the workflow and gate documentation boundary under `docs/assets/workflow/`; concrete entries live in [INDEX.md](./INDEX.md).
 

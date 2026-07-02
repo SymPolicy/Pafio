@@ -1,22 +1,22 @@
-# ADR-0005: Phase-2 `spio lock` Uses Only Local Workspace and Path Graphs
+# ADR-0005: Phase-2 `pafio lock` Uses Only Local Workspace and Path Graphs
 
-**Purpose:** Record the decision, context, alternatives, and consequences for the first native `spio lock` implementation scope.
+**Purpose:** Record the decision, context, alternatives, and consequences for the first native `pafio lock` implementation scope.
 
 **Last updated:** 2026-04-10
 
 ## Status
 
-Superseded by ADR-0007 for current resolver-backed `spio lock` behavior
+Superseded by ADR-0007 for current resolver-backed `pafio lock` behavior
 
 ## Context
 
-The project has advanced to native manifest parsing, lockfile parsing, and canonical write-back, but it still does not have the full phase-3 resolver. The next useful phase-2 step is a minimal `spio lock` command, but implementing full pinned-`git` resolution now would prematurely drag resolver and fetch behavior into phase 2.
+The project has advanced to native manifest parsing, lockfile parsing, and canonical write-back, but it still does not have the full phase-3 resolver. The next useful phase-2 step is a minimal `pafio lock` command, but implementing full pinned-`git` resolution now would prematurely drag resolver and fetch behavior into phase 2.
 
 At the same time, phase-2 manifests already admit `git` dependencies for validation, so the lock command needs an explicit boundary rather than silently inventing pseudo-resolution behavior.
 
 ## Decision
 
-1. Implement the first native `spio lock` over local graphs only:
+1. Implement the first native `pafio lock` over local graphs only:
    - local package manifests
    - workspace member packages
    - recursively discovered `path` dependencies
@@ -28,7 +28,7 @@ At the same time, phase-2 manifests already admit `git` dependencies for validat
 
 ## Alternatives
 
-1. Keep `spio lock` completely stubbed until the full resolver phase.
+1. Keep `pafio lock` completely stubbed until the full resolver phase.
    - Rejected because phase 2 needs practical progress beyond parsing and write-back.
 2. Invent placeholder versions for unresolved `git` dependencies.
    - Rejected because it would create lockfiles with fabricated semantic data.
@@ -39,7 +39,7 @@ At the same time, phase-2 manifests already admit `git` dependencies for validat
 
 Positive:
 
-1. `spio lock` becomes useful for local package and workspace graphs during phase 2.
+1. `pafio lock` becomes useful for local package and workspace graphs during phase 2.
 2. Lockfile generation can progress without breaking the published delivery order.
 3. Unsupported `git` locking fails explicitly instead of silently producing misleading lockfiles.
 

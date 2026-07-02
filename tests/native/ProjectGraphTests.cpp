@@ -1,5 +1,5 @@
-#include "SpioCLI/CLI.hpp"
-#include "SpioCore/Errors.hpp"
+#include "PafioCLI/CLI.hpp"
+#include "PafioCore/Errors.hpp"
 
 #include <cstdlib>
 #include <filesystem>
@@ -50,7 +50,7 @@ private:
 
 fs::path MakeTempDir(const std::string &label)
 {
-  const fs::path root = fs::temp_directory_path() / "spio-native-project-graph-tests" / label;
+  const fs::path root = fs::temp_directory_path() / "pafio-native-project-graph-tests" / label;
   fs::remove_all(root);
   fs::create_directories(root);
   return root;
@@ -98,8 +98,8 @@ TEST(ProjectGraphTests, EmitsStructuredGraphPayloadForCombinedRoot)
   WriteLiveFakeStyio(fake_styio);
 
   WriteFile(
-      root / "spio.toml",
-      "[spio]\n"
+      root / "pafio.toml",
+      "[pafio]\n"
       "manifest-version = 1\n\n"
       "[package]\n"
       "name = \"acme/app\"\n"
@@ -119,8 +119,8 @@ TEST(ProjectGraphTests, EmitsStructuredGraphPayloadForCombinedRoot)
       "path = \"src/main.styio\"\n");
   WriteFile(root / "src/main.styio", ">_(\"app\")\n");
   WriteFile(
-      root / "packages/render-kit/spio.toml",
-      "[spio]\n"
+      root / "packages/render-kit/pafio.toml",
+      "[pafio]\n"
       "manifest-version = 1\n\n"
       "[package]\n"
       "name = \"acme/render-kit\"\n"
@@ -135,17 +135,17 @@ TEST(ProjectGraphTests, EmitsStructuredGraphPayloadForCombinedRoot)
   WriteFile(root / "packages/render-kit/src/lib.styio", "# render := 1\n");
 
   testing::internal::CaptureStdout();
-  const int exit_code = spio::RunCli({
+  const int exit_code = pafio::RunCli({
       "--json",
       "project-graph",
       "--manifest-path",
-      (root / "spio.toml").string(),
+      (root / "pafio.toml").string(),
       "--styio-bin",
       fake_styio.string(),
   });
   const std::string stdout_text = testing::internal::GetCapturedStdout();
 
-  ASSERT_EQ(exit_code, spio::kExitSuccess);
+  ASSERT_EQ(exit_code, pafio::kExitSuccess);
   const json payload = json::parse(stdout_text);
   EXPECT_EQ(payload.at("command").get<std::string>(), "project-graph");
   EXPECT_EQ(payload.at("schema_version").get<int>(), 1);
@@ -183,8 +183,8 @@ TEST(ProjectGraphTests, SupportsCommandLocalJsonFlag)
   WriteLiveFakeStyio(fake_styio);
 
   WriteFile(
-      root / "spio.toml",
-      "[spio]\n"
+      root / "pafio.toml",
+      "[pafio]\n"
       "manifest-version = 1\n\n"
       "[package]\n"
       "name = \"acme/app\"\n"
@@ -200,31 +200,31 @@ TEST(ProjectGraphTests, SupportsCommandLocalJsonFlag)
   WriteFile(root / "src/main.styio", ">_(\"app\")\n");
 
   testing::internal::CaptureStdout();
-  const int exit_code = spio::RunCli({
+  const int exit_code = pafio::RunCli({
       "project-graph",
       "--json",
       "--manifest-path",
-      (root / "spio.toml").string(),
+      (root / "pafio.toml").string(),
       "--styio-bin",
       fake_styio.string(),
   });
   const std::string stdout_text = testing::internal::GetCapturedStdout();
 
-  ASSERT_EQ(exit_code, spio::kExitSuccess);
+  ASSERT_EQ(exit_code, pafio::kExitSuccess);
   const json payload = json::parse(stdout_text);
   EXPECT_EQ(payload.at("command").get<std::string>(), "project-graph");
   EXPECT_EQ(payload.at("schema_version").get<int>(), 1);
-  EXPECT_EQ(payload.at("manifest_path").get<std::string>(), (root / "spio.toml").string());
+  EXPECT_EQ(payload.at("manifest_path").get<std::string>(), (root / "pafio.toml").string());
 }
 
 TEST(ProjectGraphTests, ReportsProjectPinWithoutCrashingWhenManagedInstallIsMissing)
 {
   const fs::path root = MakeTempDir("missing-managed-pin");
-  const ScopedEnvVar spio_home("SPIO_HOME", (root / ".spio-home").string());
+  const ScopedEnvVar pafio_home("PAFIO_HOME", (root / ".pafio-home").string());
 
   WriteFile(
-      root / "spio.toml",
-      "[spio]\n"
+      root / "pafio.toml",
+      "[pafio]\n"
       "manifest-version = 1\n\n"
       "[package]\n"
       "name = \"acme/app\"\n"
@@ -239,21 +239,21 @@ TEST(ProjectGraphTests, ReportsProjectPinWithoutCrashingWhenManagedInstallIsMiss
       "path = \"src/main.styio\"\n");
   WriteFile(root / "src/main.styio", ">_(\"app\")\n");
   WriteFile(
-      root / "spio-toolchain.toml",
+      root / "pafio-toolchain.toml",
       "[styio]\n"
       "channel = \"stable\"\n"
       "version = \"0.0.5\"\n");
 
   testing::internal::CaptureStdout();
-  const int exit_code = spio::RunCli({
+  const int exit_code = pafio::RunCli({
       "--json",
       "project-graph",
       "--manifest-path",
-      (root / "spio.toml").string(),
+      (root / "pafio.toml").string(),
   });
   const std::string stdout_text = testing::internal::GetCapturedStdout();
 
-  ASSERT_EQ(exit_code, spio::kExitSuccess);
+  ASSERT_EQ(exit_code, pafio::kExitSuccess);
   const json payload = json::parse(stdout_text);
   EXPECT_EQ(payload.at("toolchain").at("source").get<std::string>(), "project-pin");
   EXPECT_EQ(payload.at("toolchain").at("channel").get<std::string>(), "stable");
@@ -271,14 +271,14 @@ TEST(ProjectGraphTests, ReportsProjectPinWithoutCrashingWhenManagedInstallIsMiss
 TEST(ProjectGraphTests, EmitsDependencySourceAndCacheStateForProjectGraph)
 {
   const fs::path root = MakeTempDir("source-state");
-  const ScopedEnvVar spio_home("SPIO_HOME", (root / ".spio-home").string());
-  const fs::path manifest_path = root / "spio.toml";
-  const fs::path vendor_root = root / ".spio" / "vendor";
-  const fs::path vendor_metadata_path = vendor_root / "spio-vendor.json";
+  const ScopedEnvVar pafio_home("PAFIO_HOME", (root / ".pafio-home").string());
+  const fs::path manifest_path = root / "pafio.toml";
+  const fs::path vendor_root = root / ".pafio" / "vendor";
+  const fs::path vendor_metadata_path = vendor_root / "pafio-vendor.json";
 
   WriteFile(
       manifest_path,
-      "[spio]\n"
+      "[pafio]\n"
       "manifest-version = 1\n\n"
       "[package]\n"
       "name = \"acme/app\"\n"
@@ -296,19 +296,19 @@ TEST(ProjectGraphTests, EmitsDependencySourceAndCacheStateForProjectGraph)
       "path = \"src/main.styio\"\n");
   WriteFile(root / "src/main.styio", ">_(\"app\")\n");
 
-  fs::create_directories(root / ".spio-home" / "git" / "repos" / "feed.git");
-  fs::create_directories(root / ".spio-home" / "git" / "checkouts" / "feed" / "deadbeef");
-  fs::create_directories(root / ".spio-home" / "registry" / "index");
-  fs::create_directories(root / ".spio-home" / "registry" / "blobs" / "sha256" / "aa" / "bb");
-  fs::create_directories(root / ".spio-home" / "registry" / "checkouts" / "acme" / "util" / "0.2.0" / "cafebabe");
-  WriteFile(root / ".spio-home" / "registry" / "blobs" / "sha256" / "aa" / "bb" / "artifact.tar", "blob");
-  WriteFile(root / ".spio-home" / "registry" / "checkouts" / "acme" / "util" / "0.2.0" / "cafebabe" / ".spio-snapshot-ready", "ready\n");
+  fs::create_directories(root / ".pafio-home" / "git" / "repos" / "feed.git");
+  fs::create_directories(root / ".pafio-home" / "git" / "checkouts" / "feed" / "deadbeef");
+  fs::create_directories(root / ".pafio-home" / "registry" / "index");
+  fs::create_directories(root / ".pafio-home" / "registry" / "blobs" / "sha256" / "aa" / "bb");
+  fs::create_directories(root / ".pafio-home" / "registry" / "checkouts" / "acme" / "util" / "0.2.0" / "cafebabe");
+  WriteFile(root / ".pafio-home" / "registry" / "blobs" / "sha256" / "aa" / "bb" / "artifact.tar", "blob");
+  WriteFile(root / ".pafio-home" / "registry" / "checkouts" / "acme" / "util" / "0.2.0" / "cafebabe" / ".pafio-snapshot-ready", "ready\n");
 
   fs::create_directories(vendor_root);
   WriteFile(
       vendor_metadata_path,
       "{\n"
-      "  \"tool\": \"spio\",\n"
+      "  \"tool\": \"pafio\",\n"
       "  \"version\": \"0.0.0-test\",\n"
       "  \"manifest_path\": \"" + manifest_path.string() + "\",\n"
       "  \"vendor_root\": \"" + vendor_root.string() + "\",\n"
@@ -323,7 +323,7 @@ TEST(ProjectGraphTests, EmitsDependencySourceAndCacheStateForProjectGraph)
       "}\n");
 
   testing::internal::CaptureStdout();
-  const int exit_code = spio::RunCli({
+  const int exit_code = pafio::RunCli({
       "--json",
       "project-graph",
       "--manifest-path",
@@ -331,11 +331,11 @@ TEST(ProjectGraphTests, EmitsDependencySourceAndCacheStateForProjectGraph)
   });
   const std::string stdout_text = testing::internal::GetCapturedStdout();
 
-  ASSERT_EQ(exit_code, spio::kExitSuccess);
+  ASSERT_EQ(exit_code, pafio::kExitSuccess);
   const json payload = json::parse(stdout_text);
   ASSERT_TRUE(payload.at("source_state").is_object());
   EXPECT_EQ(payload.at("source_state").at("schema_version").get<int>(), 1);
-  EXPECT_EQ(payload.at("source_state").at("spio_home").get<std::string>(), (root / ".spio-home").string());
+  EXPECT_EQ(payload.at("source_state").at("pafio_home").get<std::string>(), (root / ".pafio-home").string());
   EXPECT_EQ(payload.at("source_state").at("declared_git_dependencies").get<size_t>(), 1U);
   EXPECT_EQ(payload.at("source_state").at("declared_registry_dependencies").get<size_t>(), 1U);
   EXPECT_EQ(payload.at("source_state").at("git_cache").at("repos_present").get<bool>(), true);
@@ -353,8 +353,8 @@ TEST(ProjectGraphTests, EmitsRegistryAndPublishabilitySummaryForPublishablePacka
   const fs::path root = MakeTempDir("publish-ready");
 
   WriteFile(
-      root / "spio.toml",
-      "[spio]\n"
+      root / "pafio.toml",
+      "[pafio]\n"
       "manifest-version = 1\n\n"
       "[package]\n"
       "name = \"acme/app\"\n"
@@ -374,15 +374,15 @@ TEST(ProjectGraphTests, EmitsRegistryAndPublishabilitySummaryForPublishablePacka
   WriteFile(root / "src/main.styio", ">_(\"app\")\n");
 
   testing::internal::CaptureStdout();
-  const int exit_code = spio::RunCli({
+  const int exit_code = pafio::RunCli({
       "--json",
       "project-graph",
       "--manifest-path",
-      (root / "spio.toml").string(),
+      (root / "pafio.toml").string(),
   });
   const std::string stdout_text = testing::internal::GetCapturedStdout();
 
-  ASSERT_EQ(exit_code, spio::kExitSuccess);
+  ASSERT_EQ(exit_code, pafio::kExitSuccess);
   const json payload = json::parse(stdout_text);
   ASSERT_EQ(payload.at("dependencies").size(), 2U);
   EXPECT_EQ(payload.at("dependencies")[0].at("source_kind").get<std::string>(), "registry");

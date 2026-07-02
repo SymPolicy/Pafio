@@ -1,6 +1,6 @@
-# spio Registry V2 Contract Pack
+# pafio Registry V2 Contract Pack
 
-**Purpose:** Hold the machine-readable source-of-truth for the industrialized `spio` static registry `v2` protocol.
+**Purpose:** Hold the machine-readable source-of-truth for the industrialized `pafio` static registry `v2` protocol.
 
 **Last updated:** 2026-04-21
 

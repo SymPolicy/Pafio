@@ -16,9 +16,9 @@ from typing import Any
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-DEFAULT_SPIO = ROOT / "scripts" / "spio"
+DEFAULT_PAFIO = ROOT / "scripts" / "pafio"
 SAMPLE_GATE = ROOT / "scripts" / "ecosystem-sample-workflow-gate.py"
-HOSTED_SERVER = ROOT / "scripts" / "spio-hosted-serve.py"
+HOSTED_SERVER = ROOT / "scripts" / "pafio-hosted-serve.py"
 VIEW_APP_ROOT = ROOT.parent / "styio-view" / "frontend" / "styio_view_app"
 PRODUCT_REPORT_MARKER = "STYIO_VIEW_PRODUCT_REPORT "
 LOCAL_HOSTS = {"127.0.0.1", "::1", "localhost"}
@@ -122,13 +122,13 @@ def create_machine_info_alias(
 
 
 def write_hosted_workspace(root: pathlib.Path) -> pathlib.Path:
-    manifest_path = root / "spio.toml"
+    manifest_path = root / "pafio.toml"
     source_path = root / "src" / "main.styio"
     test_path = root / "tests" / "smoke.styio"
     source_path.parent.mkdir(parents=True, exist_ok=True)
     test_path.parent.mkdir(parents=True, exist_ok=True)
     manifest_path.write_text(
-        "[spio]\n"
+        "[pafio]\n"
         "manifest-version = 1\n\n"
         "[package]\n"
         "name = \"acme/view-product\"\n"
@@ -152,9 +152,9 @@ def write_hosted_workspace(root: pathlib.Path) -> pathlib.Path:
 
 
 def write_hosted_workspace_project(root: pathlib.Path) -> pathlib.Path:
-    root_manifest = root / "spio.toml"
-    app_manifest = root / "packages" / "app" / "spio.toml"
-    tool_manifest = root / "packages" / "tool" / "spio.toml"
+    root_manifest = root / "pafio.toml"
+    app_manifest = root / "packages" / "app" / "pafio.toml"
+    tool_manifest = root / "packages" / "tool" / "pafio.toml"
     app_source = root / "packages" / "app" / "src" / "main.styio"
     app_test = root / "packages" / "app" / "tests" / "smoke.styio"
     tool_source = root / "packages" / "tool" / "src" / "main.styio"
@@ -164,7 +164,7 @@ def write_hosted_workspace_project(root: pathlib.Path) -> pathlib.Path:
     tool_source.parent.mkdir(parents=True, exist_ok=True)
     tool_test.parent.mkdir(parents=True, exist_ok=True)
     root_manifest.write_text(
-        "[spio]\n"
+        "[pafio]\n"
         "manifest-version = 1\n\n"
         "[workspace]\n"
         "members = [\"packages/app\", \"packages/tool\"]\n"
@@ -172,7 +172,7 @@ def write_hosted_workspace_project(root: pathlib.Path) -> pathlib.Path:
         encoding="utf-8",
     )
     app_manifest.write_text(
-        "[spio]\n"
+        "[pafio]\n"
         "manifest-version = 1\n\n"
         "[package]\n"
         "name = \"acme/app\"\n"
@@ -191,7 +191,7 @@ def write_hosted_workspace_project(root: pathlib.Path) -> pathlib.Path:
         encoding="utf-8",
     )
     tool_manifest.write_text(
-        "[spio]\n"
+        "[pafio]\n"
         "manifest-version = 1\n\n"
         "[package]\n"
         "name = \"acme/tool\"\n"
@@ -217,12 +217,12 @@ def write_hosted_workspace_project(root: pathlib.Path) -> pathlib.Path:
 
 
 def write_hosted_failing_dependency_workspace(root: pathlib.Path) -> pathlib.Path:
-    manifest_path = root / "spio.toml"
+    manifest_path = root / "pafio.toml"
     source_path = root / "src" / "main.styio"
     source_path.parent.mkdir(parents=True, exist_ok=True)
     missing_remote = root / "missing-feed.git"
     manifest_path.write_text(
-        "[spio]\n"
+        "[pafio]\n"
         "manifest-version = 1\n\n"
         "[package]\n"
         "name = \"acme/broken-fetch\"\n"
@@ -244,11 +244,11 @@ def write_hosted_failing_dependency_workspace(root: pathlib.Path) -> pathlib.Pat
 
 
 def write_registry_publish_package(root: pathlib.Path) -> pathlib.Path:
-    manifest_path = root / "spio.toml"
+    manifest_path = root / "pafio.toml"
     source_path = root / "src" / "lib.styio"
     source_path.parent.mkdir(parents=True, exist_ok=True)
     manifest_path.write_text(
-        "[spio]\n"
+        "[pafio]\n"
         "manifest-version = 1\n\n"
         "[package]\n"
         "name = \"acme/registry-feed\"\n"
@@ -267,13 +267,13 @@ def write_registry_publish_package(root: pathlib.Path) -> pathlib.Path:
 
 
 def write_registry_consumer_project(root: pathlib.Path, fetch_root: str) -> pathlib.Path:
-    manifest_path = root / "spio.toml"
+    manifest_path = root / "pafio.toml"
     source_path = root / "src" / "main.styio"
     test_path = root / "tests" / "smoke.styio"
     source_path.parent.mkdir(parents=True, exist_ok=True)
     test_path.parent.mkdir(parents=True, exist_ok=True)
     manifest_path.write_text(
-        "[spio]\n"
+        "[pafio]\n"
         "manifest-version = 1\n\n"
         "[package]\n"
         "name = \"acme/registry-client\"\n"
@@ -301,11 +301,11 @@ def write_registry_consumer_project(root: pathlib.Path, fetch_root: str) -> path
 def write_registry_missing_consumer_project(
     root: pathlib.Path, fetch_root: str
 ) -> pathlib.Path:
-    manifest_path = root / "spio.toml"
+    manifest_path = root / "pafio.toml"
     source_path = root / "src" / "main.styio"
     source_path.parent.mkdir(parents=True, exist_ok=True)
     manifest_path.write_text(
-        "[spio]\n"
+        "[pafio]\n"
         "manifest-version = 1\n\n"
         "[package]\n"
         "name = \"acme/registry-missing-client\"\n"
@@ -328,11 +328,11 @@ def write_registry_missing_consumer_project(
 def write_hosted_registry_failure_workspace(
     root: pathlib.Path, fetch_root: str
 ) -> pathlib.Path:
-    manifest_path = root / "spio.toml"
+    manifest_path = root / "pafio.toml"
     source_path = root / "src" / "main.styio"
     source_path.parent.mkdir(parents=True, exist_ok=True)
     manifest_path.write_text(
-        "[spio]\n"
+        "[pafio]\n"
         "manifest-version = 1\n\n"
         "[package]\n"
         "name = \"acme/broken-fetch\"\n"
@@ -353,13 +353,13 @@ def write_hosted_registry_failure_workspace(
     return manifest_path
 
 
-def start_hosted_server(spio_bin: pathlib.Path) -> tuple[subprocess.Popen[str], dict[str, Any]]:
+def start_hosted_server(pafio_bin: pathlib.Path) -> tuple[subprocess.Popen[str], dict[str, Any]]:
     proc = subprocess.Popen(
         [
             sys.executable,
             str(HOSTED_SERVER),
-            "--spio-bin",
-            str(spio_bin),
+            "--pafio-bin",
+            str(pafio_bin),
             "--port",
             "0",
         ],
@@ -468,7 +468,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         description="Run the cross-repo Styio product workflow gate.",
     )
     parser.add_argument("--styio-bin", required=True)
-    parser.add_argument("--spio-bin", default=str(DEFAULT_SPIO))
+    parser.add_argument("--pafio-bin", default=str(DEFAULT_PAFIO))
     parser.add_argument("--json", action="store_true")
     return parser.parse_args(argv)
 
@@ -476,7 +476,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(sys.argv[1:] if argv is None else argv)
     styio_bin = pathlib.Path(args.styio_bin).resolve()
-    spio_bin = pathlib.Path(args.spio_bin).resolve()
+    pafio_bin = pathlib.Path(args.pafio_bin).resolve()
 
     steps: list[dict[str, Any]] = []
     scenario_reports: list[dict[str, Any]] = []
@@ -489,8 +489,8 @@ def main(argv: list[str] | None = None) -> int:
             str(SAMPLE_GATE),
             "--styio-bin",
             str(styio_bin),
-            "--spio-bin",
-            str(spio_bin),
+            "--pafio-bin",
+            str(pafio_bin),
             "--json",
         ],
         cwd=ROOT.parent,
@@ -566,7 +566,7 @@ def main(argv: list[str] | None = None) -> int:
             version="0.0.2",
             channel="stable",
         )
-        local_spio_home = temp_root / "desktop-local-spio-home"
+        local_pafio_home = temp_root / "desktop-local-pafio-home"
 
         hosted_proc: subprocess.Popen[str] | None = None
         try:
@@ -607,10 +607,10 @@ def main(argv: list[str] | None = None) -> int:
                         manifest_path_local_registry_missing
                     ),
                     "STYIO_VIEW_PRODUCT_REGISTRY_ROOT": str(registry_root_local),
-                    "STYIO_VIEW_SPIO_BIN": str(spio_bin),
+                    "STYIO_VIEW_PAFIO_BIN": str(pafio_bin),
                     "STYIO_VIEW_PRODUCT_STYIO_BIN": str(styio_bin),
                     "STYIO_VIEW_PRODUCT_STYIO_ALT_BIN": str(alternate_styio_bin),
-                    "SPIO_HOME": str(local_spio_home),
+                    "PAFIO_HOME": str(local_pafio_home),
                 }
             )
             local_view_step = run_step(
@@ -647,12 +647,12 @@ def main(argv: list[str] | None = None) -> int:
             )
             overall_ok = overall_ok and local_report_step_ok
 
-            hosted_proc, ready = start_hosted_server(spio_bin)
+            hosted_proc, ready = start_hosted_server(pafio_bin)
             steps.append(
                 {
                     "name": "hosted-server-ready",
                     "kind": "action",
-                    "command": ["spio-hosted-serve"],
+                    "command": ["pafio-hosted-serve"],
                     "returncode": 0,
                     "stdout": json.dumps(ready, sort_keys=True),
                     "stderr": "",

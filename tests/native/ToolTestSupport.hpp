@@ -11,7 +11,7 @@
 
 namespace fs = std::filesystem;
 
-namespace spio_test_support
+namespace pafio_test_support
 {
 
 class ScopedEnvVar
@@ -53,7 +53,7 @@ inline fs::path CanonicalAbsolutePath(const fs::path &path)
 
 inline fs::path MakeTempDir(const std::string &label)
 {
-  const fs::path root = fs::temp_directory_path() / "spio-native-tool-tests" / label;
+  const fs::path root = fs::temp_directory_path() / "pafio-native-tool-tests" / label;
   fs::remove_all(root);
   fs::create_directories(root);
   return root;
@@ -114,7 +114,7 @@ inline void WriteSingleBinManifest(
 {
   WriteFile(
       manifest_path,
-      "[spio]\n"
+      "[pafio]\n"
       "manifest-version = 1\n\n"
       "[package]\n"
       "name = \"" +
@@ -132,4 +132,4 @@ inline void WriteSingleBinManifest(
   WriteFile(manifest_path.parent_path() / "src/main.styio", ">_(\"app\")\n");
 }
 
-}  // namespace spio_test_support
+}  // namespace pafio_test_support

@@ -1,6 +1,6 @@
-# ADR-0009: Phase-3 `spio tree` Renders the Resolver Graph Directly
+# ADR-0009: Phase-3 `pafio tree` Renders the Resolver Graph Directly
 
-**Purpose:** Record the decision, context, alternatives, and consequences for the first native `spio tree` command in phase 3.
+**Purpose:** Record the decision, context, alternatives, and consequences for the first native `pafio tree` command in phase 3.
 
 **Last updated:** 2026-04-10
 
@@ -12,18 +12,18 @@ Accepted
 
 Phase 3 now has a real resolver for `workspace`, `path`, and pinned `git` under `single-version-v1`. The next missing user-facing capability from the phase-3 deliverables is dependency tree rendering.
 
-If `spio tree` stays stubbed, users cannot inspect the graph that `spio lock` is actually resolving. If it reads only `spio.lock`, then its behavior can drift from the active resolver whenever the adjacent lockfile is stale or absent.
+If `pafio tree` stays stubbed, users cannot inspect the graph that `pafio lock` is actually resolving. If it reads only `pafio.lock`, then its behavior can drift from the active resolver whenever the adjacent lockfile is stale or absent.
 
 ## Decision
 
-1. Activate `spio tree` in phase 3 as a native read-only command.
+1. Activate `pafio tree` in phase 3 as a native read-only command.
 2. Freeze the minimal public surface as:
-   - `spio tree`
-   - `spio tree --manifest-path <path>`
-3. `spio tree` resolves the graph directly from the selected manifest using the same resolver path as `spio lock`.
-   - it does not require an existing `spio.lock`
-   - it does not rewrite or validate `spio.lock`
-4. The command uses the same phase-3 source scope and conflict policy as `spio lock`:
+   - `pafio tree`
+   - `pafio tree --manifest-path <path>`
+3. `pafio tree` resolves the graph directly from the selected manifest using the same resolver path as `pafio lock`.
+   - it does not require an existing `pafio.lock`
+   - it does not rewrite or validate `pafio.lock`
+4. The command uses the same phase-3 source scope and conflict policy as `pafio lock`:
    - workspace packages
    - local `path` dependencies
    - pinned `git` dependencies with `rev`
@@ -39,9 +39,9 @@ If `spio tree` stays stubbed, users cannot inspect the graph that `spio lock` is
 
 ## Alternatives
 
-1. Keep `spio tree` stubbed until build orchestration exists.
+1. Keep `pafio tree` stubbed until build orchestration exists.
    - Rejected because phase 3 explicitly includes dependency tree rendering and the resolver now exists.
-2. Render only from the adjacent `spio.lock`.
+2. Render only from the adjacent `pafio.lock`.
    - Rejected because it would make `tree` depend on stale or missing lockfiles instead of the active resolver graph.
 3. Invent a separate human label format unrelated to canonical lock ids.
    - Rejected because phase 3 already has deterministic package identities and the tree command should not create a second naming scheme.

@@ -13,13 +13,13 @@ SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-from spio_registry_v2 import verify_registry_root  # noqa: E402
-from spio_registry_v2.common import RegistryV2Error  # noqa: E402
+from pafio_registry_v2 import verify_registry_root  # noqa: E402
+from pafio_registry_v2.common import RegistryV2Error  # noqa: E402
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Verify the trust metadata, append-only index, and artifacts inside a spio registry v2 root."
+        description="Verify the trust metadata, append-only index, and artifacts inside a pafio registry v2 root."
     )
     parser.add_argument(
         "--root",

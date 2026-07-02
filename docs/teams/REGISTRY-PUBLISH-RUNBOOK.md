@@ -1,6 +1,6 @@
 # Registry / Publish Runbook
 
-**Purpose:** Provide the daily-work entrypoint for `spio` registry and publish maintainers covering registry client docs, offline package expectations, publish/fetch flows, and promotion tooling.
+**Purpose:** Provide the daily-work entrypoint for `pafio` registry and publish maintainers covering registry client docs, offline package expectations, publish/fetch flows, and promotion tooling.
 
 **Last updated:** 2026-04-24
 
@@ -8,7 +8,7 @@
 
 Own registry transport, offline package expectations, and package publish/fetch
 client behavior without redefining core workflow semantics, external compiler
-contracts, or `styio-platform` server control-plane behavior.
+contracts, or `pafio` server control-plane behavior.
 
 ## Owned Surface
 
@@ -20,11 +20,11 @@ contracts, or `styio-platform` server control-plane behavior.
 ## Daily Workflow
 
 1. Keep registry transport, promotion behavior, registry-v2 static protocol, and package-manager client contract docs aligned in `docs/registry/`.
-2. Link server-side control-plane, mirror sync, and global package distribution behavior to `styio-platform` instead of adding new service implementation rules here.
+2. Link server-side control-plane, mirror sync, and global package distribution behavior to `pafio` instead of adding new service implementation rules here.
 3. Keep offline package and local import/export rules client-owned; they must not depend on mirror availability.
 4. Keep acceptance commands discoverable from the verification matrix and checkpoint health docs.
 5. Coordinate with Core / Workflow when publish/fetch behavior changes user-facing workflow outcomes.
-6. Keep `RegistryHttpTransport` as a transport-only strategy boundary. Registry semantics stay in `RemotePublish` / publish domain code, and external process execution stays in `SpioCore::Process`.
+6. Keep `RegistryHttpTransport` as a transport-only strategy boundary. Registry semantics stay in `RemotePublish` / publish domain code, and external process execution stays in `PafioCore::Process`.
 7. Keep registry control-plane references on native JSON contract and example packs; do not reintroduce generated API-description artifacts or lint gates.
 8. Keep the minimum measurable registry-management checklist visible in registry docs: publish, verify, mirror handoff, offline behavior, cache reuse, and security boundary.
 
@@ -49,4 +49,4 @@ python3 ./tests/interop/native-contract-source-gate.py
 
 ## Handoff / Recovery
 
-Record the registry mode affected, the acceptance command that still fails, whether local or remote storage assumptions changed, and whether the next fix belongs in `styio-spio` client code or `styio-platform` service code.
+Record the registry mode affected, the acceptance command that still fails, whether local or remote storage assumptions changed, and whether the next fix belongs in `pafio` client code or `pafio` service code.

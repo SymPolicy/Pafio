@@ -1,6 +1,6 @@
 # Team Runbook Template
 
-**Purpose:** Provide the required section template for `spio` team runbooks so owner-gate automation and human reviewers share the same shape.
+**Purpose:** Provide the required section template for `pafio` team runbooks so owner-gate automation and human reviewers share the same shape.
 
 **Last updated:** 2026-04-19
 

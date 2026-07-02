@@ -13,13 +13,13 @@ SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-from spio_registry_v2 import generate_key_directory  # noqa: E402
-from spio_registry_v2.common import RegistryV2Error  # noqa: E402
+from pafio_registry_v2 import generate_key_directory  # noqa: E402
+from pafio_registry_v2.common import RegistryV2Error  # noqa: E402
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Generate the Ed25519 signing keys used by the spio registry v2 metadata roles."
+        description="Generate the Ed25519 signing keys used by the pafio registry v2 metadata roles."
     )
     parser.add_argument(
         "--output-dir",

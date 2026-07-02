@@ -114,7 +114,7 @@ def main() -> int:
     if contract.get("schema_version") != 1:
         print("schema_version must be 1", file=sys.stderr)
         return 1
-    if contract.get("base_path") != "/api/spio-registry-control/v1":
+    if contract.get("base_path") != "/api/pafio-registry-control/v1":
         print("base_path drift detected", file=sys.stderr)
         return 1
     snapshot = [(item["id"], item["method"], item["path"]) for item in contract["operations"]]

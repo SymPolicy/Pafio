@@ -10,4 +10,4 @@
 
 | Path | Entry | Summary |
 |------|-------|---------|
-| `for-styio/` | [Styio Handoff Index](./for-styio/INDEX.md) | Hold the styio knowledge pack and public interface expectations required by spio developers. |
+| `for-styio/` | [Styio Handoff Index](./for-styio/INDEX.md) | Hold the styio knowledge pack and public interface expectations required by pafio developers. |

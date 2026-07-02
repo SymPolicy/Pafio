@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-TARGET="${1:-<spio-workspace>}"
+TARGET="${1:-<pafio-workspace>}"
 
 mkdir -p "$TARGET"
 
@@ -17,4 +17,4 @@ rsync -a \
   "${EXCLUDE_ARGS[@]}" \
   "$ROOT"/ "$TARGET"/
 
-echo "copied spio subtree to: $TARGET"
+echo "copied pafio subtree to: $TARGET"

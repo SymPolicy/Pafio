@@ -19,7 +19,7 @@ Primary paths:
 
 Key SSOTs:
 
-1. `Verification matrix -> ../operations/Spio-Verification-Matrix.md`
+1. `Verification matrix -> ../operations/Pafio-Verification-Matrix.md`
 2. `Tests README -> ../../tests/README.md`
 3. `Scripts README -> ../../scripts/README.md`
 

@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-TOOL_VENV="${STYIO_SPIO_TOOL_VENV:-$HOME/.local/venvs/styio-spio-tools}"
+TOOL_VENV="${PAFIO_TOOL_VENV:-$HOME/.local/venvs/pafio-tools}"
 DEBIAN_STANDARD_VERSION="${STYIO_TOOLCHAIN_DEBIAN_STANDARD_VERSION:-13}"
 LLVM_STANDARD_SERIES="${STYIO_TOOLCHAIN_LLVM_STANDARD_SERIES:-18.1.x}"
 CMAKE_STANDARD_VERSION="${STYIO_TOOLCHAIN_CMAKE_STANDARD_VERSION:-3.31.6}"
@@ -12,11 +12,11 @@ usage() {
   cat <<EOF
 Usage: $(basename "$0")
 
-Install the Debian/Ubuntu packages required to build and test spio on a fresh
+Install the Debian/Ubuntu packages required to build and test pafio on a fresh
 Linux container or VM.
 
 Optional environment:
-  STYIO_SPIO_TOOL_VENV      Python virtualenv used for standardized cmake/ctest
+  PAFIO_TOOL_VENV      Python virtualenv used for standardized cmake/ctest
                             Default: $TOOL_VENV
 
 Standardized baseline shared with styio-nightly:
@@ -28,11 +28,11 @@ EOF
 }
 
 log() {
-  printf '[spio env] %s\n' "$*"
+  printf '[pafio env] %s\n' "$*"
 }
 
 fail() {
-  printf '[spio env] %s\n' "$*" >&2
+  printf '[pafio env] %s\n' "$*" >&2
   exit 1
 }
 
@@ -108,7 +108,7 @@ install_python_tooling() {
 print_summary() {
   cat <<EOF
 
-spio bootstrap complete.
+pafio bootstrap complete.
 
 Standardized baseline:
   Debian:        $DEBIAN_STANDARD_VERSION (trixie)

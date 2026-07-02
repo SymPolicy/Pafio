@@ -1,6 +1,6 @@
 # compile-plan v1
 
-**Purpose:** Define the first machine-readable build plan that `spio` can emit and `styio` can consume through `--compile-plan`.
+**Purpose:** Define the first machine-readable build plan that `pafio` can emit and `styio` can consume through `--compile-plan`.
 
 **Last updated:** 2026-04-12
 

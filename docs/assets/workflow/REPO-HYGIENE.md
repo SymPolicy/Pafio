@@ -1,6 +1,6 @@
 # Repository Hygiene
 
-**Purpose:** Define the repository hygiene entrypoint for `spio` so contributors and CI use one script to reject generated artifacts, dependency payloads, and undocumented binary blobs.
+**Purpose:** Define the repository hygiene entrypoint for `pafio` so contributors and CI use one script to reject generated artifacts, dependency payloads, and undocumented binary blobs.
 
 **Last updated:** 2026-04-19
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SPIO_BIN="${1:?expected spio binary path}"
+PAFIO_BIN="${1:?expected pafio binary path}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 TMP_ROOT="$(mktemp -d)"
@@ -23,7 +23,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
-export SPIO_HOME="$TMP_ROOT/.spio-home"
+export PAFIO_HOME="$TMP_ROOT/.pafio-home"
 KEY_DIR="$TMP_ROOT/keys"
 WRITE_ROOT="$TMP_ROOT/upload-root"
 READ_ROOT="$TMP_ROOT/read-root"
@@ -54,7 +54,7 @@ python3 "$ROOT_DIR/scripts/registry-v2-keygen.py" --output-dir "$KEY_DIR" >/dev/
 python3 "$ROOT_DIR/scripts/registry-v2-control-plane-server.py" \
   --root "$WRITE_ROOT" \
   --key-dir "$KEY_DIR" \
-  --spio-bin "$SPIO_BIN" \
+  --pafio-bin "$PAFIO_BIN" \
   --bind 127.0.0.1 \
   --port "$write_port" >"$WRITE_LOG" 2>&1 &
 WRITE_SERVER_PID="$!"
@@ -62,7 +62,7 @@ WRITE_SERVER_PID="$!"
 python3 -m http.server "$read_port" --bind 127.0.0.1 --directory "$READ_ROOT" >"$READ_LOG" 2>&1 &
 READ_SERVER_PID="$!"
 
-WRITE_URL="http://127.0.0.1:${write_port}/api/spio-registry-control/v1"
+WRITE_URL="http://127.0.0.1:${write_port}/api/pafio-registry-control/v1"
 READ_URL="http://127.0.0.1:${read_port}"
 
 for _ in $(seq 1 30); do
@@ -74,8 +74,8 @@ done
 curl -fsS "${WRITE_URL}/status" >/dev/null
 curl -fsS "${READ_URL}/" >/dev/null
 
-cat >"$TMP_ROOT/publish/util/spio.toml" <<'EOF'
-[spio]
+cat >"$TMP_ROOT/publish/util/pafio.toml" <<'EOF'
+[pafio]
 manifest-version = 1
 
 [package]
@@ -96,7 +96,7 @@ cat >"$TMP_ROOT/publish/util/src/lib.styio" <<'EOF'
 # util
 EOF
 
-PUBLISH_JSON="$("$SPIO_BIN" --json publish --manifest-path "$TMP_ROOT/publish/util/spio.toml" --registry "$WRITE_URL")"
+PUBLISH_JSON="$("$PAFIO_BIN" --json publish --manifest-path "$TMP_ROOT/publish/util/pafio.toml" --registry "$WRITE_URL")"
 python3 - "$PUBLISH_JSON" <<'PY'
 import json
 import sys
@@ -109,8 +109,8 @@ assert payload["package"] == "acme/util"
 assert payload["registry_index_path"].endswith("index/acme/util.jsonl")
 PY
 
-cat >"$TMP_ROOT/spio.toml" <<EOF
-[spio]
+cat >"$TMP_ROOT/pafio.toml" <<EOF
+[pafio]
 manifest-version = 1
 
 [package]
@@ -130,7 +130,7 @@ path = "src/main.styio"
 util = { package = "acme/util", version = "0.2.0", registry = "${READ_URL}" }
 EOF
 
-if "$SPIO_BIN" fetch --manifest-path "$TMP_ROOT/spio.toml" >/dev/null 2>&1; then
+if "$PAFIO_BIN" fetch --manifest-path "$TMP_ROOT/pafio.toml" >/dev/null 2>&1; then
   echo "fetch unexpectedly succeeded from read origin before promotion" >&2
   exit 1
 fi
@@ -153,7 +153,7 @@ assert payload["files_total"] >= 1
 assert payload["verified"]["ok"] is True
 PY
 
-FETCH_JSON="$("$SPIO_BIN" --json fetch --manifest-path "$TMP_ROOT/spio.toml")"
+FETCH_JSON="$("$PAFIO_BIN" --json fetch --manifest-path "$TMP_ROOT/pafio.toml")"
 python3 - "$FETCH_JSON" <<'PY'
 import json
 import sys
@@ -163,7 +163,7 @@ assert payload["registry_packages"] == 1
 assert payload["packages"] == 2
 PY
 
-if "$SPIO_BIN" publish --manifest-path "$TMP_ROOT/publish/util/spio.toml" --registry "$WRITE_URL" >/dev/null 2>&1; then
+if "$PAFIO_BIN" publish --manifest-path "$TMP_ROOT/publish/util/pafio.toml" --registry "$WRITE_URL" >/dev/null 2>&1; then
   echo "duplicate publish to write origin unexpectedly succeeded" >&2
   exit 1
 fi
