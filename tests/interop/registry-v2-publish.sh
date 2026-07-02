@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SPIO_BIN="${1:?expected spio binary path}"
+PAFIO_BIN="${1:?expected pafio binary path}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 ROOT="$(mktemp -d)"
@@ -11,14 +11,14 @@ cleanup() {
 }
 trap cleanup EXIT
 
-export SPIO_HOME="$ROOT/.spio-home"
+export PAFIO_HOME="$ROOT/.pafio-home"
 KEY_DIR="$ROOT/keys"
 V2_ROOT="$ROOT/registry-v2"
 PACKAGE_ROOT="$ROOT/publish/util"
 mkdir -p "$PACKAGE_ROOT/src"
 
-cat >"$PACKAGE_ROOT/spio.toml" <<'EOF'
-[spio]
+cat >"$PACKAGE_ROOT/pafio.toml" <<'EOF'
+[pafio]
 manifest-version = 1
 
 [package]
@@ -48,8 +48,8 @@ FIRST_JSON="$(
   python3 "$REPO_ROOT/scripts/registry-v2-publish.py" \
     --root "$V2_ROOT" \
     --key-dir "$KEY_DIR" \
-    --manifest-path "$PACKAGE_ROOT/spio.toml" \
-    --spio-bin "$SPIO_BIN" \
+    --manifest-path "$PACKAGE_ROOT/pafio.toml" \
+    --pafio-bin "$PAFIO_BIN" \
     --publisher-id "interop-test"
 )"
 
@@ -70,7 +70,7 @@ assert candidate["command"] == "publish"
 assert candidate["mode"] == "dry-run"
 PY
 
-python3 - "$PACKAGE_ROOT/spio.toml" <<'PY'
+python3 - "$PACKAGE_ROOT/pafio.toml" <<'PY'
 from pathlib import Path
 path = Path(__import__("sys").argv[1])
 text = path.read_text(encoding="utf-8")
@@ -81,8 +81,8 @@ SECOND_JSON="$(
   python3 "$REPO_ROOT/scripts/registry-v2-publish.py" \
     --root "$V2_ROOT" \
     --key-dir "$KEY_DIR" \
-    --manifest-path "$PACKAGE_ROOT/spio.toml" \
-    --spio-bin "$SPIO_BIN" \
+    --manifest-path "$PACKAGE_ROOT/pafio.toml" \
+    --pafio-bin "$PAFIO_BIN" \
     --publisher-id "interop-test"
 )"
 
@@ -101,8 +101,8 @@ PY
 if python3 "$REPO_ROOT/scripts/registry-v2-publish.py" \
   --root "$V2_ROOT" \
   --key-dir "$KEY_DIR" \
-  --manifest-path "$PACKAGE_ROOT/spio.toml" \
-  --spio-bin "$SPIO_BIN" \
+  --manifest-path "$PACKAGE_ROOT/pafio.toml" \
+  --pafio-bin "$PAFIO_BIN" \
   --publisher-id "interop-test" >/dev/null 2>&1; then
   echo "duplicate registry v2 publish unexpectedly succeeded" >&2
   exit 1

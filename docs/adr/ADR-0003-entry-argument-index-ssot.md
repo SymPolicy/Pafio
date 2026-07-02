@@ -10,13 +10,13 @@ Accepted
 
 ## Context
 
-`spio` parameters were drifting across governance documents, helper scripts, and native implementation code. The command surface was documented, but detailed argument spellings were only partially visible in contracts and partially inferable from source.
+`pafio` parameters were drifting across governance documents, helper scripts, and native implementation code. The command surface was documented, but detailed argument spellings were only partially visible in contracts and partially inferable from source.
 
 The repository owner explicitly requested that scattered parameters be collected into a single entry-index document.
 
 ## Decision
 
-1. Add `docs/governance/Spio-Entry-Argument-Index.md` as the single index for:
+1. Add `docs/governance/Pafio-Entry-Argument-Index.md` as the single index for:
    - global CLI flags
    - implemented per-command arguments
    - helper-script arguments

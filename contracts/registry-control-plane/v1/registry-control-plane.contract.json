@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "contract_name": "spio registry control plane",
+  "contract_name": "pafio registry control plane",
   "contract_version": "v1",
-  "base_path": "/api/spio-registry-control/v1",
+  "base_path": "/api/pafio-registry-control/v1",
   "operations": [
     {
       "id": "registryStatus",

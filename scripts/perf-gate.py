@@ -16,10 +16,10 @@ from dataclasses import dataclass
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-SPIO = ROOT / "scripts" / "spio"
+PAFIO = ROOT / "scripts" / "pafio"
 BASELINE = ROOT / "tests" / "perf" / "baseline.json"
-FIXTURE_MANIFEST = ROOT / "tests" / "unit" / "fixtures" / "manifests" / "ok-single-package" / "spio.toml"
-FIXTURE_LOCK = ROOT / "tests" / "unit" / "fixtures" / "locks" / "ok-basic" / "spio.lock"
+FIXTURE_MANIFEST = ROOT / "tests" / "unit" / "fixtures" / "manifests" / "ok-single-package" / "pafio.toml"
+FIXTURE_LOCK = ROOT / "tests" / "unit" / "fixtures" / "locks" / "ok-basic" / "pafio.lock"
 DEFAULT_RUNS = 5
 DEFAULT_WARMUP_RUNS = 1
 DEFAULT_THRESHOLD_PERCENT = 15.0
@@ -42,8 +42,8 @@ def percentile(values: list[float], percentile_value: float) -> float:
 def prepare_project(root: pathlib.Path) -> pathlib.Path:
     project = root / "perf-project"
     project.mkdir()
-    shutil.copy2(FIXTURE_MANIFEST, project / "spio.toml")
-    shutil.copy2(FIXTURE_LOCK, project / "spio.lock")
+    shutil.copy2(FIXTURE_MANIFEST, project / "pafio.toml")
+    shutil.copy2(FIXTURE_LOCK, project / "pafio.lock")
     source_dir = project / "src"
     source_dir.mkdir()
     (source_dir / "lib.styio").write_text("// perf fixture\n", encoding="utf-8")
@@ -51,16 +51,16 @@ def prepare_project(root: pathlib.Path) -> pathlib.Path:
 
 
 def build_benchmarks(project: pathlib.Path) -> list[Benchmark]:
-    manifest = project / "spio.toml"
+    manifest = project / "pafio.toml"
     return [
-        Benchmark("machine_info_json", [str(SPIO), "machine-info", "--json"], ROOT),
-        Benchmark("help", [str(SPIO), "--help"], ROOT),
-        Benchmark("check_single_package", [str(SPIO), "check", "--manifest-path", str(manifest)], project),
-        Benchmark("lock_check_single_package", [str(SPIO), "lock", "--manifest-path", str(manifest), "--check"], project),
-        Benchmark("tree_single_package", [str(SPIO), "tree", "--manifest-path", str(manifest)], project),
+        Benchmark("machine_info_json", [str(PAFIO), "machine-info", "--json"], ROOT),
+        Benchmark("help", [str(PAFIO), "--help"], ROOT),
+        Benchmark("check_single_package", [str(PAFIO), "check", "--manifest-path", str(manifest)], project),
+        Benchmark("lock_check_single_package", [str(PAFIO), "lock", "--manifest-path", str(manifest), "--check"], project),
+        Benchmark("tree_single_package", [str(PAFIO), "tree", "--manifest-path", str(manifest)], project),
         Benchmark(
             "build_dry_run_single_package",
-            [str(SPIO), "build", "--manifest-path", str(manifest), "--dry-run"],
+            [str(PAFIO), "build", "--manifest-path", str(manifest), "--dry-run"],
             project,
         ),
     ]
@@ -195,7 +195,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.update_baseline and os.environ.get("CI"):
         parser.error("--update-baseline is not allowed in CI")
 
-    with tempfile.TemporaryDirectory(prefix="spio-perf-gate-") as temp_dir:
+    with tempfile.TemporaryDirectory(prefix="pafio-perf-gate-") as temp_dir:
         project = prepare_project(pathlib.Path(temp_dir))
         results = [
             run_benchmark(benchmark, args.runs, args.warmup_runs)

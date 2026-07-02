@@ -30,7 +30,7 @@ COLLECTION_DIRS = [
     Path("docs/teams"),
 ]
 INDEX_META = {
-    "docs": ("spio Docs Index", "Provide the generated inventory for `docs/`; directory boundaries and maintenance rules live in [README.md](./README.md)."),
+    "docs": ("pafio Docs Index", "Provide the generated inventory for `docs/`; directory boundaries and maintenance rules live in [README.md](./README.md)."),
     "docs/adr": ("ADR Index", "Provide the generated inventory for `docs/adr/`; decision-record conventions live in [README.md](./README.md)."),
     "docs/audit": ("Audit Index", "Provide the generated inventory for `docs/audit/`; transient defect records live in ignored `docs/audit/defects/` and are enforced by external `audit` runs."),
     "docs/assets": ("Assets Index", "Provide the generated inventory for `docs/assets/`; reusable workflow assets live in [README.md](./README.md)."),
@@ -192,7 +192,7 @@ def sync_indexes(check: bool) -> int:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Generate or verify spio docs INDEX.md files.")
+    parser = argparse.ArgumentParser(description="Generate or verify pafio docs INDEX.md files.")
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--write", action="store_true")
     group.add_argument("--check", action="store_true")

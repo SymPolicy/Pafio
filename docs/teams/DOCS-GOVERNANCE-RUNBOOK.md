@@ -1,6 +1,6 @@
 # Docs / Governance Runbook
 
-**Purpose:** Provide the daily-work entrypoint for maintainers of `spio`'s written contracts, documentation topology, ADR hygiene, planning handoff, and repository-facing governance text.
+**Purpose:** Provide the daily-work entrypoint for maintainers of `pafio`'s written contracts, documentation topology, ADR hygiene, planning handoff, and repository-facing governance text.
 
 **Last updated:** 2026-04-17
 
@@ -31,8 +31,8 @@ Key SSOTs:
 2. `Ecosystem milestone mirror -> ../planning/Styio-Ecosystem-Delivery-Master-Plan.md`
 3. `File-governance mirror -> ../planning/Styio-Ecosystem-File-Governance-Alignment-Plan.md`
 4. `Current state -> ../rollups/CURRENT-STATE.md`
-5. `Master plan -> ../planning/Spio-Master-Plan.md`
-6. `Future direction and coordination -> ../planning/Spio-Future-Direction-and-Styio-Coordination.md`
+5. `Master plan -> ../planning/Pafio-Master-Plan.md`
+6. `Future direction and coordination -> ../planning/Pafio-Future-Direction-and-Styio-Coordination.md`
 
 ## Daily Workflow
 

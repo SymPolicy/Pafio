@@ -61,7 +61,7 @@ def require_string(value: Any, context: str, errors: list[str]) -> str:
 
 def validate_contract(contract: dict[str, Any], errors: list[str]) -> None:
     require(contract.get("schema_version") == 1, "contract.schema_version must equal 1", errors)
-    require(contract.get("protocol") == "spio-static-registry", "contract.protocol drift detected", errors)
+    require(contract.get("protocol") == "pafio-static-registry", "contract.protocol drift detected", errors)
     require(contract.get("protocol_version") == 2, "contract.protocol_version must equal 2", errors)
     read_plane = require_object(contract.get("read_plane"), "contract.read_plane", errors)
     require(read_plane.get("marker") == "config.json", "contract.read_plane.marker must equal config.json", errors)
@@ -97,7 +97,7 @@ def validate_envelope(name: str, payload: Any, expected_type: str, errors: list[
 def validate_examples(examples: dict[str, Any], errors: list[str]) -> None:
     require(set(examples.keys()) == EXPECTED_EXAMPLES, "registry-v2 examples key set drift detected", errors)
     config = require_object(examples.get("config"), "examples.config", errors)
-    require(config.get("protocol") == "spio-static-registry", "examples.config.protocol drift detected", errors)
+    require(config.get("protocol") == "pafio-static-registry", "examples.config.protocol drift detected", errors)
     require(config.get("protocol_version") == 2, "examples.config.protocol_version must equal 2", errors)
     validate_envelope("root", examples.get("root"), "root", errors)
     validate_envelope("timestamp", examples.get("timestamp"), "timestamp", errors)

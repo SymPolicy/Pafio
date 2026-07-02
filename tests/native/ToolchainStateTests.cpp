@@ -1,5 +1,5 @@
-#include "SpioCLI/CLI.hpp"
-#include "SpioCore/Errors.hpp"
+#include "PafioCLI/CLI.hpp"
+#include "PafioCore/Errors.hpp"
 
 #include "ToolTestSupport.hpp"
 
@@ -11,16 +11,16 @@
 
 namespace fs = std::filesystem;
 using json = nlohmann::json;
-using namespace spio_test_support;
+using namespace pafio_test_support;
 
 TEST(ToolchainStateTests, UseBuildWritesProjectToolchainState)
 {
   const fs::path root = MakeTempDir("toolchain-state-use-build");
-  const fs::path manifest_path = root / "project/spio.toml";
+  const fs::path manifest_path = root / "project/pafio.toml";
   WriteSingleBinManifest(manifest_path);
 
   testing::internal::CaptureStdout();
-  const int exit_code = spio::RunCli({
+  const int exit_code = pafio::RunCli({
       "--json",
       "use",
       "build",
@@ -29,13 +29,13 @@ TEST(ToolchainStateTests, UseBuildWritesProjectToolchainState)
   });
   const std::string stdout_text = testing::internal::GetCapturedStdout();
 
-  EXPECT_EQ(exit_code, spio::kExitSuccess);
+  EXPECT_EQ(exit_code, pafio::kExitSuccess);
   const json payload = json::parse(stdout_text);
   EXPECT_EQ(payload.at("mode").get<std::string>(), "build");
   EXPECT_EQ(payload.at("channel").get<std::string>(), "stable");
   EXPECT_EQ(payload.at("build_mode").get<std::string>(), "minimal");
 
-  const std::string state_text = ReadFile(root / "project/spio-toolchain.lock");
+  const std::string state_text = ReadFile(root / "project/pafio-toolchain.lock");
   EXPECT_NE(state_text.find("mode = \"build\""), std::string::npos);
   EXPECT_NE(state_text.find("channel = \"stable\""), std::string::npos);
   EXPECT_NE(state_text.find("build = \"minimal\""), std::string::npos);
@@ -44,11 +44,11 @@ TEST(ToolchainStateTests, UseBuildWritesProjectToolchainState)
 TEST(ToolchainStateTests, SetChannelSupportsCanonicalAndCompactSyntax)
 {
   const fs::path root = MakeTempDir("toolchain-state-set-channel");
-  const fs::path manifest_path = root / "project/spio.toml";
+  const fs::path manifest_path = root / "project/pafio.toml";
   WriteSingleBinManifest(manifest_path);
 
   EXPECT_EQ(
-      spio::RunCli({
+      pafio::RunCli({
           "set",
           "channel",
           "as",
@@ -56,19 +56,19 @@ TEST(ToolchainStateTests, SetChannelSupportsCanonicalAndCompactSyntax)
           "--manifest-path",
           manifest_path.string(),
       }),
-      spio::kExitSuccess);
+      pafio::kExitSuccess);
 
   EXPECT_EQ(
-      spio::RunCli({
+      pafio::RunCli({
           "set",
           "build",
           "minimal",
           "--manifest-path",
           manifest_path.string(),
       }),
-      spio::kExitSuccess);
+      pafio::kExitSuccess);
 
-  const std::string state_text = ReadFile(root / "project/spio-toolchain.lock");
+  const std::string state_text = ReadFile(root / "project/pafio-toolchain.lock");
   EXPECT_NE(state_text.find("channel = \"nightly\""), std::string::npos);
   EXPECT_NE(state_text.find("build = \"minimal\""), std::string::npos);
 }
@@ -76,11 +76,11 @@ TEST(ToolchainStateTests, SetChannelSupportsCanonicalAndCompactSyntax)
 TEST(ToolchainStateTests, SetRiskLaneAndSecurityPersistCloudPreferences)
 {
   const fs::path root = MakeTempDir("toolchain-state-set-cloud");
-  const fs::path manifest_path = root / "project/spio.toml";
+  const fs::path manifest_path = root / "project/pafio.toml";
   WriteSingleBinManifest(manifest_path);
 
   EXPECT_EQ(
-      spio::RunCli({
+      pafio::RunCli({
           "set",
           "risk",
           "as",
@@ -88,18 +88,18 @@ TEST(ToolchainStateTests, SetRiskLaneAndSecurityPersistCloudPreferences)
           "--manifest-path",
           manifest_path.string(),
       }),
-      spio::kExitSuccess);
+      pafio::kExitSuccess);
   EXPECT_EQ(
-      spio::RunCli({
+      pafio::RunCli({
           "set",
           "lane",
           "warm-shared",
           "--manifest-path",
           manifest_path.string(),
       }),
-      spio::kExitSuccess);
+      pafio::kExitSuccess);
   EXPECT_EQ(
-      spio::RunCli({
+      pafio::RunCli({
           "set",
           "security",
           "as",
@@ -107,9 +107,9 @@ TEST(ToolchainStateTests, SetRiskLaneAndSecurityPersistCloudPreferences)
           "--manifest-path",
           manifest_path.string(),
       }),
-      spio::kExitSuccess);
+      pafio::kExitSuccess);
 
-  const std::string state_text = ReadFile(root / "project/spio-toolchain.lock");
+  const std::string state_text = ReadFile(root / "project/pafio-toolchain.lock");
   EXPECT_NE(state_text.find("risk = \"trusted-internal\""), std::string::npos);
   EXPECT_NE(state_text.find("lane = \"warm-shared\""), std::string::npos);
   EXPECT_NE(state_text.find("security = \"trusted-warm\""), std::string::npos);
@@ -118,11 +118,11 @@ TEST(ToolchainStateTests, SetRiskLaneAndSecurityPersistCloudPreferences)
 TEST(ToolchainStateTests, CloudStatusDefaultsToIsolatedExecutionForUntrustedProjects)
 {
   const fs::path root = MakeTempDir("cloud-status-default-isolated");
-  const fs::path manifest_path = root / "project/spio.toml";
+  const fs::path manifest_path = root / "project/pafio.toml";
   WriteSingleBinManifest(manifest_path);
 
   testing::internal::CaptureStdout();
-  const int exit_code = spio::RunCli({
+  const int exit_code = pafio::RunCli({
       "--json",
       "cloud",
       "status",
@@ -131,7 +131,7 @@ TEST(ToolchainStateTests, CloudStatusDefaultsToIsolatedExecutionForUntrustedProj
   });
   const std::string stdout_text = testing::internal::GetCapturedStdout();
 
-  EXPECT_EQ(exit_code, spio::kExitSuccess);
+  EXPECT_EQ(exit_code, pafio::kExitSuccess);
   const json payload = json::parse(stdout_text);
   EXPECT_EQ(payload.at("command").get<std::string>(), "cloud status");
   EXPECT_EQ(payload.at("toolchain_mode").get<std::string>(), "binary");
@@ -152,11 +152,11 @@ TEST(ToolchainStateTests, CloudStatusDefaultsToIsolatedExecutionForUntrustedProj
 TEST(ToolchainStateTests, CloudStatusFallsBackFromWarmSharedForUntrustedProjects)
 {
   const fs::path root = MakeTempDir("cloud-status-fallback");
-  const fs::path manifest_path = root / "project/spio.toml";
+  const fs::path manifest_path = root / "project/pafio.toml";
   WriteSingleBinManifest(manifest_path);
 
   EXPECT_EQ(
-      spio::RunCli({
+      pafio::RunCli({
           "set",
           "lane",
           "as",
@@ -164,10 +164,10 @@ TEST(ToolchainStateTests, CloudStatusFallsBackFromWarmSharedForUntrustedProjects
           "--manifest-path",
           manifest_path.string(),
       }),
-      spio::kExitSuccess);
+      pafio::kExitSuccess);
 
   testing::internal::CaptureStdout();
-  const int exit_code = spio::RunCli({
+  const int exit_code = pafio::RunCli({
       "--json",
       "cloud",
       "status",
@@ -176,7 +176,7 @@ TEST(ToolchainStateTests, CloudStatusFallsBackFromWarmSharedForUntrustedProjects
   });
   const std::string stdout_text = testing::internal::GetCapturedStdout();
 
-  EXPECT_EQ(exit_code, spio::kExitSuccess);
+  EXPECT_EQ(exit_code, pafio::kExitSuccess);
   const json payload = json::parse(stdout_text);
   EXPECT_EQ(payload.at("preferred_execution_lane").get<std::string>(), "warm-shared");
   EXPECT_TRUE(payload.at("cloud").at("fallback_applied").get<bool>());
@@ -189,11 +189,11 @@ TEST(ToolchainStateTests, CloudStatusFallsBackFromWarmSharedForUntrustedProjects
 TEST(ToolchainStateTests, CloudStatusKeepsWarmSharedExecutionForTrustedInternalProjects)
 {
   const fs::path root = MakeTempDir("cloud-status-warm-shared");
-  const fs::path manifest_path = root / "project/spio.toml";
+  const fs::path manifest_path = root / "project/pafio.toml";
   WriteSingleBinManifest(manifest_path);
 
   EXPECT_EQ(
-      spio::RunCli({
+      pafio::RunCli({
           "set",
           "risk",
           "as",
@@ -201,9 +201,9 @@ TEST(ToolchainStateTests, CloudStatusKeepsWarmSharedExecutionForTrustedInternalP
           "--manifest-path",
           manifest_path.string(),
       }),
-      spio::kExitSuccess);
+      pafio::kExitSuccess);
   EXPECT_EQ(
-      spio::RunCli({
+      pafio::RunCli({
           "set",
           "lane",
           "as",
@@ -211,9 +211,9 @@ TEST(ToolchainStateTests, CloudStatusKeepsWarmSharedExecutionForTrustedInternalP
           "--manifest-path",
           manifest_path.string(),
       }),
-      spio::kExitSuccess);
+      pafio::kExitSuccess);
   EXPECT_EQ(
-      spio::RunCli({
+      pafio::RunCli({
           "set",
           "security",
           "as",
@@ -221,10 +221,10 @@ TEST(ToolchainStateTests, CloudStatusKeepsWarmSharedExecutionForTrustedInternalP
           "--manifest-path",
           manifest_path.string(),
       }),
-      spio::kExitSuccess);
+      pafio::kExitSuccess);
 
   testing::internal::CaptureStdout();
-  const int exit_code = spio::RunCli({
+  const int exit_code = pafio::RunCli({
       "--json",
       "cloud",
       "status",
@@ -233,7 +233,7 @@ TEST(ToolchainStateTests, CloudStatusKeepsWarmSharedExecutionForTrustedInternalP
   });
   const std::string stdout_text = testing::internal::GetCapturedStdout();
 
-  EXPECT_EQ(exit_code, spio::kExitSuccess);
+  EXPECT_EQ(exit_code, pafio::kExitSuccess);
   const json payload = json::parse(stdout_text);
   EXPECT_EQ(payload.at("cloud").at("execution_lane").get<std::string>(), "warm-shared");
   EXPECT_EQ(payload.at("cloud").at("worker_trust_tier").get<std::string>(), "internal-warm");

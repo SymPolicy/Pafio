@@ -1,6 +1,6 @@
 # Next Stage Gap Ledger
 
-**Purpose:** Track the active gaps that still separate `spio` from the shared three-repo file-governance baseline; this ledger compresses governance debt into checkpoint-sized follow-up work.
+**Purpose:** Track the active gaps that still separate `pafio` from the shared three-repo file-governance baseline; this ledger compresses governance debt into checkpoint-sized follow-up work.
 
 **Last updated:** 2026-04-17
 
@@ -11,7 +11,7 @@
 
 ## Exit Condition
 
-This ledger can move to maintenance mode once `spio` has:
+This ledger can move to maintenance mode once `pafio` has:
 
 1. active/history/archive layering,
 2. script-backed indexes and lifecycle checks,

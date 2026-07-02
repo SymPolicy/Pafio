@@ -1,6 +1,6 @@
 # hosted-control-plane v1
 
-**Purpose:** Define the first native JSON HTTP contract package for the repo-hosted and cloud-hosted workspace API consumed by `styio-view` and any future `spio` control console frontend.
+**Purpose:** Define the first native JSON HTTP contract package for the repo-hosted and cloud-hosted workspace API consumed by `styio-view` and any future `pafio` control console frontend.
 
 **Last updated:** 2026-04-24
 

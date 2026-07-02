@@ -46,7 +46,7 @@ Positive:
 
 Negative:
 
-- promotion is still infrastructure work outside `spio publish`
+- promotion is still infrastructure work outside `pafio publish`
 - the helper is intentionally local-filesystem-oriented and does not replace cloud-native replication systems
 
 ## Follow-On Work

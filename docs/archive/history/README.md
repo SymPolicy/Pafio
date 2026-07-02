@@ -1,6 +1,6 @@
 # Archive History Docs
 
-**Purpose:** Hold raw historical `spio` daily notes after they are no longer active in `docs/history/`; these files preserve provenance without competing with the active recovery surface.
+**Purpose:** Hold raw historical `pafio` daily notes after they are no longer active in `docs/history/`; these files preserve provenance without competing with the active recovery surface.
 
 **Last updated:** 2026-04-17
 

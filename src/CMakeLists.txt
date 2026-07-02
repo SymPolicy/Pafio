@@ -1,127 +1,127 @@
-add_library(spio_build_config INTERFACE)
-target_include_directories(spio_build_config INTERFACE "${CMAKE_SOURCE_DIR}/src")
+add_library(pafio_build_config INTERFACE)
+target_include_directories(pafio_build_config INTERFACE "${CMAKE_SOURCE_DIR}/src")
 if(EXISTS "${CMAKE_SOURCE_DIR}/src-private")
-  target_include_directories(spio_build_config INTERFACE "${CMAKE_SOURCE_DIR}/src-private")
+  target_include_directories(pafio_build_config INTERFACE "${CMAKE_SOURCE_DIR}/src-private")
 endif()
-target_compile_definitions(spio_build_config INTERFACE
-  "SPIO_PROJECT_ROOT=\"${CMAKE_SOURCE_DIR}\""
-  "SPIO_PROJECT_VERSION=\"${PROJECT_VERSION}-dev\""
+target_compile_definitions(pafio_build_config INTERFACE
+  "PAFIO_PROJECT_ROOT=\"${CMAKE_SOURCE_DIR}\""
+  "PAFIO_PROJECT_VERSION=\"${PROJECT_VERSION}-dev\""
 )
-target_link_libraries(spio_build_config INTERFACE tomlplusplus::tomlplusplus nlohmann_json::nlohmann_json)
+target_link_libraries(pafio_build_config INTERFACE tomlplusplus::tomlplusplus nlohmann_json::nlohmann_json)
 
-function(spio_add_internal_static_library target)
+function(pafio_add_internal_static_library target)
   add_library(${target} STATIC ${ARGN})
-  target_link_libraries(${target} PUBLIC spio_build_config)
+  target_link_libraries(${target} PUBLIC pafio_build_config)
 endfunction()
 
-set(SPIO_FOUNDATION_SOURCES
-    SpioCompat/Compat.cpp
-    SpioCore/Paths.cpp
-    SpioCore/Process.cpp
-    SpioCore/Sha256.cpp
+set(PAFIO_FOUNDATION_SOURCES
+    PafioCompat/Compat.cpp
+    PafioCore/Paths.cpp
+    PafioCore/Process.cpp
+    PafioCore/Sha256.cpp
 )
 
-set(SPIO_MANIFEST_SOURCES
-    SpioManifest/Lockfile.cpp
-    SpioManifest/Manifest.cpp
+set(PAFIO_MANIFEST_SOURCES
+    PafioManifest/Lockfile.cpp
+    PafioManifest/Manifest.cpp
 )
 
-set(SPIO_RESOLUTION_SOURCES
-    SpioRegistryClient/Client.cpp
-    SpioResolve/Resolver.cpp
-    SpioSecurity/RegistrySecurity.cpp
-    SpioSecurity/RegistryTrust.cpp
+set(PAFIO_RESOLUTION_SOURCES
+    PafioRegistryClient/Client.cpp
+    PafioResolve/Resolver.cpp
+    PafioSecurity/RegistrySecurity.cpp
+    PafioSecurity/RegistryTrust.cpp
 )
 
-set(SPIO_TOOLCHAIN_SERVICE_SOURCES
-    SpioCloud/Contract.cpp
-    SpioCloud/Execution.cpp
-    SpioCloud/Job.cpp
-    SpioPlan/CompilePlan.cpp
-    SpioTool/Contract.cpp
-    SpioTool/Install.cpp
-    SpioToolchain/SourceBuild.cpp
-    SpioToolchain/State.cpp
+set(PAFIO_TOOLCHAIN_SERVICE_SOURCES
+    PafioCloud/Contract.cpp
+    PafioCloud/Execution.cpp
+    PafioCloud/Job.cpp
+    PafioPlan/CompilePlan.cpp
+    PafioTool/Contract.cpp
+    PafioTool/Install.cpp
+    PafioToolchain/SourceBuild.cpp
+    PafioToolchain/State.cpp
 )
 
-set(SPIO_PACKAGE_SERVICE_SOURCES
-    SpioPack/Pack.cpp
-    SpioPublish/Publish.cpp
-    SpioTree/Render.cpp
-    SpioVendor/Vendor.cpp
-    SpioWorkflow/Dependencies.cpp
+set(PAFIO_PACKAGE_SERVICE_SOURCES
+    PafioPack/Pack.cpp
+    PafioPublish/Publish.cpp
+    PafioTree/Render.cpp
+    PafioVendor/Vendor.cpp
+    PafioWorkflow/Dependencies.cpp
 )
 
-set(SPIO_PROJECT_SERVICE_SOURCES
-    SpioResolve/ProjectGraphContract.cpp
+set(PAFIO_PROJECT_SERVICE_SOURCES
+    PafioResolve/ProjectGraphContract.cpp
 )
 
-set(SPIO_CLI_SUPPORT_SOURCES
-    SpioCLI/MachineInfoContract.cpp
-    SpioCLI/Support.cpp
+set(PAFIO_CLI_SUPPORT_SOURCES
+    PafioCLI/MachineInfoContract.cpp
+    PafioCLI/Support.cpp
 )
 
-set(SPIO_CLI_COMMAND_SOURCES
-    SpioApp/CloudApp.cpp
-    SpioApp/PackageApp.cpp
-    SpioApp/ToolApp.cpp
-    SpioApp/WorkflowApp.cpp
+set(PAFIO_CLI_COMMAND_SOURCES
+    PafioApp/CloudApp.cpp
+    PafioApp/PackageApp.cpp
+    PafioApp/ToolApp.cpp
+    PafioApp/WorkflowApp.cpp
 )
 
-set(SPIO_CLI_SHELL_SOURCES
-    SpioCLI/CLI.cpp
+set(PAFIO_CLI_SHELL_SOURCES
+    PafioCLI/CLI.cpp
 )
 
-file(GLOB_RECURSE SPIO_PRIVATE_SOURCES CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/src-private/*.cpp")
+file(GLOB_RECURSE PAFIO_PRIVATE_SOURCES CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/src-private/*.cpp")
 
-spio_add_internal_static_library(spio_foundation ${SPIO_FOUNDATION_SOURCES})
+pafio_add_internal_static_library(pafio_foundation ${PAFIO_FOUNDATION_SOURCES})
 
-spio_add_internal_static_library(spio_manifest ${SPIO_MANIFEST_SOURCES})
-target_link_libraries(spio_manifest PUBLIC spio_foundation)
+pafio_add_internal_static_library(pafio_manifest ${PAFIO_MANIFEST_SOURCES})
+target_link_libraries(pafio_manifest PUBLIC pafio_foundation)
 
-spio_add_internal_static_library(spio_resolution ${SPIO_RESOLUTION_SOURCES})
-target_link_libraries(spio_resolution PUBLIC spio_foundation spio_manifest)
+pafio_add_internal_static_library(pafio_resolution ${PAFIO_RESOLUTION_SOURCES})
+target_link_libraries(pafio_resolution PUBLIC pafio_foundation pafio_manifest)
 
-spio_add_internal_static_library(spio_toolchain_service ${SPIO_TOOLCHAIN_SERVICE_SOURCES})
-target_link_libraries(spio_toolchain_service PUBLIC spio_foundation spio_manifest spio_resolution)
+pafio_add_internal_static_library(pafio_toolchain_service ${PAFIO_TOOLCHAIN_SERVICE_SOURCES})
+target_link_libraries(pafio_toolchain_service PUBLIC pafio_foundation pafio_manifest pafio_resolution)
 
-spio_add_internal_static_library(spio_package_service ${SPIO_PACKAGE_SERVICE_SOURCES})
-target_link_libraries(spio_package_service PUBLIC spio_foundation spio_manifest spio_resolution)
+pafio_add_internal_static_library(pafio_package_service ${PAFIO_PACKAGE_SERVICE_SOURCES})
+target_link_libraries(pafio_package_service PUBLIC pafio_foundation pafio_manifest pafio_resolution)
 
-spio_add_internal_static_library(spio_project_service ${SPIO_PROJECT_SERVICE_SOURCES})
-target_link_libraries(spio_project_service PUBLIC spio_foundation spio_manifest spio_resolution spio_toolchain_service)
+pafio_add_internal_static_library(pafio_project_service ${PAFIO_PROJECT_SERVICE_SOURCES})
+target_link_libraries(pafio_project_service PUBLIC pafio_foundation pafio_manifest pafio_resolution pafio_toolchain_service)
 
-add_library(spio_backend_services INTERFACE)
-target_link_libraries(spio_backend_services INTERFACE
-  spio_foundation
-  spio_manifest
-  spio_resolution
-  spio_toolchain_service
-  spio_package_service
-  spio_project_service
+add_library(pafio_backend_services INTERFACE)
+target_link_libraries(pafio_backend_services INTERFACE
+  pafio_foundation
+  pafio_manifest
+  pafio_resolution
+  pafio_toolchain_service
+  pafio_package_service
+  pafio_project_service
 )
 
-spio_add_internal_static_library(spio_cli_support ${SPIO_CLI_SUPPORT_SOURCES})
-target_link_libraries(spio_cli_support PUBLIC spio_foundation spio_manifest spio_resolution spio_toolchain_service)
+pafio_add_internal_static_library(pafio_cli_support ${PAFIO_CLI_SUPPORT_SOURCES})
+target_link_libraries(pafio_cli_support PUBLIC pafio_foundation pafio_manifest pafio_resolution pafio_toolchain_service)
 
-spio_add_internal_static_library(spio_cli_commands ${SPIO_CLI_COMMAND_SOURCES})
-target_link_libraries(spio_cli_commands PUBLIC spio_backend_services spio_cli_support)
+pafio_add_internal_static_library(pafio_cli_commands ${PAFIO_CLI_COMMAND_SOURCES})
+target_link_libraries(pafio_cli_commands PUBLIC pafio_backend_services pafio_cli_support)
 
-spio_add_internal_static_library(spio_cli_shell ${SPIO_CLI_SHELL_SOURCES})
-target_link_libraries(spio_cli_shell PUBLIC spio_cli_commands spio_cli_support)
+pafio_add_internal_static_library(pafio_cli_shell ${PAFIO_CLI_SHELL_SOURCES})
+target_link_libraries(pafio_cli_shell PUBLIC pafio_cli_commands pafio_cli_support)
 
-if(SPIO_PRIVATE_SOURCES)
-  spio_add_internal_static_library(spio_private_extensions ${SPIO_PRIVATE_SOURCES})
-  target_link_libraries(spio_private_extensions PUBLIC spio_backend_services spio_cli_support)
-  target_link_libraries(spio_cli_shell PUBLIC spio_private_extensions)
+if(PAFIO_PRIVATE_SOURCES)
+  pafio_add_internal_static_library(pafio_private_extensions ${PAFIO_PRIVATE_SOURCES})
+  target_link_libraries(pafio_private_extensions PUBLIC pafio_backend_services pafio_cli_support)
+  target_link_libraries(pafio_cli_shell PUBLIC pafio_private_extensions)
 endif()
 
 # Transitional compatibility aggregation for tests and internal link points.
-add_library(spio_core INTERFACE)
-target_link_libraries(spio_core INTERFACE spio_cli_shell)
-if(TARGET spio_private_extensions)
-  target_link_libraries(spio_core INTERFACE spio_private_extensions)
+add_library(pafio_core INTERFACE)
+target_link_libraries(pafio_core INTERFACE pafio_cli_shell)
+if(TARGET pafio_private_extensions)
+  target_link_libraries(pafio_core INTERFACE pafio_private_extensions)
 endif()
 
-add_executable(spio main.cpp)
-target_link_libraries(spio PRIVATE spio_cli_shell)
+add_executable(pafio main.cpp)
+target_link_libraries(pafio PRIVATE pafio_cli_shell)

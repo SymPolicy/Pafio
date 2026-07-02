@@ -107,7 +107,7 @@ def main(argv: list[str] | None = None) -> int:
 
     results: list[dict] = []
     structural_errors: list[str] = []
-    with tempfile.TemporaryDirectory(prefix="spio-delivery-gate-") as temp_dir:
+    with tempfile.TemporaryDirectory(prefix="pafio-delivery-gate-") as temp_dir:
         export_root = pathlib.Path(temp_dir) / "delivery"
         subprocess.run([str(COPY_SCRIPT), str(export_root)], cwd=ROOT, check=True, capture_output=True, text=True)
         structural_errors = validate_export_tree(export_root)

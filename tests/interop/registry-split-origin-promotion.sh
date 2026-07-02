@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SPIO_BIN="${1:?expected spio binary path}"
+PAFIO_BIN="${1:?expected pafio binary path}"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 TMP_ROOT="$(mktemp -d)"
 SERVER_PID=""
@@ -16,13 +16,13 @@ cleanup() {
 }
 trap cleanup EXIT
 
-export SPIO_HOME="$TMP_ROOT/.spio-home"
+export PAFIO_HOME="$TMP_ROOT/.pafio-home"
 WRITE_ROOT="$TMP_ROOT/upload-root"
 READ_ROOT="$TMP_ROOT/read-root"
 mkdir -p "$WRITE_ROOT" "$READ_ROOT" "$TMP_ROOT/publish/util/src"
 
-cat >"$TMP_ROOT/publish/util/spio.toml" <<'EOF'
-[spio]
+cat >"$TMP_ROOT/publish/util/pafio.toml" <<'EOF'
+[pafio]
 manifest-version = 1
 
 [package]
@@ -43,7 +43,7 @@ cat >"$TMP_ROOT/publish/util/src/lib.styio" <<'EOF'
 # util
 EOF
 
-"$SPIO_BIN" publish --manifest-path "$TMP_ROOT/publish/util/spio.toml" --registry "$WRITE_ROOT" >/dev/null
+"$PAFIO_BIN" publish --manifest-path "$TMP_ROOT/publish/util/pafio.toml" --registry "$WRITE_ROOT" >/dev/null
 
 PORT="$(
   python3 - <<'PY'
@@ -67,8 +67,8 @@ for _ in $(seq 1 30); do
 done
 curl -fsS "${REGISTRY_URL}/" >/dev/null
 
-cat >"$TMP_ROOT/spio.toml" <<EOF
-[spio]
+cat >"$TMP_ROOT/pafio.toml" <<EOF
+[pafio]
 manifest-version = 1
 
 [package]
@@ -88,7 +88,7 @@ path = "src/main.styio"
 util = { package = "acme/util", version = "0.2.0", registry = "${REGISTRY_URL}" }
 EOF
 
-if "$SPIO_BIN" fetch --manifest-path "$TMP_ROOT/spio.toml" >/dev/null 2>&1; then
+if "$PAFIO_BIN" fetch --manifest-path "$TMP_ROOT/pafio.toml" >/dev/null 2>&1; then
   echo "fetch unexpectedly succeeded before promotion" >&2
   exit 1
 fi
@@ -157,9 +157,9 @@ descriptor_path.write_text(
     encoding="utf-8",
 )
 PY
-"$SPIO_BIN" --json registry trust import "$TMP_ROOT/registry-descriptor.json" >/dev/null
+"$PAFIO_BIN" --json registry trust import "$TMP_ROOT/registry-descriptor.json" >/dev/null
 
-FETCH_JSON="$("$SPIO_BIN" --json fetch --manifest-path "$TMP_ROOT/spio.toml")"
+FETCH_JSON="$("$PAFIO_BIN" --json fetch --manifest-path "$TMP_ROOT/pafio.toml")"
 python3 - "$FETCH_JSON" <<'PY'
 import json
 import sys

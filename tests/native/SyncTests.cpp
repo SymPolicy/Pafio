@@ -1,5 +1,5 @@
-#include "SpioCLI/CLI.hpp"
-#include "SpioCore/Errors.hpp"
+#include "PafioCLI/CLI.hpp"
+#include "PafioCore/Errors.hpp"
 
 #include <filesystem>
 #include <fstream>
@@ -17,7 +17,7 @@ namespace
 
 fs::path MakeTempDir(const std::string &label)
 {
-  const fs::path root = fs::temp_directory_path() / "spio-native-sync-tests" / label;
+  const fs::path root = fs::temp_directory_path() / "pafio-native-sync-tests" / label;
   fs::remove_all(root);
   fs::create_directories(root);
   return root;
@@ -43,8 +43,8 @@ std::string ReadFile(const fs::path &path)
 void WritePathDependencyProject(const fs::path &root)
 {
   WriteFile(
-      root / "spio.toml",
-      "[spio]\n"
+      root / "pafio.toml",
+      "[pafio]\n"
       "manifest-version = 1\n\n"
       "[package]\n"
       "name = \"acme/app\"\n"
@@ -58,8 +58,8 @@ void WritePathDependencyProject(const fs::path &root)
       "[dependencies]\n"
       "util = { package = \"acme/util\", path = \"vendor/util\" }\n");
   WriteFile(
-      root / "vendor/util/spio.toml",
-      "[spio]\n"
+      root / "vendor/util/pafio.toml",
+      "[pafio]\n"
       "manifest-version = 1\n\n"
       "[package]\n"
       "name = \"acme/util\"\n"
@@ -78,11 +78,11 @@ TEST(SyncCliTests, WritesLockfileAndFetchesDependencyGraph)
 {
   const fs::path root = MakeTempDir("sync-write");
   WritePathDependencyProject(root);
-  const fs::path manifest_path = root / "spio.toml";
-  const fs::path lockfile_path = root / "spio.lock";
+  const fs::path manifest_path = root / "pafio.toml";
+  const fs::path lockfile_path = root / "pafio.lock";
 
   testing::internal::CaptureStdout();
-  EXPECT_EQ(spio::RunCli({"--json", "sync", "--manifest-path", manifest_path.string()}), spio::kExitSuccess);
+  EXPECT_EQ(pafio::RunCli({"--json", "sync", "--manifest-path", manifest_path.string()}), pafio::kExitSuccess);
   const json first_payload = json::parse(testing::internal::GetCapturedStdout());
 
   EXPECT_TRUE(fs::exists(lockfile_path));
@@ -96,7 +96,7 @@ TEST(SyncCliTests, WritesLockfileAndFetchesDependencyGraph)
   EXPECT_NE(ReadFile(lockfile_path).find("name = \"acme/util\""), std::string::npos);
 
   testing::internal::CaptureStdout();
-  EXPECT_EQ(spio::RunCli({"--json", "sync", "--manifest-path", manifest_path.string()}), spio::kExitSuccess);
+  EXPECT_EQ(pafio::RunCli({"--json", "sync", "--manifest-path", manifest_path.string()}), pafio::kExitSuccess);
   const json second_payload = json::parse(testing::internal::GetCapturedStdout());
   EXPECT_EQ(second_payload.at("lockfile_mode"), "unchanged");
 }
@@ -105,21 +105,21 @@ TEST(SyncCliTests, LockedSyncRequiresExistingFreshLockfile)
 {
   const fs::path root = MakeTempDir("sync-locked");
   WritePathDependencyProject(root);
-  const fs::path manifest_path = root / "spio.toml";
+  const fs::path manifest_path = root / "pafio.toml";
 
   testing::internal::CaptureStderr();
   EXPECT_EQ(
-      spio::RunCli({"sync", "--locked", "--manifest-path", manifest_path.string()}),
-      spio::kExitLock);
+      pafio::RunCli({"sync", "--locked", "--manifest-path", manifest_path.string()}),
+      pafio::kExitLock);
   const std::string missing_lock_error = testing::internal::GetCapturedStderr();
   EXPECT_NE(missing_lock_error.find("lockfile missing"), std::string::npos);
 
-  ASSERT_EQ(spio::RunCli({"lock", "--manifest-path", manifest_path.string()}), spio::kExitSuccess);
+  ASSERT_EQ(pafio::RunCli({"lock", "--manifest-path", manifest_path.string()}), pafio::kExitSuccess);
 
   testing::internal::CaptureStdout();
   EXPECT_EQ(
-      spio::RunCli({"--json", "sync", "--locked", "--manifest-path", manifest_path.string()}),
-      spio::kExitSuccess);
+      pafio::RunCli({"--json", "sync", "--locked", "--manifest-path", manifest_path.string()}),
+      pafio::kExitSuccess);
   const json payload = json::parse(testing::internal::GetCapturedStdout());
   EXPECT_EQ(payload.at("lockfile_mode"), "locked");
   EXPECT_TRUE(payload.at("locked"));
@@ -130,14 +130,14 @@ TEST(SyncCliTests, FrozenSyncUsesLockedOfflinePolicy)
 {
   const fs::path root = MakeTempDir("sync-frozen");
   WritePathDependencyProject(root);
-  const fs::path manifest_path = root / "spio.toml";
+  const fs::path manifest_path = root / "pafio.toml";
 
-  ASSERT_EQ(spio::RunCli({"lock", "--manifest-path", manifest_path.string()}), spio::kExitSuccess);
+  ASSERT_EQ(pafio::RunCli({"lock", "--manifest-path", manifest_path.string()}), pafio::kExitSuccess);
 
   testing::internal::CaptureStdout();
   EXPECT_EQ(
-      spio::RunCli({"--json", "sync", "--frozen", "--manifest-path", manifest_path.string()}),
-      spio::kExitSuccess);
+      pafio::RunCli({"--json", "sync", "--frozen", "--manifest-path", manifest_path.string()}),
+      pafio::kExitSuccess);
   const json payload = json::parse(testing::internal::GetCapturedStdout());
   EXPECT_EQ(payload.at("lockfile_mode"), "locked");
   EXPECT_TRUE(payload.at("locked"));

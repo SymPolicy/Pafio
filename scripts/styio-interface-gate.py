@@ -13,8 +13,8 @@ import tempfile
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-DEFAULT_SPIO = ROOT / "scripts" / "spio"
-DEFAULT_FIXTURE_MANIFEST = ROOT / "tests" / "unit" / "fixtures" / "manifests" / "ok-single-package" / "spio.toml"
+DEFAULT_PAFIO = ROOT / "scripts" / "pafio"
+DEFAULT_FIXTURE_MANIFEST = ROOT / "tests" / "unit" / "fixtures" / "manifests" / "ok-single-package" / "pafio.toml"
 SEMVER_RE = re.compile(r"^\d+\.\d+\.\d+$")
 EDITION_RE = re.compile(r"^\d+$")
 
@@ -128,11 +128,11 @@ def validate_machine_info(payload: dict, *, require_compile_plan: bool) -> list[
 
 
 def write_temp_project(root: pathlib.Path) -> pathlib.Path:
-    manifest_path = root / "spio.toml"
+    manifest_path = root / "pafio.toml"
     source_path = root / "src" / "main.styio"
     source_path.parent.mkdir(parents=True, exist_ok=True)
     manifest_path.write_text(
-        "[spio]\n"
+        "[pafio]\n"
         "manifest-version = 1\n\n"
         "[package]\n"
         "name = \"acme/interop\"\n"
@@ -154,14 +154,14 @@ def write_temp_project(root: pathlib.Path) -> pathlib.Path:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="styio-interface-gate.py")
     parser.add_argument("--styio-bin", required=True, help="published styio binary to validate")
-    parser.add_argument("--spio-bin", default=str(DEFAULT_SPIO), help="spio wrapper used for black-box checks")
-    parser.add_argument("--manifest-path", help="manifest used for the spio compatibility check")
+    parser.add_argument("--pafio-bin", default=str(DEFAULT_PAFIO), help="pafio wrapper used for black-box checks")
+    parser.add_argument("--manifest-path", help="manifest used for the pafio compatibility check")
     parser.add_argument("--require-compile-plan", action="store_true", help="also validate direct compile-plan execution")
     parser.add_argument("--json", action="store_true", help="emit machine-readable summary")
     args = parser.parse_args(argv)
 
     styio_bin = str(pathlib.Path(args.styio_bin).resolve())
-    spio_bin = str(pathlib.Path(args.spio_bin).resolve())
+    pafio_bin = str(pathlib.Path(args.pafio_bin).resolve())
     check_manifest_path = pathlib.Path(args.manifest_path).resolve() if args.manifest_path else DEFAULT_FIXTURE_MANIFEST
 
     steps: list[dict] = []
@@ -182,9 +182,9 @@ def main(argv: list[str] | None = None) -> int:
             validation_errors.append(str(err))
 
     compatibility_step = run_step(
-        "spio_check",
+        "pafio_check",
         [
-            spio_bin,
+            pafio_bin,
             "--json",
             "check",
             "--manifest-path",
@@ -197,12 +197,12 @@ def main(argv: list[str] | None = None) -> int:
     steps.append(compatibility_step)
 
     if args.require_compile_plan:
-        temp_root = pathlib.Path(tempfile.mkdtemp(prefix="spio-styio-interface-gate-"))
+        temp_root = pathlib.Path(tempfile.mkdtemp(prefix="pafio-styio-interface-gate-"))
         compile_manifest = write_temp_project(temp_root)
         dry_run_step = run_step(
-            "spio_build_dry_run",
+            "pafio_build_dry_run",
             [
-                spio_bin,
+                pafio_bin,
                 "--json",
                 "build",
                 "--dry-run",
@@ -214,7 +214,7 @@ def main(argv: list[str] | None = None) -> int:
 
         if dry_run_step["ok"]:
             try:
-                dry_run_payload = load_json(dry_run_step["stdout"], "spio build --dry-run")
+                dry_run_payload = load_json(dry_run_step["stdout"], "pafio build --dry-run")
                 plan_path = pathlib.Path(dry_run_payload["plan_path"])
                 build_root = pathlib.Path(dry_run_payload["build_root"])
                 artifact_dir = pathlib.Path(dry_run_payload["artifact_dir"])
@@ -273,7 +273,7 @@ def main(argv: list[str] | None = None) -> int:
     summary = {
         "ok": ok,
         "styio_bin": styio_bin,
-        "spio_bin": spio_bin,
+        "pafio_bin": pafio_bin,
         "require_compile_plan": args.require_compile_plan,
         "machine_info": machine_info_payload,
         "validation_errors": validation_errors,

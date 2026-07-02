@@ -15,8 +15,8 @@ SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-from spio_bootstrap import __version__  # noqa: E402
-from spio_bootstrap.validation import ValidationError, validate_lock_document, validate_manifest_document  # noqa: E402
+from pafio_bootstrap import __version__  # noqa: E402
+from pafio_bootstrap.validation import ValidationError, validate_lock_document, validate_manifest_document  # noqa: E402
 
 
 FIXTURES = pathlib.Path(__file__).resolve().parent / "fixtures"
@@ -24,23 +24,23 @@ FIXTURES = pathlib.Path(__file__).resolve().parent / "fixtures"
 
 class BootstrapValidationTests(unittest.TestCase):
     def test_manifest_ok_fixtures(self) -> None:
-        for manifest in sorted((FIXTURES / "manifests").glob("ok-*/spio.toml")):
+        for manifest in sorted((FIXTURES / "manifests").glob("ok-*/pafio.toml")):
             with self.subTest(manifest=manifest.parent.name):
                 validate_manifest_document(tomllib.loads(manifest.read_text()))
 
     def test_manifest_bad_fixtures(self) -> None:
-        for manifest in sorted((FIXTURES / "manifests").glob("bad-*/spio.toml")):
+        for manifest in sorted((FIXTURES / "manifests").glob("bad-*/pafio.toml")):
             with self.subTest(manifest=manifest.parent.name):
                 with self.assertRaises(ValidationError):
                     validate_manifest_document(tomllib.loads(manifest.read_text()))
 
     def test_lock_ok_fixtures(self) -> None:
-        for lockfile in sorted((FIXTURES / "locks").glob("ok-*/spio.lock")):
+        for lockfile in sorted((FIXTURES / "locks").glob("ok-*/pafio.lock")):
             with self.subTest(lock=lockfile.parent.name):
                 validate_lock_document(tomllib.loads(lockfile.read_text()))
 
     def test_lock_bad_fixtures(self) -> None:
-        for lockfile in sorted((FIXTURES / "locks").glob("bad-*/spio.lock")):
+        for lockfile in sorted((FIXTURES / "locks").glob("bad-*/pafio.lock")):
             with self.subTest(lock=lockfile.parent.name):
                 with self.assertRaises(ValidationError):
                     validate_lock_document(tomllib.loads(lockfile.read_text()))
@@ -51,7 +51,7 @@ class BootstrapCliTests(unittest.TestCase):
         env = os.environ.copy()
         env["PYTHONPATH"] = str(SRC)
         return subprocess.run(
-            [sys.executable, "-m", "spio_bootstrap", *args],
+            [sys.executable, "-m", "pafio_bootstrap", *args],
             env=env,
             **kwargs,
         )
@@ -79,7 +79,7 @@ class BootstrapCliTests(unittest.TestCase):
             capture_output=True,
             text=True,
         )
-        self.assertEqual(proc.stdout.strip(), f"spio {__version__}")
+        self.assertEqual(proc.stdout.strip(), f"pafio {__version__}")
 
     def test_machine_info_json(self) -> None:
         proc = self._run_cli(
@@ -89,7 +89,7 @@ class BootstrapCliTests(unittest.TestCase):
             text=True,
         )
         payload = json.loads(proc.stdout)
-        self.assertEqual(payload["tool"], "spio")
+        self.assertEqual(payload["tool"], "pafio")
         self.assertEqual(payload["version"], __version__)
         self.assertEqual(payload["supported_contracts"]["compile_plan"], [1])
 
@@ -143,7 +143,7 @@ class BootstrapCliTests(unittest.TestCase):
             text=True,
         )
         self.assertIn("initialized project", proc.stdout)
-        self.assertTrue((temp_root / "spio.toml").exists())
+        self.assertTrue((temp_root / "pafio.toml").exists())
         self.assertTrue((temp_root / "src" / "main.styio").exists())
         for child in sorted(temp_root.rglob("*"), reverse=True):
             if child.is_file():
@@ -153,7 +153,7 @@ class BootstrapCliTests(unittest.TestCase):
         temp_root.rmdir()
 
     def test_check_validates_manifest(self) -> None:
-        manifest = FIXTURES / "manifests" / "ok-single-package" / "spio.toml"
+        manifest = FIXTURES / "manifests" / "ok-single-package" / "pafio.toml"
         proc = self._run_cli(
             ["--json", "check", "--manifest-path", str(manifest)],
             check=True,
@@ -166,7 +166,7 @@ class BootstrapCliTests(unittest.TestCase):
         self.assertFalse(payload["compiler_checked"])
 
     def test_check_rejects_bad_manifest(self) -> None:
-        manifest = FIXTURES / "manifests" / "bad-package-name" / "spio.toml"
+        manifest = FIXTURES / "manifests" / "bad-package-name" / "pafio.toml"
         proc = self._run_cli(
             ["--json", "check", "--manifest-path", str(manifest)],
             capture_output=True,
@@ -177,7 +177,7 @@ class BootstrapCliTests(unittest.TestCase):
         self.assertEqual(payload["category"], "ManifestError")
 
     def test_check_accepts_compatible_styio_handshake(self) -> None:
-        manifest = FIXTURES / "manifests" / "ok-single-package" / "spio.toml"
+        manifest = FIXTURES / "manifests" / "ok-single-package" / "pafio.toml"
         machine_info = {
             "tool": "styio",
             "compiler_version": "0.0.1",
@@ -208,7 +208,7 @@ class BootstrapCliTests(unittest.TestCase):
         self.assertEqual(payload["styio"]["supported_compile_plan_versions"], [1])
 
     def test_check_rejects_incompatible_styio_handshake(self) -> None:
-        manifest = FIXTURES / "manifests" / "ok-single-package" / "spio.toml"
+        manifest = FIXTURES / "manifests" / "ok-single-package" / "pafio.toml"
         machine_info = {
             "tool": "styio",
             "compiler_version": "0.0.1",

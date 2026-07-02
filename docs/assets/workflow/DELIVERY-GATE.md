@@ -1,6 +1,6 @@
 # Delivery Gate
 
-**Purpose:** Define the common delivery-floor entrypoint for `spio` so contributors can run repository hygiene, the unified docs gate, and checkpoint health through one command before checkpoint merge or branch delivery.
+**Purpose:** Define the common delivery-floor entrypoint for `pafio` so contributors can run repository hygiene, the unified docs gate, and checkpoint health through one command before checkpoint merge or branch delivery.
 
 **Last updated:** 2026-05-02
 

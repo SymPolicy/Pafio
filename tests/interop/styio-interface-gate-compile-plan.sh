@@ -48,7 +48,7 @@ exit 64
 EOF
 chmod +x "$FAKE_STYIO"
 
-export SPIO_HOME="$TMP/spio-home"
+export PAFIO_HOME="$TMP/pafio-home"
 python3 "$ROOT/scripts/styio-interface-gate.py" --styio-bin "$FAKE_STYIO" --require-compile-plan --json >"$TMP/out.json"
 python3 - "$TMP/out.json" <<'PY'
 import json

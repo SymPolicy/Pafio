@@ -1,4 +1,4 @@
-# spio Team Runbooks
+# pafio Team Runbooks
 
 **Purpose:** Define the scope, naming rules, and maintenance rules for `docs/teams/`; product semantics, package-manager contracts, and registry behavior remain owned by their existing SSOT documents.
 
@@ -6,7 +6,7 @@
 
 ## Scope
 
-1. Store `spio` team daily-work runbooks.
+1. Store `pafio` team daily-work runbooks.
 2. Provide ownership, review routing, checkpoint, and handoff entrypoints.
 3. Keep cross-team coordination in [COORDINATION-RUNBOOK.md](./COORDINATION-RUNBOOK.md).
 4. Do not restate detailed contract, planning, or registry SSOT here.

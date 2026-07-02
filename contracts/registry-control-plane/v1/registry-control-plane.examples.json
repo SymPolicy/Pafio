@@ -13,9 +13,9 @@
         "root_initialized": true,
         "config_present": true,
         "root_metadata_present": true,
-        "publish_endpoint": "/api/spio-registry-control/v1/publish",
-        "verify_endpoint": "/api/spio-registry-control/v1/verify",
-        "descriptor_endpoint": "/api/spio-registry-control/v1/descriptor"
+        "publish_endpoint": "/api/pafio-registry-control/v1/publish",
+        "verify_endpoint": "/api/pafio-registry-control/v1/verify",
+        "descriptor_endpoint": "/api/pafio-registry-control/v1/descriptor"
       }
     },
     "failure": {
@@ -39,8 +39,8 @@
       "payload": {
         "schema_version": 1,
         "registry_name": "production-registry",
-        "registry_root": "https://registry.example.invalid/spio/v2",
-        "control_plane_base_url": "https://platform.example.invalid/api/spio-registry-control/v1",
+        "registry_root": "https://registry.example.invalid/pafio/v2",
+        "control_plane_base_url": "https://platform.example.invalid/api/pafio-registry-control/v1",
         "root_sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
         "issued_at": "2026-05-02T00:00:00Z",
         "expires": "2026-06-02T00:00:00Z",
@@ -60,7 +60,7 @@
   },
   "publishRelease": {
     "request": {
-      "manifest_path": "/workspace/demo/spio.toml",
+      "manifest_path": "/workspace/demo/pafio.toml",
       "publisher_id": "console-user"
     },
     "success": {
@@ -69,7 +69,7 @@
       "stdout": "",
       "stderr": "",
       "payload": {
-        "registry_root": "/srv/spio-registry-v2",
+        "registry_root": "/srv/pafio-registry-v2",
         "created_root": true,
         "package": "demo/app",
         "version": "0.1.0",
@@ -78,7 +78,7 @@
         "archive_path": "/tmp/demo/app-0.1.0.tar",
         "archive_sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
         "archive_size_bytes": 4096,
-        "artifact_path": "artifacts/source/sha256/01/23/0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef.spio.src.tar",
+        "artifact_path": "artifacts/source/sha256/01/23/0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef.pafio.src.tar",
         "index_path": "index/demo/app.jsonl",
         "log_leaf_path": "log/leaves/000000000001.json",
         "sequence": 1,
@@ -106,7 +106,7 @@
       "stderr": "",
       "payload": {
         "ok": true,
-        "root": "/srv/spio-registry-v2",
+        "root": "/srv/pafio-registry-v2",
         "namespaces": 1,
         "index_files": 1,
         "releases": 2,

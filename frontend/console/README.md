@@ -1,6 +1,6 @@
-# spio Control Console
+# pafio Control Console
 
-**Purpose:** Hold the repo-hosted human control-console frontend for `spio`.
+**Purpose:** Hold the repo-hosted human control-console frontend for `pafio`.
 
 **Last updated:** 2026-04-21
 
@@ -18,6 +18,6 @@
 
 See also:
 
-- [../../docs/governance/Spio-Control-Console-And-Service-Split.md](../../docs/governance/Spio-Control-Console-And-Service-Split.md)
-- [../../docs/governance/Spio-Control-Console-Backend-Surface.md](../../docs/governance/Spio-Control-Console-Backend-Surface.md)
-- [../../docs/registry/Spio-Registry-Server-Contract.md](../../docs/registry/Spio-Registry-Server-Contract.md)
+- [../../docs/governance/Pafio-Control-Console-And-Service-Split.md](../../docs/governance/Pafio-Control-Console-And-Service-Split.md)
+- [../../docs/governance/Pafio-Control-Console-Backend-Surface.md](../../docs/governance/Pafio-Control-Console-Backend-Surface.md)
+- [../../docs/registry/Pafio-Registry-Control-Plane-Contract.md](../../docs/registry/Pafio-Registry-Control-Plane-Contract.md)

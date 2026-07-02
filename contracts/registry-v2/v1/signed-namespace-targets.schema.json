@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://spio.dev/contracts/registry-v2/v1/signed-namespace-targets.schema.json",
-  "title": "spio Registry V2 Signed Namespace Targets Metadata",
+  "$id": "https://pafio.dev/contracts/registry-v2/v1/signed-namespace-targets.schema.json",
+  "title": "pafio Registry V2 Signed Namespace Targets Metadata",
   "type": "object",
   "additionalProperties": false,
   "required": [

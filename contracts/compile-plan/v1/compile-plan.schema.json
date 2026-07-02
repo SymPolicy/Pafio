@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://spio.dev/contracts/compile-plan/v1/compile-plan.schema.json",
-  "title": "spio compile-plan v1",
+  "$id": "https://pafio.dev/contracts/compile-plan/v1/compile-plan.schema.json",
+  "title": "pafio compile-plan v1",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -31,7 +31,7 @@
       "properties": {
         "tool": {
           "type": "string",
-          "const": "spio"
+          "const": "pafio"
         },
         "version": {
           "type": "string",

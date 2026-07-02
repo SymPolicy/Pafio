@@ -16,7 +16,7 @@ The project also already froze a subset of manifest and lockfile rules, so the n
 
 ## Decision
 
-1. Add native canonical serializers for `spio.toml` and `spio.lock`.
+1. Add native canonical serializers for `pafio.toml` and `pafio.lock`.
 2. Freeze deterministic section and field ordering for phase 2.
 3. Sort:
    - `[[bin]]` entries by name

@@ -1,9 +1,9 @@
 {
   "config": {
     "schema_version": 1,
-    "protocol": "spio-static-registry",
+    "protocol": "pafio-static-registry",
     "protocol_version": 2,
-    "registry_name": "example-spio",
+    "registry_name": "example-pafio",
     "generated_at": "2026-04-21T00:00:00Z",
     "capabilities": {
       "append_only_index": true,
@@ -156,7 +156,7 @@
               "release_revision": 1,
               "index_record_sha256": "3333333333333333333333333333333333333333333333333333333333333333",
               "source_artifact_sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
-              "source_artifact_path": "artifacts/source/sha256/01/23/0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef.spio.src.tar",
+              "source_artifact_path": "artifacts/source/sha256/01/23/0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef.pafio.src.tar",
               "binary_artifact_count": 1
             }
           }
@@ -182,7 +182,7 @@
     "source_artifact": {
       "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
       "size_bytes": 4096,
-      "path": "artifacts/source/sha256/01/23/0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef.spio.src.tar",
+      "path": "artifacts/source/sha256/01/23/0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef.pafio.src.tar",
       "archive_format": "tar",
       "compression": "none"
     },
@@ -190,7 +190,7 @@
       {
         "sha256": "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789",
         "size_bytes": 2048,
-        "path": "artifacts/binary/x86_64-unknown-linux-gnu/sha256/ab/cd/abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789.spio.bin.tar.zst",
+        "path": "artifacts/binary/x86_64-unknown-linux-gnu/sha256/ab/cd/abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789.pafio.bin.tar.zst",
         "target_triple": "x86_64-unknown-linux-gnu",
         "abi": "gnu",
         "libc": "glibc",
@@ -246,6 +246,6 @@
     "index_path": "index/acme/util.jsonl",
     "index_record_sha256": "3333333333333333333333333333333333333333333333333333333333333333",
     "source_artifact_sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
-    "source_artifact_path": "artifacts/source/sha256/01/23/0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef.spio.src.tar"
+    "source_artifact_path": "artifacts/source/sha256/01/23/0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef.pafio.src.tar"
   }
 }

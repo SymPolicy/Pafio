@@ -1,4 +1,4 @@
-# spio Docs Index
+# pafio Docs Index
 
 **Purpose:** Provide the generated inventory for `docs/`; directory boundaries and maintenance rules live in [README.md](./README.md).
 
@@ -10,18 +10,18 @@
 
 | Path | Entry | Summary |
 |------|-------|---------|
-| `adr/` | [ADR Index](./adr/INDEX.md) | Define the conventions and scope for spio/docs/adr/, which holds durable design and implementation decisions for the standalone spio project. |
-| `archive/` | [Archive Index](./archive/INDEX.md) | Hold archived spio documentation provenance and lifecycle metadata; active summaries stay in docs/rollups/, active recovery notes stay in docs/history/, and only retired raw material belongs here. |
+| `adr/` | [ADR Index](./adr/INDEX.md) | Define the conventions and scope for pafio/docs/adr/, which holds durable design and implementation decisions for the standalone pafio project. |
+| `archive/` | [Archive Index](./archive/INDEX.md) | Hold archived pafio documentation provenance and lifecycle metadata; active summaries stay in docs/rollups/, active recovery notes stay in docs/history/, and only retired raw material belongs here. |
 | `assets/` | [Assets Index](./assets/INDEX.md) | Define the reusable workflow and gate asset boundary under docs/assets/; concrete entries live in INDEX.md. |
 | `audit/` | [Audit Index](./audit/INDEX.md) | Define the repository-local audit queue for security, correctness, and design defects discovered before they are converted into normal tracked work. |
-| `external/` | [External Docs Index](./external/INDEX.md) | Define the scope and naming rules for external handoff docs that spio shares with sibling Styio repositories. |
-| `governance/` | [Governance Index](./governance/INDEX.md) | Hold normative spio rules. These files define stable contracts, policy, and compatibility constraints. |
-| `history/` | [History Index](./history/INDEX.md) | Hold active daily recovery notes for spio; these files track interrupted checkpoints, recovery commands, and rollback points before older provenance moves to docs/archive/history/. |
-| `operations/` | [Operations Index](./operations/INDEX.md) | Hold executable verification and migration procedures for spio. |
-| `planning/` | [Planning Index](./planning/INDEX.md) | Hold delivery phases, workstreams, and planning summaries for spio. |
-| `registry/` | [Registry Index](./registry/INDEX.md) | Separate local package-manager registry client and offline package rules from server-side package distribution and registry control-plane ownership now moved to styio-platform. |
-| `rollups/` | [Rollups Index](./rollups/INDEX.md) | Hold compressed active summaries for spio; these files provide the default reading order for current state and active gaps without forcing readers through raw planning and history first. |
-| `security/` | [Security Index](./security/INDEX.md) | Define the public/private boundary for security-sensitive spio code so registry auth, account policy, and trust decisions do not leak into the open-source tree. |
+| `external/` | [External Docs Index](./external/INDEX.md) | Define the scope and naming rules for external handoff docs that pafio shares with sibling Styio repositories. |
+| `governance/` | [Governance Index](./governance/INDEX.md) | Hold normative pafio rules. These files define stable contracts, policy, and compatibility constraints. |
+| `history/` | [History Index](./history/INDEX.md) | Hold active daily recovery notes for pafio; these files track interrupted checkpoints, recovery commands, and rollback points before older provenance moves to docs/archive/history/. |
+| `operations/` | [Operations Index](./operations/INDEX.md) | Hold executable verification and migration procedures for pafio. |
+| `planning/` | [Planning Index](./planning/INDEX.md) | Hold delivery phases, workstreams, and planning summaries for pafio. |
+| `registry/` | [Registry Index](./registry/INDEX.md) | Separate local package-manager registry client and offline package rules from server-side package distribution and registry control-plane ownership now moved to styio-cloud. |
+| `rollups/` | [Rollups Index](./rollups/INDEX.md) | Hold compressed active summaries for pafio; these files provide the default reading order for current state and active gaps without forcing readers through raw planning and history first. |
+| `security/` | [Security Index](./security/INDEX.md) | Define the public/private boundary for security-sensitive pafio code so registry auth, account policy, and trust decisions do not leak into the open-source tree. |
 | `specs/` | [Specs Index](./specs/INDEX.md) | Define the scope and naming rules for docs/specs/; generated inventory lives in INDEX.md. |
 | `teams/` | [Teams Index](./teams/INDEX.md) | Define the scope, naming rules, and maintenance rules for docs/teams/; product semantics, package-manager contracts, and registry behavior remain owned by their existing SSOT documents. |
 
@@ -29,4 +29,4 @@
 
 | Path | Entry | Summary |
 |------|-------|---------|
-| `BUILD-AND-DEV-ENV.md` | [spio Build And Dev Environment](./BUILD-AND-DEV-ENV.md) | Provide the repository-level entry point for bootstrapping a fresh machine, configuring the native build, and finding the next operational docs. |
+| `BUILD-AND-DEV-ENV.md` | [pafio Build And Dev Environment](./BUILD-AND-DEV-ENV.md) | Provide the repository-level entry point for bootstrapping a fresh machine, configuring the native build, and finding the next operational docs. |

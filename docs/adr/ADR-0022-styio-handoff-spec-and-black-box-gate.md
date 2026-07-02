@@ -1,6 +1,6 @@
 # ADR-0022: Styio Handoff Spec and Black-Box Acceptance Gate
 
-**Purpose:** Record the decision that `spio` must define the required external `styio` interfaces as a handoff spec and validate them through a black-box acceptance gate instead of prose-only coordination.
+**Purpose:** Record the decision that `pafio` must define the required external `styio` interfaces as a handoff spec and validate them through a black-box acceptance gate instead of prose-only coordination.
 
 **Last updated:** 2026-04-12
 
@@ -10,7 +10,7 @@ Accepted
 
 ## Context
 
-`spio` now depends on a real external compiler boundary:
+`pafio` now depends on a real external compiler boundary:
 
 - `styio --machine-info=json`
 - future `styio --compile-plan <path>`
@@ -27,7 +27,7 @@ Without that, the project keeps accumulating the same failure mode:
 
 ## Decision
 
-1. `docs/external/for-styio/Styio-External-Interface-Requirement-Spec.md` becomes the handoff specification for the compiler-side published interface required by `spio`.
+1. `docs/external/for-styio/Styio-External-Interface-Requirement-Spec.md` becomes the handoff specification for the compiler-side published interface required by `pafio`.
 2. The handoff spec defines:
    - required published commands
    - required machine-info fields and types
@@ -42,7 +42,7 @@ Without that, the project keeps accumulating the same failure mode:
    - `supported_contracts`
    - `capabilities`
    - `edition_max`
-5. `spio` compatibility checks and fake compiler fixtures must align with that handshake instead of relying on narrower local assumptions.
+5. `pafio` compatibility checks and fake compiler fixtures must align with that handshake instead of relying on narrower local assumptions.
 6. The handoff gate validates direct compiler behavior through process boundaries only.
    - it does not read compiler source
    - it does not link against compiler internals
@@ -53,8 +53,8 @@ Without that, the project keeps accumulating the same failure mode:
    - Rejected because it is too vague for cross-repository ownership.
 2. Define the external interface only in ADRs.
    - Rejected because ADRs explain decisions, but they are not the right SSOT for a published compiler interface.
-3. Rely on `spio check` alone as the compiler handoff gate.
-   - Rejected because `spio check` only covers handshake compatibility and not direct compile-plan execution behavior.
+3. Rely on `pafio check` alone as the compiler handoff gate.
+   - Rejected because `pafio check` only covers handshake compatibility and not direct compile-plan execution behavior.
 4. Reach into the `styio` source tree during integration.
    - Rejected because it violates the decoupling boundary this project has already frozen.
 
@@ -70,4 +70,4 @@ Negative:
 
 1. The project now owns one more normative external-dependency document and one more gate script.
 2. Tightening the handshake requires updating local fake compiler fixtures.
-3. The gate still cannot certify full end-to-end `spio build/run/test` execution until the compatibility matrix enables compile-plan support for the active phase.
+3. The gate still cannot certify full end-to-end `pafio build/run/test` execution until the compatibility matrix enables compile-plan support for the active phase.

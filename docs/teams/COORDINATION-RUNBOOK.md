@@ -1,13 +1,13 @@
 # Coordination Runbook
 
-**Purpose:** Provide the daily-work coordination entrypoint for `spio`; explicitly maintain team ownership, review routing, escalation paths, and checkpoint discipline without replacing SSOT planning or governance documents.
+**Purpose:** Provide the daily-work coordination entrypoint for `pafio`; explicitly maintain team ownership, review routing, escalation paths, and checkpoint discipline without replacing SSOT planning or governance documents.
 
 **Last updated:** 2026-04-24
 
 ## Mission
 
 Keep module boundaries, review routing, and checkpoint recovery clear across
-`spio` local-first package-manager workflow, registry client delivery,
+`pafio` local-first package-manager workflow, registry client delivery,
 compiler-facing contracts, offline package portability, platform handoff, and
 docs/delivery operations.
 
@@ -19,7 +19,7 @@ Docs / Delivery -> Registry / Publish
 Docs / Delivery -> Styio / Contracts
 Styio / Contracts -> Core / Workflow
 Registry / Publish -> Core / Workflow
-Styio / Contracts -> styio-platform handoff
+Styio / Contracts -> pafio handoff
 ```
 
 ## Ownership Table
@@ -28,7 +28,7 @@ Styio / Contracts -> styio-platform handoff
 |------|-----------------|--------------|-------------------------|
 | Core / Workflow | [CORE-WORKFLOW-RUNBOOK.md](./CORE-WORKFLOW-RUNBOOK.md) | native CLI, manifests, lockfiles, resolver, local import/export, package workflow, platform compatibility shims | CLI shape, manifest/lock behavior, offline package workflow change |
 | Registry / Publish | [REGISTRY-PUBLISH-RUNBOOK.md](./REGISTRY-PUBLISH-RUNBOOK.md) | registry client docs, offline package expectations, publish/fetch flow | registry transport, publish client semantics, local package portability change |
-| Styio / Contracts | [STYIO-CONTRACTS-RUNBOOK.md](./STYIO-CONTRACTS-RUNBOOK.md) | `contracts/`, compiler handoff, local Styio environment contract, external `styio` interface expectations, `styio-platform` handoff | machine contract, compatibility payload, compile-plan/platform boundary change |
+| Styio / Contracts | [STYIO-CONTRACTS-RUNBOOK.md](./STYIO-CONTRACTS-RUNBOOK.md) | `contracts/`, compiler handoff, local Styio environment contract, external `styio` interface expectations, `pafio` handoff | machine contract, compatibility payload, compile-plan/platform boundary change |
 | Docs / Delivery | [DOCS-DELIVERY-RUNBOOK.md](./DOCS-DELIVERY-RUNBOOK.md) | docs tree, repo hygiene, docs gate, delivery-facing docs | docs topology, gate shape, repo hygiene rule, workflow entrypoint change |
 
 ## Review Matrix
@@ -44,7 +44,7 @@ Styio / Contracts -> styio-platform handoff
 1. If implementation and planning disagree, escalate to `docs/planning/`.
 2. If CLI or compiler contract wording disagrees, escalate to `docs/governance/` and `docs/external/for-styio/`.
 3. If registry delivery shape disagrees, escalate to `docs/registry/`.
-4. If platform service ownership disagrees, escalate to `docs/planning/Spio-Platform-Migration-Handoff.md` and the downstream `styio-platform` docs.
+4. If platform service ownership disagrees, escalate to `docs/planning/Pafio-Styio-Cloud-Migration-Handoff.md` and the downstream `styio-cloud` docs.
 5. If workflow or delivery process disagrees, escalate to `docs/assets/workflow/`.
 
 ## Checkpoint Policy
@@ -61,7 +61,7 @@ Styio / Contracts -> styio-platform handoff
 | Registry client delivery path | `./scripts/checkpoint-health.sh` and relevant registry acceptance commands |
 | Compiler handoff / contracts | `./scripts/checkpoint-health.sh --styio-bin /absolute/path/to/styio` |
 | Offline package / local import-export | `./scripts/checkpoint-health.sh` plus local resolver/cache coverage |
-| Platform service handoff | `./scripts/docs-gate.sh`, platform migration docs, and downstream `styio-platform` gates |
+| Platform service handoff | `./scripts/docs-gate.sh`, platform migration docs, and downstream `pafio` gates |
 | Docs or delivery process | `./scripts/docs-gate.sh` and `python3 scripts/repo-hygiene-gate.py --mode tracked` |
 
 ## Handoff / Recovery

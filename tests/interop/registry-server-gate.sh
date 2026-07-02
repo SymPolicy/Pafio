@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SPIO_BIN="${1:?expected spio binary path}"
+PAFIO_BIN="${1:?expected pafio binary path}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 TMP_ROOT="$(mktemp -d)"
@@ -49,13 +49,13 @@ mkdir -p "$REGISTRY_ROOT"
 
 python3 "$ROOT_DIR/scripts/registry-v2-keygen.py" --output-dir "$KEY_DIR" >/dev/null
 
-CONTROL_BASE="http://127.0.0.1:${CONTROL_PORT}/api/spio-registry-control/v1"
+CONTROL_BASE="http://127.0.0.1:${CONTROL_PORT}/api/pafio-registry-control/v1"
 STATIC_ROOT="http://127.0.0.1:${STATIC_PORT}"
 
 python3 "$ROOT_DIR/scripts/registry-v2-control-plane-server.py" \
   --root "$REGISTRY_ROOT" \
   --key-dir "$KEY_DIR" \
-  --spio-bin "$SPIO_BIN" \
+  --pafio-bin "$PAFIO_BIN" \
   --read-root-url "$STATIC_ROOT" \
   --control-plane-base-url "$CONTROL_BASE" \
   --bind 127.0.0.1 \
@@ -79,7 +79,7 @@ python3 "$ROOT_DIR/scripts/registry-server-gate.py" \
   --publish-root "$CONTROL_BASE" \
   --fetch-root "$STATIC_ROOT" \
   --fetch-trust-descriptor "${CONTROL_BASE}/descriptor" \
-  --spio-bin "$SPIO_BIN" \
+  --pafio-bin "$PAFIO_BIN" \
   --json >"$OUT_JSON"
 
 python3 - "$OUT_JSON" <<'PY'
@@ -89,7 +89,7 @@ import sys
 
 payload = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))
 assert payload["ok"] is True
-assert payload["publish_root"].endswith("/api/spio-registry-control/v1")
+assert payload["publish_root"].endswith("/api/pafio-registry-control/v1")
 assert payload["fetch_root"].startswith("http://127.0.0.1:")
 step_names = [step["name"] for step in payload["steps"]]
 assert step_names == ["publish", "republish_conflict", "trust_import", "fetch"]

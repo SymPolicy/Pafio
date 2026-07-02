@@ -1,6 +1,6 @@
 # External Docs
 
-**Purpose:** Define the scope and naming rules for external handoff docs that `spio` shares with sibling Styio repositories.
+**Purpose:** Define the scope and naming rules for external handoff docs that `pafio` shares with sibling Styio repositories.
 
 **Last updated:** 2026-04-23
 

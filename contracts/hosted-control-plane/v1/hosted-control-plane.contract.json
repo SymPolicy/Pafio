@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "contract_name": "spio hosted control plane",
+  "contract_name": "pafio hosted control plane",
   "contract_version": "v1",
   "base_path": "/api/styio-hosted/v1",
   "workspace_path_parameter": "workspace_id",
@@ -838,7 +838,7 @@
         }
       },
       "optional": {
-        "spio_home": {
+        "pafio_home": {
           "type": "string",
           "min_length": 1
         },
@@ -1103,7 +1103,7 @@
         }
       },
       "optional": {
-        "spio_home": {
+        "pafio_home": {
           "type": "string",
           "min_length": 1
         }
@@ -1128,7 +1128,7 @@
           "type": "string",
           "min_length": 1
         },
-        "spio_home": {
+        "pafio_home": {
           "type": "string",
           "min_length": 1
         },

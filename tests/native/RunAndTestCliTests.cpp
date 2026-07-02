@@ -1,26 +1,26 @@
 #include "BuildTestSupport.hpp"
 
-#include "SpioCLI/CLI.hpp"
-#include "SpioCore/Errors.hpp"
-#include "SpioPlan/CompilePlan.hpp"
+#include "PafioCLI/CLI.hpp"
+#include "PafioCore/Errors.hpp"
+#include "PafioPlan/CompilePlan.hpp"
 
 #include <nlohmann/json.hpp>
 
 using json = nlohmann::json;
 
-using spio::testsupport::MakeTempDir;
-using spio::testsupport::ReadFile;
-using spio::testsupport::ScopedEnvVar;
-using spio::testsupport::WriteExecutable;
-using spio::testsupport::WriteFakeCompilePlanStyio;
-using spio::testsupport::WriteFile;
+using pafio::testsupport::MakeTempDir;
+using pafio::testsupport::ReadFile;
+using pafio::testsupport::ScopedEnvVar;
+using pafio::testsupport::WriteExecutable;
+using pafio::testsupport::WriteFakeCompilePlanStyio;
+using pafio::testsupport::WriteFile;
 
 TEST(RunCliTests, DryRunEmitsRunIntentForUniqueBinaryTarget)
 {
   const fs::path root = MakeTempDir("run-dry-run");
   WriteFile(
-      root / "spio.toml",
-      "[spio]\n"
+      root / "pafio.toml",
+      "[pafio]\n"
       "manifest-version = 1\n\n"
       "[package]\n"
       "name = \"acme/app\"\n"
@@ -35,11 +35,11 @@ TEST(RunCliTests, DryRunEmitsRunIntentForUniqueBinaryTarget)
       "path = \"src/main.styio\"\n");
   WriteFile(root / "src/main.styio", ">_(\"app\")\n");
 
-  const spio::BuildPlanResult result = spio::WriteBuildCompilePlan({
-      .manifest_path = root / "spio.toml",
+  const pafio::BuildPlanResult result = pafio::WriteBuildCompilePlan({
+      .manifest_path = root / "pafio.toml",
       .intent = "run",
   });
-  const json plan = json::parse(spio::testsupport::ReadFile(result.plan_path));
+  const json plan = json::parse(pafio::testsupport::ReadFile(result.plan_path));
   EXPECT_EQ(plan["intent"], "run");
   EXPECT_EQ(plan["entry"]["target_kind"], "bin");
   EXPECT_EQ(plan["entry"]["target_name"], "app");
@@ -49,8 +49,8 @@ TEST(RunCliTests, RejectsLibSelection)
 {
   const fs::path root = MakeTempDir("run-rejects-lib");
   WriteFile(
-      root / "spio.toml",
-      "[spio]\n"
+      root / "pafio.toml",
+      "[pafio]\n"
       "manifest-version = 1\n\n"
       "[package]\n"
       "name = \"acme/app\"\n"
@@ -65,24 +65,24 @@ TEST(RunCliTests, RejectsLibSelection)
       "path = \"src/main.styio\"\n");
   WriteFile(root / "src/main.styio", ">_(\"app\")\n");
 
-  const int exit_code = spio::RunCli({
+  const int exit_code = pafio::RunCli({
       "--json",
       "run",
       "--manifest-path",
-      (root / "spio.toml").string(),
+      (root / "pafio.toml").string(),
       "--lib",
       "--dry-run",
   });
-  EXPECT_EQ(exit_code, spio::kExitUsage);
+  EXPECT_EQ(exit_code, pafio::kExitUsage);
 }
 
 TEST(RunCliTests, NonDryRunRunRejectsCompilerWithoutRequiredCompilePlanVersion)
 {
   const fs::path root = MakeTempDir("run-contract-gate");
-  const ScopedEnvVar spio_home("SPIO_HOME", (root / ".spio-home").string());
+  const ScopedEnvVar pafio_home("PAFIO_HOME", (root / ".pafio-home").string());
   WriteFile(
-      root / "spio.toml",
-      "[spio]\n"
+      root / "pafio.toml",
+      "[pafio]\n"
       "manifest-version = 1\n\n"
       "[package]\n"
       "name = \"acme/app\"\n"
@@ -108,23 +108,23 @@ TEST(RunCliTests, NonDryRunRunRejectsCompilerWithoutRequiredCompilePlanVersion)
       "echo unexpected invocation >&2\n"
       "exit 64\n");
 
-  const int exit_code = spio::RunCli({
+  const int exit_code = pafio::RunCli({
       "run",
       "--manifest-path",
-      (root / "spio.toml").string(),
+      (root / "pafio.toml").string(),
       "--styio-bin",
       fake_styio.string(),
   });
-  EXPECT_EQ(exit_code, spio::kExitContract);
+  EXPECT_EQ(exit_code, pafio::kExitContract);
 }
 
 TEST(RunCliTests, NonDryRunRunExecutesPublishedCompilePlan)
 {
   const fs::path root = MakeTempDir("run-compile-plan-live");
-  const ScopedEnvVar spio_home("SPIO_HOME", (root / ".spio-home").string());
+  const ScopedEnvVar pafio_home("PAFIO_HOME", (root / ".pafio-home").string());
   WriteFile(
-      root / "spio.toml",
-      "[spio]\n"
+      root / "pafio.toml",
+      "[pafio]\n"
       "manifest-version = 1\n\n"
       "[package]\n"
       "name = \"acme/app\"\n"
@@ -143,17 +143,17 @@ TEST(RunCliTests, NonDryRunRunExecutesPublishedCompilePlan)
   WriteFakeCompilePlanStyio(fake_styio);
 
   testing::internal::CaptureStdout();
-  const int exit_code = spio::RunCli({
+  const int exit_code = pafio::RunCli({
       "--json",
       "run",
       "--manifest-path",
-      (root / "spio.toml").string(),
+      (root / "pafio.toml").string(),
       "--styio-bin",
       fake_styio.string(),
   });
   const std::string stdout_text = testing::internal::GetCapturedStdout();
 
-  EXPECT_EQ(exit_code, spio::kExitSuccess);
+  EXPECT_EQ(exit_code, pafio::kExitSuccess);
   const json payload = json::parse(stdout_text);
   EXPECT_EQ(payload.at("intent").get<std::string>(), "run");
   EXPECT_EQ(payload.at("styio").at("integration_phase").get<std::string>(), "compile-plan-live");
@@ -165,8 +165,8 @@ TEST(TestCliTests, DryRunEmitsTestIntentForUniqueTestTarget)
 {
   const fs::path root = MakeTempDir("test-dry-run");
   WriteFile(
-      root / "spio.toml",
-      "[spio]\n"
+      root / "pafio.toml",
+      "[pafio]\n"
       "manifest-version = 1\n\n"
       "[package]\n"
       "name = \"acme/app\"\n"
@@ -181,11 +181,11 @@ TEST(TestCliTests, DryRunEmitsTestIntentForUniqueTestTarget)
       "path = \"tests/smoke.styio\"\n");
   WriteFile(root / "tests/smoke.styio", "# smoke := true\n");
 
-  const spio::BuildPlanResult result = spio::WriteBuildCompilePlan({
-      .manifest_path = root / "spio.toml",
+  const pafio::BuildPlanResult result = pafio::WriteBuildCompilePlan({
+      .manifest_path = root / "pafio.toml",
       .intent = "test",
   });
-  const json plan = json::parse(spio::testsupport::ReadFile(result.plan_path));
+  const json plan = json::parse(pafio::testsupport::ReadFile(result.plan_path));
   EXPECT_EQ(plan["intent"], "test");
   EXPECT_EQ(plan["entry"]["target_kind"], "test");
   EXPECT_EQ(plan["entry"]["target_name"], "smoke");
@@ -197,8 +197,8 @@ TEST(TestCliTests, RejectsBinSelection)
 {
   const fs::path root = MakeTempDir("test-rejects-bin");
   WriteFile(
-      root / "spio.toml",
-      "[spio]\n"
+      root / "pafio.toml",
+      "[pafio]\n"
       "manifest-version = 1\n\n"
       "[package]\n"
       "name = \"acme/app\"\n"
@@ -213,25 +213,25 @@ TEST(TestCliTests, RejectsBinSelection)
       "path = \"tests/smoke.styio\"\n");
   WriteFile(root / "tests/smoke.styio", "# smoke := true\n");
 
-  const int exit_code = spio::RunCli({
+  const int exit_code = pafio::RunCli({
       "--json",
       "test",
       "--manifest-path",
-      (root / "spio.toml").string(),
+      (root / "pafio.toml").string(),
       "--bin",
       "app",
       "--dry-run",
   });
-  EXPECT_EQ(exit_code, spio::kExitUsage);
+  EXPECT_EQ(exit_code, pafio::kExitUsage);
 }
 
 TEST(TestCliTests, NonDryRunTestRejectsCompilerWithoutRequiredCompilePlanVersion)
 {
   const fs::path root = MakeTempDir("test-contract-gate");
-  const ScopedEnvVar spio_home("SPIO_HOME", (root / ".spio-home").string());
+  const ScopedEnvVar pafio_home("PAFIO_HOME", (root / ".pafio-home").string());
   WriteFile(
-      root / "spio.toml",
-      "[spio]\n"
+      root / "pafio.toml",
+      "[pafio]\n"
       "manifest-version = 1\n\n"
       "[package]\n"
       "name = \"acme/app\"\n"
@@ -257,23 +257,23 @@ TEST(TestCliTests, NonDryRunTestRejectsCompilerWithoutRequiredCompilePlanVersion
       "echo unexpected invocation >&2\n"
       "exit 64\n");
 
-  const int exit_code = spio::RunCli({
+  const int exit_code = pafio::RunCli({
       "test",
       "--manifest-path",
-      (root / "spio.toml").string(),
+      (root / "pafio.toml").string(),
       "--styio-bin",
       fake_styio.string(),
   });
-  EXPECT_EQ(exit_code, spio::kExitContract);
+  EXPECT_EQ(exit_code, pafio::kExitContract);
 }
 
 TEST(TestCliTests, NonDryRunTestExecutesPublishedCompilePlan)
 {
   const fs::path root = MakeTempDir("test-compile-plan-live");
-  const ScopedEnvVar spio_home("SPIO_HOME", (root / ".spio-home").string());
+  const ScopedEnvVar pafio_home("PAFIO_HOME", (root / ".pafio-home").string());
   WriteFile(
-      root / "spio.toml",
-      "[spio]\n"
+      root / "pafio.toml",
+      "[pafio]\n"
       "manifest-version = 1\n\n"
       "[package]\n"
       "name = \"acme/app\"\n"
@@ -292,17 +292,17 @@ TEST(TestCliTests, NonDryRunTestExecutesPublishedCompilePlan)
   WriteFakeCompilePlanStyio(fake_styio);
 
   testing::internal::CaptureStdout();
-  const int exit_code = spio::RunCli({
+  const int exit_code = pafio::RunCli({
       "--json",
       "test",
       "--manifest-path",
-      (root / "spio.toml").string(),
+      (root / "pafio.toml").string(),
       "--styio-bin",
       fake_styio.string(),
   });
   const std::string stdout_text = testing::internal::GetCapturedStdout();
 
-  EXPECT_EQ(exit_code, spio::kExitSuccess);
+  EXPECT_EQ(exit_code, pafio::kExitSuccess);
   const json payload = json::parse(stdout_text);
   EXPECT_EQ(payload.at("intent").get<std::string>(), "test");
   EXPECT_EQ(payload.at("styio").at("integration_phase").get<std::string>(), "compile-plan-live");

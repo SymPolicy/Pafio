@@ -1,6 +1,6 @@
 # ADR-0002: Native C++20 and CMake as the Phase-2 Implementation Path
 
-**Purpose:** Record the decision, context, alternatives, and consequences for making native `C++20` + `CMake` the authoritative implementation path for `spio` phase 2.
+**Purpose:** Record the decision, context, alternatives, and consequences for making native `C++20` + `CMake` the authoritative implementation path for `pafio` phase 2.
 
 **Last updated:** 2026-04-10
 
@@ -12,7 +12,7 @@ Accepted
 
 The repository started with a Python bootstrap to freeze CLI shape, manifest/lock validation, and compiler-handshake boundaries. That scaffold was useful for bootstrapping contracts, but the long-term project direction is a standalone package manager aligned operationally with `styio`.
 
-The project owner explicitly requested that `spio`'s tech stack remain consistent with `styio`, which is built with native `C++20` and `CMake`.
+The project owner explicitly requested that `pafio`'s tech stack remain consistent with `styio`, which is built with native `C++20` and `CMake`.
 
 ## Decision
 
@@ -29,9 +29,9 @@ The project owner explicitly requested that `spio`'s tech stack remain consisten
 
 1. Continue growing the Python bootstrap into the real implementation.
    - Rejected because it diverges from the requested long-term stack and would create another migration later.
-2. Rebuild `spio` in a different native stack unrelated to `styio`.
+2. Rebuild `pafio` in a different native stack unrelated to `styio`.
    - Rejected because it would weaken operational consistency without providing a compensating architectural benefit.
-3. Embed `spio` inside the `styio` source tree.
+3. Embed `pafio` inside the `styio` source tree.
    - Rejected because it violates the repository independence boundary.
 
 ## Consequences
@@ -40,7 +40,7 @@ Positive:
 
 1. The active implementation path now matches the requested long-term stack.
 2. Native build/test infrastructure can evolve without a second re-platforming step.
-3. Operational expectations between `styio` and `spio` are easier to align.
+3. Operational expectations between `styio` and `pafio` are easier to align.
 
 Negative:
 

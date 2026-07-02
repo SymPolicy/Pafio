@@ -2,7 +2,7 @@
   "openWorkspace": {
     "request": {
       "workspace_root": "/workspace/demo",
-      "manifest_path": "/workspace/demo/spio.toml",
+      "manifest_path": "/workspace/demo/pafio.toml",
       "platform": "ios"
     },
     "success": {
@@ -11,23 +11,23 @@
       "stdout": "",
       "stderr": "",
       "payload": {
-        "id": "/workspace/demo/spio.toml",
+        "id": "/workspace/demo/pafio.toml",
         "title": "demo/app",
         "kind": "hosted",
         "workspace_root": "/workspace/demo",
         "workspace_members": [],
-        "manifest_path": "/workspace/demo/spio.toml",
-        "lockfile_path": "/workspace/demo/spio.lock",
-        "toolchain_pin_path": "/workspace/demo/spio-toolchain.toml",
+        "manifest_path": "/workspace/demo/pafio.toml",
+        "lockfile_path": "/workspace/demo/pafio.lock",
+        "toolchain_pin_path": "/workspace/demo/pafio-toolchain.toml",
         "styio_config_path": "/workspace/demo/styio.toml",
-        "vendor_root": "/workspace/demo/.spio/vendor",
-        "build_root": "/workspace/demo/.spio/build",
+        "vendor_root": "/workspace/demo/.pafio/vendor",
+        "build_root": "/workspace/demo/.pafio/build",
         "packages": [
           {
             "package_name": "demo/app",
             "version": "0.1.0",
             "root_path": "/workspace/demo",
-            "manifest_path": "/workspace/demo/spio.toml",
+            "manifest_path": "/workspace/demo/pafio.toml",
             "targets": [
               {
                 "id": "demo/app:bin:demo",
@@ -82,14 +82,14 @@
         "toolchain": {
           "source": "project-pin",
           "detail": "Pinned compiler is active.",
-          "pin_path": "/workspace/demo/spio-toolchain.toml",
+          "pin_path": "/workspace/demo/pafio-toolchain.toml",
           "channel": "stable",
           "version": "0.0.1"
         },
         "lock_state": "fresh",
         "vendor_state": "present",
         "active_compiler": {
-          "binary_path": "/workspace/demo/.spio/tools/styio/current/bin/styio",
+          "binary_path": "/workspace/demo/.pafio/tools/styio/current/bin/styio",
           "tool": "styio",
           "compiler_version": "0.0.1",
           "channel": "stable",
@@ -116,16 +116,16 @@
           }
         },
         "managed_toolchains": {
-          "spio_home": "/workspace/demo/.spio",
-          "current_binary": "/workspace/demo/.spio/tools/styio/current/bin/styio",
-          "current_metadata_path": "/workspace/demo/.spio/tools/styio/current/metadata.json",
+          "pafio_home": "/workspace/demo/.pafio",
+          "current_binary": "/workspace/demo/.pafio/tools/styio/current/bin/styio",
+          "current_metadata_path": "/workspace/demo/.pafio/tools/styio/current/metadata.json",
           "installed": [
             {
               "channel": "stable",
               "compiler_version": "0.0.1",
-              "install_root": "/workspace/demo/.spio/tools/styio/0.0.1",
-              "install_binary_path": "/workspace/demo/.spio/tools/styio/0.0.1/bin/styio",
-              "install_metadata_path": "/workspace/demo/.spio/tools/styio/0.0.1/metadata.json"
+              "install_root": "/workspace/demo/.pafio/tools/styio/0.0.1",
+              "install_binary_path": "/workspace/demo/.pafio/tools/styio/0.0.1/bin/styio",
+              "install_metadata_path": "/workspace/demo/.pafio/tools/styio/0.0.1/metadata.json"
             }
           ]
         },
@@ -134,7 +134,7 @@
           "packages": [
             {
               "package_name": "demo/app",
-              "manifest_path": "/workspace/demo/spio.toml",
+              "manifest_path": "/workspace/demo/pafio.toml",
               "publish_enabled": true,
               "publish_ready": true,
               "blocking_reasons": [],
@@ -161,27 +161,27 @@
         },
         "source_state": {
           "schema_version": 1,
-          "spio_home": "/workspace/demo/.spio",
+          "pafio_home": "/workspace/demo/.pafio",
           "declared_git_dependencies": 0,
           "declared_registry_dependencies": 1,
           "git_cache": {
-            "repos_root": "/workspace/demo/.spio/git/repos",
-            "checkouts_root": "/workspace/demo/.spio/git/checkouts",
+            "repos_root": "/workspace/demo/.pafio/git/repos",
+            "checkouts_root": "/workspace/demo/.pafio/git/checkouts",
             "repos_present": true,
             "checkouts_present": true
           },
           "registry_cache": {
-            "cache_root": "/workspace/demo/.spio/registry",
-            "index_root": "/workspace/demo/.spio/registry/index",
-            "blob_root": "/workspace/demo/.spio/registry/blobs",
-            "checkout_root": "/workspace/demo/.spio/registry/checkouts",
+            "cache_root": "/workspace/demo/.pafio/registry",
+            "index_root": "/workspace/demo/.pafio/registry/index",
+            "blob_root": "/workspace/demo/.pafio/registry/blobs",
+            "checkout_root": "/workspace/demo/.pafio/registry/checkouts",
             "index_present": true,
             "blobs_present": true,
             "checkouts_present": true
           },
           "vendor": {
-            "vendor_root": "/workspace/demo/.spio/vendor",
-            "metadata_path": "/workspace/demo/.spio/vendor/vendor.json",
+            "vendor_root": "/workspace/demo/.pafio/vendor",
+            "metadata_path": "/workspace/demo/.pafio/vendor/vendor.json",
             "vendor_present": true,
             "metadata_present": true,
             "git_snapshots": 0
@@ -226,18 +226,18 @@
       "stdout": "",
       "stderr": "",
       "payload": {
-        "id": "/workspace/demo/spio.toml",
+        "id": "/workspace/demo/pafio.toml",
         "title": "demo/app",
         "kind": "hosted",
         "workspace_root": "/workspace/demo",
         "workspace_members": [],
-        "manifest_path": "/workspace/demo/spio.toml",
+        "manifest_path": "/workspace/demo/pafio.toml",
         "packages": [
           {
             "package_name": "demo/app",
             "version": "0.1.0",
             "root_path": "/workspace/demo",
-            "manifest_path": "/workspace/demo/spio.toml",
+            "manifest_path": "/workspace/demo/pafio.toml",
             "targets": [
               {
                 "id": "demo/app:bin:demo",
@@ -301,7 +301,7 @@
   },
   "toolInstall": {
     "request": {
-      "styio_binary_path": "/opt/styio/bin/styio"
+      "styio_binary_path": "<styio-binary>"
     },
     "success": {
       "returncode": 0,
@@ -311,16 +311,16 @@
       "payload": {
         "compiler_version": "0.0.1",
         "channel": "stable",
-        "spio_home": "/workspace/demo/.spio",
-        "current_binary": "/workspace/demo/.spio/tools/styio/current/bin/styio",
-        "current_metadata_path": "/workspace/demo/.spio/tools/styio/current/metadata.json",
+        "pafio_home": "/workspace/demo/.pafio",
+        "current_binary": "/workspace/demo/.pafio/tools/styio/current/bin/styio",
+        "current_metadata_path": "/workspace/demo/.pafio/tools/styio/current/metadata.json",
         "installed": [
           {
             "channel": "stable",
             "compiler_version": "0.0.1",
-            "install_root": "/workspace/demo/.spio/tools/styio/0.0.1",
-            "install_binary_path": "/workspace/demo/.spio/tools/styio/0.0.1/bin/styio",
-            "install_metadata_path": "/workspace/demo/.spio/tools/styio/0.0.1/metadata.json"
+            "install_root": "/workspace/demo/.pafio/tools/styio/0.0.1",
+            "install_binary_path": "/workspace/demo/.pafio/tools/styio/0.0.1/bin/styio",
+            "install_metadata_path": "/workspace/demo/.pafio/tools/styio/0.0.1/metadata.json"
           }
         ]
       }
@@ -350,13 +350,13 @@
       "payload": {
         "compiler_version": "0.0.1",
         "channel": "stable",
-        "current_binary": "/workspace/demo/.spio/tools/styio/current/bin/styio",
+        "current_binary": "/workspace/demo/.pafio/tools/styio/current/bin/styio",
         "installed": [
           {
             "channel": "stable",
             "compiler_version": "0.0.1",
-            "install_root": "/workspace/demo/.spio/tools/styio/0.0.1",
-            "install_binary_path": "/workspace/demo/.spio/tools/styio/0.0.1/bin/styio"
+            "install_root": "/workspace/demo/.pafio/tools/styio/0.0.1",
+            "install_binary_path": "/workspace/demo/.pafio/tools/styio/0.0.1/bin/styio"
           }
         ]
       }
@@ -386,13 +386,13 @@
       "payload": {
         "compiler_version": "0.0.1",
         "channel": "stable",
-        "current_binary": "/workspace/demo/.spio/tools/styio/current/bin/styio",
+        "current_binary": "/workspace/demo/.pafio/tools/styio/current/bin/styio",
         "installed": [
           {
             "channel": "stable",
             "compiler_version": "0.0.1",
-            "install_root": "/workspace/demo/.spio/tools/styio/0.0.1",
-            "install_binary_path": "/workspace/demo/.spio/tools/styio/0.0.1/bin/styio"
+            "install_root": "/workspace/demo/.pafio/tools/styio/0.0.1",
+            "install_binary_path": "/workspace/demo/.pafio/tools/styio/0.0.1/bin/styio"
           }
         ]
       }
@@ -421,8 +421,8 @@
           {
             "channel": "stable",
             "compiler_version": "0.0.1",
-            "install_root": "/workspace/demo/.spio/tools/styio/0.0.1",
-            "install_binary_path": "/workspace/demo/.spio/tools/styio/0.0.1/bin/styio"
+            "install_root": "/workspace/demo/.pafio/tools/styio/0.0.1",
+            "install_binary_path": "/workspace/demo/.pafio/tools/styio/0.0.1/bin/styio"
           }
         ]
       }
@@ -453,8 +453,8 @@
         "packages": [
           "demo/app"
         ],
-        "vendor_root": "/workspace/demo/.spio/vendor",
-        "metadata_path": "/workspace/demo/.spio/vendor/vendor.json"
+        "vendor_root": "/workspace/demo/.pafio/vendor",
+        "metadata_path": "/workspace/demo/.pafio/vendor/vendor.json"
       }
     },
     "failure": {

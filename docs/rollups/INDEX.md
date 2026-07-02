@@ -10,5 +10,5 @@
 
 | Path | Entry | Summary |
 |------|-------|---------|
-| `CURRENT-STATE.md` | [Current State](./CURRENT-STATE.md) | Provide the default active-state summary for spio, including the current governance posture, product posture, and next file-governance checkpoint before deeper planning docs are consulted. |
-| `NEXT-STAGE-GAP-LEDGER.md` | [Next Stage Gap Ledger](./NEXT-STAGE-GAP-LEDGER.md) | Track the active gaps that still separate spio from the shared three-repo file-governance baseline; this ledger compresses governance debt into checkpoint-sized follow-up work. |
+| `CURRENT-STATE.md` | [Current State](./CURRENT-STATE.md) | Provide the default active-state summary for pafio, including the current governance posture, product posture, and next file-governance checkpoint before deeper planning docs are consulted. |
+| `NEXT-STAGE-GAP-LEDGER.md` | [Next Stage Gap Ledger](./NEXT-STAGE-GAP-LEDGER.md) | Track the active gaps that still separate pafio from the shared three-repo file-governance baseline; this ledger compresses governance debt into checkpoint-sized follow-up work. |

@@ -1,10 +1,10 @@
 # Technology And Component Inventory
 
-**Purpose:** Define the required technology-stack, internal-component, open-source-component, and dependency-manifest inventory for `styio-spio`.
+**Purpose:** Define the required technology-stack, internal-component, open-source-component, and dependency-manifest inventory for `pafio`.
 
 **Last updated:** 2026-04-24
 
-This document is the repository-local maintenance rule for the manifest inventory audited by `audit`. The canonical audit module must list the same surfaces in `for-styio-spio/module.json`; if this document and the audit manifest diverge, the change is not closed.
+This document is the repository-local maintenance rule for the manifest inventory audited by `audit`. The canonical audit module must list the same surfaces in `for-pafio/module.json`; if this document and the audit manifest diverge, the change is not closed.
 
 ## Required Inventory Fields
 
@@ -30,10 +30,10 @@ Technology stack:
 
 Internal components:
 
-- `SpioManifest`, `SpioResolve`, and `SpioPlan` manifest/resolver/compile-plan graph.
-- `SpioRegistryClient` and `spio_registry_v2` registry materialization and trust layer.
-- `SpioToolchain` and `SpioTool` managed compiler/toolchain state.
-- `SpioCore` process handling and `SpioCloud` control-plane integration.
+- `PafioManifest`, `PafioResolve`, and `PafioPlan` manifest/resolver/compile-plan graph.
+- `PafioRegistryClient` and `pafio_registry_v2` registry materialization and trust layer.
+- `PafioToolchain` and `PafioTool` managed compiler/toolchain state.
+- `PafioCore` process handling and `PafioCloud` control-plane integration.
 - Native, interop, unit, docs, and delivery gate suites.
 - Registry v2 publish, verify, keygen, promote, and control-plane helper scripts.
 

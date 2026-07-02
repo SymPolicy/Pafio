@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://spio.dev/contracts/registry-v2/v1/signed-snapshot.schema.json",
-  "title": "spio Registry V2 Signed Snapshot Metadata",
+  "$id": "https://pafio.dev/contracts/registry-v2/v1/signed-snapshot.schema.json",
+  "title": "pafio Registry V2 Signed Snapshot Metadata",
   "type": "object",
   "additionalProperties": false,
   "required": [

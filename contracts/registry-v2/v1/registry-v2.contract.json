@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "protocol": "spio-static-registry",
+  "protocol": "pafio-static-registry",
   "protocol_version": 2,
   "read_plane": {
     "marker": "config.json",

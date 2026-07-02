@@ -25,7 +25,7 @@ class PerfGateTests(unittest.TestCase):
     def _sample_result(self, median_ms: float) -> dict:
         return {
             "name": "machine_info_json",
-            "command": ["scripts/spio", "machine-info", "--json"],
+            "command": ["scripts/pafio", "machine-info", "--json"],
             "runs": 5,
             "warmup_runs": 1,
             "median_ms": median_ms,

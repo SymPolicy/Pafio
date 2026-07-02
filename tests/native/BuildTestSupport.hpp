@@ -10,7 +10,7 @@
 
 namespace fs = std::filesystem;
 
-namespace spio::testsupport
+namespace pafio::testsupport
 {
 
 class ScopedEnvVar
@@ -52,7 +52,7 @@ inline fs::path CanonicalAbsolutePath(const fs::path &path)
 
 inline fs::path MakeTempDir(const std::string &label)
 {
-  const fs::path root = fs::temp_directory_path() / "spio-native-build-tests" / label;
+  const fs::path root = fs::temp_directory_path() / "pafio-native-build-tests" / label;
   fs::remove_all(root);
   fs::create_directories(root);
   return root;
@@ -146,4 +146,4 @@ inline void WriteFakeSourceToolchain(const fs::path &root)
           "exit 64\n");
 }
 
-}  // namespace spio::testsupport
+}  // namespace pafio::testsupport

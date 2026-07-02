@@ -14,7 +14,7 @@ from typing import Any
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-DEFAULT_SPIO = ROOT / "scripts" / "spio"
+DEFAULT_PAFIO = ROOT / "scripts" / "pafio"
 
 
 def run_step(
@@ -161,16 +161,16 @@ def create_machine_info_alias(
 def create_workspace_git_repo(repo_root: pathlib.Path, util_version: str) -> str:
     (repo_root / "packages" / "feed" / "src").mkdir(parents=True, exist_ok=True)
     (repo_root / "packages" / "util" / "src").mkdir(parents=True, exist_ok=True)
-    (repo_root / "spio.toml").write_text(
-        "[spio]\n"
+    (repo_root / "pafio.toml").write_text(
+        "[pafio]\n"
         "manifest-version = 1\n\n"
         "[workspace]\n"
         "members = [\"packages/feed\", \"packages/util\"]\n"
         "resolver = \"1\"\n",
         encoding="utf-8",
     )
-    (repo_root / "packages" / "feed" / "spio.toml").write_text(
-        "[spio]\n"
+    (repo_root / "packages" / "feed" / "pafio.toml").write_text(
+        "[pafio]\n"
         "manifest-version = 1\n\n"
         "[package]\n"
         "name = \"acme/feed\"\n"
@@ -189,8 +189,8 @@ def create_workspace_git_repo(repo_root: pathlib.Path, util_version: str) -> str
         "// feed fixture\n",
         encoding="utf-8",
     )
-    (repo_root / "packages" / "util" / "spio.toml").write_text(
-        "[spio]\n"
+    (repo_root / "packages" / "util" / "pafio.toml").write_text(
+        "[pafio]\n"
         "manifest-version = 1\n\n"
         "[package]\n"
         "name = \"acme/util\"\n"
@@ -232,11 +232,11 @@ def create_workspace_git_repo(repo_root: pathlib.Path, util_version: str) -> str
 
 
 def write_registry_publish_package(root: pathlib.Path) -> pathlib.Path:
-    manifest_path = root / "spio.toml"
+    manifest_path = root / "pafio.toml"
     source_path = root / "src" / "lib.styio"
     source_path.parent.mkdir(parents=True, exist_ok=True)
     manifest_path.write_text(
-        "[spio]\n"
+        "[pafio]\n"
         "manifest-version = 1\n\n"
         "[package]\n"
         "name = \"acme/registry-feed\"\n"
@@ -255,11 +255,11 @@ def write_registry_publish_package(root: pathlib.Path) -> pathlib.Path:
 
 
 def write_registry_consumer_project(root: pathlib.Path, fetch_root: str) -> pathlib.Path:
-    manifest_path = root / "spio.toml"
+    manifest_path = root / "pafio.toml"
     source_path = root / "src" / "main.styio"
     source_path.parent.mkdir(parents=True, exist_ok=True)
     manifest_path.write_text(
-        "[spio]\n"
+        "[pafio]\n"
         "manifest-version = 1\n\n"
         "[package]\n"
         "name = \"acme/registry-client\"\n"
@@ -280,13 +280,13 @@ def write_registry_consumer_project(root: pathlib.Path, fetch_root: str) -> path
 
 
 def write_single_package_project(root: pathlib.Path) -> dict[str, Any]:
-    manifest_path = root / "spio.toml"
+    manifest_path = root / "pafio.toml"
     source_path = root / "src" / "main.styio"
     test_path = root / "tests" / "smoke.styio"
     source_path.parent.mkdir(parents=True, exist_ok=True)
     test_path.parent.mkdir(parents=True, exist_ok=True)
     manifest_path.write_text(
-        "[spio]\n"
+        "[pafio]\n"
         "manifest-version = 1\n\n"
         "[package]\n"
         "name = \"acme/sample\"\n"
@@ -320,9 +320,9 @@ def write_single_package_project(root: pathlib.Path) -> dict[str, Any]:
 
 
 def write_workspace_project(root: pathlib.Path) -> dict[str, Any]:
-    root_manifest = root / "spio.toml"
-    app_manifest = root / "packages" / "app" / "spio.toml"
-    tool_manifest = root / "packages" / "tool" / "spio.toml"
+    root_manifest = root / "pafio.toml"
+    app_manifest = root / "packages" / "app" / "pafio.toml"
+    tool_manifest = root / "packages" / "tool" / "pafio.toml"
     app_source = root / "packages" / "app" / "src" / "main.styio"
     app_test = root / "packages" / "app" / "tests" / "smoke.styio"
     tool_source = root / "packages" / "tool" / "src" / "main.styio"
@@ -332,7 +332,7 @@ def write_workspace_project(root: pathlib.Path) -> dict[str, Any]:
     tool_source.parent.mkdir(parents=True, exist_ok=True)
     tool_test.parent.mkdir(parents=True, exist_ok=True)
     root_manifest.write_text(
-        "[spio]\n"
+        "[pafio]\n"
         "manifest-version = 1\n\n"
         "[workspace]\n"
         "members = [\"packages/app\", \"packages/tool\"]\n"
@@ -340,7 +340,7 @@ def write_workspace_project(root: pathlib.Path) -> dict[str, Any]:
         encoding="utf-8",
     )
     app_manifest.write_text(
-        "[spio]\n"
+        "[pafio]\n"
         "manifest-version = 1\n\n"
         "[package]\n"
         "name = \"acme/app\"\n"
@@ -359,7 +359,7 @@ def write_workspace_project(root: pathlib.Path) -> dict[str, Any]:
         encoding="utf-8",
     )
     tool_manifest.write_text(
-        "[spio]\n"
+        "[pafio]\n"
         "manifest-version = 1\n\n"
         "[package]\n"
         "name = \"acme/tool\"\n"
@@ -397,11 +397,11 @@ def write_workspace_project(root: pathlib.Path) -> dict[str, Any]:
 def write_offline_project(root: pathlib.Path) -> dict[str, Any]:
     git_repo = root / "remote-feed"
     rev = create_workspace_git_repo(git_repo, "0.9.0")
-    manifest_path = root / "spio.toml"
+    manifest_path = root / "pafio.toml"
     source_path = root / "src" / "main.styio"
     source_path.parent.mkdir(parents=True, exist_ok=True)
     manifest_path.write_text(
-        "[spio]\n"
+        "[pafio]\n"
         "manifest-version = 1\n\n"
         "[package]\n"
         "name = \"acme/app\"\n"
@@ -537,8 +537,8 @@ def validate_vendor_payload(
         errors.append(f"vendor payload field 'offline' must equal {expected_offline}")
     vendor_root = payload.get("vendor_root")
     metadata_path = payload.get("metadata_path")
-    expected_vendor_root = str(workspace_root / ".spio" / "vendor")
-    expected_metadata_path = str(workspace_root / ".spio" / "vendor" / "spio-vendor.json")
+    expected_vendor_root = str(workspace_root / ".pafio" / "vendor")
+    expected_metadata_path = str(workspace_root / ".pafio" / "vendor" / "pafio-vendor.json")
     if vendor_root != expected_vendor_root:
         errors.append(
             f"vendor payload field 'vendor_root' must equal {expected_vendor_root!r}"
@@ -710,7 +710,7 @@ def validate_publish_payload(
         errors.append(
             f"publish payload field 'package_root' must equal {str(expected_package_root)!r}"
         )
-    expected_manifest_path = str(expected_package_root / "spio.toml")
+    expected_manifest_path = str(expected_package_root / "pafio.toml")
     if payload.get("manifest_path") != expected_manifest_path:
         errors.append(
             f"publish payload field 'manifest_path' must equal {expected_manifest_path!r}"
@@ -1063,7 +1063,7 @@ def build_single_package_step_specs(context: dict[str, Any], styio_bin: str) -> 
         {
             "name": "tool_install_primary",
             "command": lambda _state: [
-                context["spio_bin"],
+                context["pafio_bin"],
                 "--json",
                 "tool",
                 "install",
@@ -1087,7 +1087,7 @@ def build_single_package_step_specs(context: dict[str, Any], styio_bin: str) -> 
         {
             "name": "tool_use_primary",
             "command": lambda state: [
-                context["spio_bin"],
+                context["pafio_bin"],
                 "--json",
                 "tool",
                 "use",
@@ -1106,7 +1106,7 @@ def build_single_package_step_specs(context: dict[str, Any], styio_bin: str) -> 
         {
             "name": "tool_pin_primary",
             "command": lambda state: [
-                context["spio_bin"],
+                context["pafio_bin"],
                 "--json",
                 "tool",
                 "pin",
@@ -1129,7 +1129,7 @@ def build_single_package_step_specs(context: dict[str, Any], styio_bin: str) -> 
         {
             "name": "tool_status_primary",
             "command": lambda _state: [
-                context["spio_bin"],
+                context["pafio_bin"],
                 "--json",
                 "tool",
                 "status",
@@ -1150,7 +1150,7 @@ def build_single_package_step_specs(context: dict[str, Any], styio_bin: str) -> 
         {
             "name": "tool_install_alternate",
             "command": lambda _state: [
-                context["spio_bin"],
+                context["pafio_bin"],
                 "--json",
                 "tool",
                 "install",
@@ -1174,7 +1174,7 @@ def build_single_package_step_specs(context: dict[str, Any], styio_bin: str) -> 
         {
             "name": "tool_use_alternate",
             "command": lambda state: [
-                context["spio_bin"],
+                context["pafio_bin"],
                 "--json",
                 "tool",
                 "use",
@@ -1193,7 +1193,7 @@ def build_single_package_step_specs(context: dict[str, Any], styio_bin: str) -> 
         {
             "name": "tool_pin_alternate",
             "command": lambda state: [
-                context["spio_bin"],
+                context["pafio_bin"],
                 "--json",
                 "tool",
                 "pin",
@@ -1216,7 +1216,7 @@ def build_single_package_step_specs(context: dict[str, Any], styio_bin: str) -> 
         {
             "name": "tool_status_alternate",
             "command": lambda _state: [
-                context["spio_bin"],
+                context["pafio_bin"],
                 "--json",
                 "tool",
                 "status",
@@ -1237,7 +1237,7 @@ def build_single_package_step_specs(context: dict[str, Any], styio_bin: str) -> 
         {
             "name": "check_switched",
             "command": lambda _state: [
-                context["spio_bin"],
+                context["pafio_bin"],
                 "--json",
                 "check",
                 "--manifest-path",
@@ -1254,7 +1254,7 @@ def build_single_package_step_specs(context: dict[str, Any], styio_bin: str) -> 
         {
             "name": "fetch_switched",
             "command": lambda _state: [
-                context["spio_bin"],
+                context["pafio_bin"],
                 "--json",
                 "fetch",
                 "--manifest-path",
@@ -1270,7 +1270,7 @@ def build_single_package_step_specs(context: dict[str, Any], styio_bin: str) -> 
         {
             "name": "vendor_switched",
             "command": lambda _state: [
-                context["spio_bin"],
+                context["pafio_bin"],
                 "--json",
                 "vendor",
                 "--manifest-path",
@@ -1287,7 +1287,7 @@ def build_single_package_step_specs(context: dict[str, Any], styio_bin: str) -> 
         {
             "name": "run_switched",
             "command": lambda _state: [
-                context["spio_bin"],
+                context["pafio_bin"],
                 "--json",
                 "run",
                 "--manifest-path",
@@ -1313,7 +1313,7 @@ def build_single_package_step_specs(context: dict[str, Any], styio_bin: str) -> 
         {
             "name": "tool_use_primary_return",
             "command": lambda state: [
-                context["spio_bin"],
+                context["pafio_bin"],
                 "--json",
                 "tool",
                 "use",
@@ -1332,7 +1332,7 @@ def build_single_package_step_specs(context: dict[str, Any], styio_bin: str) -> 
         {
             "name": "tool_pin_primary_return",
             "command": lambda state: [
-                context["spio_bin"],
+                context["pafio_bin"],
                 "--json",
                 "tool",
                 "pin",
@@ -1354,7 +1354,7 @@ def build_single_package_step_specs(context: dict[str, Any], styio_bin: str) -> 
         {
             "name": "tool_status_primary_return",
             "command": lambda _state: [
-                context["spio_bin"],
+                context["pafio_bin"],
                 "--json",
                 "tool",
                 "status",
@@ -1375,7 +1375,7 @@ def build_single_package_step_specs(context: dict[str, Any], styio_bin: str) -> 
         {
             "name": "test_primary_return",
             "command": lambda _state: [
-                context["spio_bin"],
+                context["pafio_bin"],
                 "--json",
                 "test",
                 "--manifest-path",
@@ -1401,7 +1401,7 @@ def build_single_package_step_specs(context: dict[str, Any], styio_bin: str) -> 
         {
             "name": "publish_preflight_primary_return",
             "command": lambda _state: [
-                context["spio_bin"],
+                context["pafio_bin"],
                 "--json",
                 "publish",
                 "--manifest-path",
@@ -1425,7 +1425,7 @@ def build_workspace_step_specs(context: dict[str, Any], styio_bin: str) -> list[
         {
             "name": "check",
             "command": lambda _state: [
-                context["spio_bin"],
+                context["pafio_bin"],
                 "--json",
                 "check",
                 "--manifest-path",
@@ -1444,7 +1444,7 @@ def build_workspace_step_specs(context: dict[str, Any], styio_bin: str) -> list[
         {
             "name": "fetch",
             "command": lambda _state: [
-                context["spio_bin"],
+                context["pafio_bin"],
                 "--json",
                 "fetch",
                 "--manifest-path",
@@ -1460,7 +1460,7 @@ def build_workspace_step_specs(context: dict[str, Any], styio_bin: str) -> list[
         {
             "name": "vendor",
             "command": lambda _state: [
-                context["spio_bin"],
+                context["pafio_bin"],
                 "--json",
                 "vendor",
                 "--manifest-path",
@@ -1477,7 +1477,7 @@ def build_workspace_step_specs(context: dict[str, Any], styio_bin: str) -> list[
         {
             "name": "run_requires_package",
             "command": lambda _state: [
-                context["spio_bin"],
+                context["pafio_bin"],
                 "--json",
                 "run",
                 "--manifest-path",
@@ -1496,7 +1496,7 @@ def build_workspace_step_specs(context: dict[str, Any], styio_bin: str) -> list[
         {
             "name": "test_requires_package",
             "command": lambda _state: [
-                context["spio_bin"],
+                context["pafio_bin"],
                 "--json",
                 "test",
                 "--manifest-path",
@@ -1517,7 +1517,7 @@ def build_workspace_step_specs(context: dict[str, Any], styio_bin: str) -> list[
         {
             "name": "publish_requires_package",
             "command": lambda _state: [
-                context["spio_bin"],
+                context["pafio_bin"],
                 "--json",
                 "publish",
                 "--manifest-path",
@@ -1535,7 +1535,7 @@ def build_workspace_step_specs(context: dict[str, Any], styio_bin: str) -> list[
         {
             "name": "run",
             "command": lambda _state: [
-                context["spio_bin"],
+                context["pafio_bin"],
                 "--json",
                 "run",
                 "--manifest-path",
@@ -1565,7 +1565,7 @@ def build_workspace_step_specs(context: dict[str, Any], styio_bin: str) -> list[
         {
             "name": "test",
             "command": lambda _state: [
-                context["spio_bin"],
+                context["pafio_bin"],
                 "--json",
                 "test",
                 "--manifest-path",
@@ -1595,7 +1595,7 @@ def build_workspace_step_specs(context: dict[str, Any], styio_bin: str) -> list[
         {
             "name": "publish_preflight",
             "command": lambda _state: [
-                context["spio_bin"],
+                context["pafio_bin"],
                 "--json",
                 "publish",
                 "--manifest-path",
@@ -1620,7 +1620,7 @@ def build_offline_step_specs(context: dict[str, Any], styio_bin: str) -> list[di
         {
             "name": "vendor",
             "command": lambda _state: [
-                context["spio_bin"],
+                context["pafio_bin"],
                 "--json",
                 "vendor",
                 "--manifest-path",
@@ -1636,20 +1636,20 @@ def build_offline_step_specs(context: dict[str, Any], styio_bin: str) -> list[di
             ),
         },
         {
-            "name": "reset_spio_home",
+            "name": "reset_pafio_home",
             "action": lambda _state: (
-                shutil.rmtree(context["spio_home"], ignore_errors=True),
+                shutil.rmtree(context["pafio_home"], ignore_errors=True),
                 run_action(
-                    "reset_spio_home",
-                    action="reset-spio-home",
-                    message=f"removed managed cache root {context['spio_home']}",
+                    "reset_pafio_home",
+                    action="reset-pafio-home",
+                    message=f"removed managed cache root {context['pafio_home']}",
                 ),
             )[1],
         },
         {
             "name": "fetch_offline",
             "command": lambda _state: [
-                context["spio_bin"],
+                context["pafio_bin"],
                 "--json",
                 "fetch",
                 "--offline",
@@ -1668,7 +1668,7 @@ def build_offline_step_specs(context: dict[str, Any], styio_bin: str) -> list[di
         {
             "name": "check_offline",
             "command": lambda _state: [
-                context["spio_bin"],
+                context["pafio_bin"],
                 "--json",
                 "check",
                 "--offline",
@@ -1688,7 +1688,7 @@ def build_offline_step_specs(context: dict[str, Any], styio_bin: str) -> list[di
         {
             "name": "run_offline",
             "command": lambda _state: [
-                context["spio_bin"],
+                context["pafio_bin"],
                 "--json",
                 "run",
                 "--offline",
@@ -1724,7 +1724,7 @@ def build_registry_step_specs(context: dict[str, Any], styio_bin: str) -> list[d
         {
             "name": "publish_registry_package",
             "command": lambda _state: [
-                context["spio_bin"],
+                context["pafio_bin"],
                 "--json",
                 "publish",
                 "--manifest-path",
@@ -1742,7 +1742,7 @@ def build_registry_step_specs(context: dict[str, Any], styio_bin: str) -> list[d
         {
             "name": "republish_registry_conflict",
             "command": lambda _state: [
-                context["spio_bin"],
+                context["pafio_bin"],
                 "--json",
                 "publish",
                 "--manifest-path",
@@ -1761,7 +1761,7 @@ def build_registry_step_specs(context: dict[str, Any], styio_bin: str) -> list[d
         {
             "name": "fetch_registry",
             "command": lambda _state: [
-                context["spio_bin"],
+                context["pafio_bin"],
                 "--json",
                 "fetch",
                 "--manifest-path",
@@ -1779,7 +1779,7 @@ def build_registry_step_specs(context: dict[str, Any], styio_bin: str) -> list[d
         {
             "name": "project_graph_registry",
             "command": lambda _state: [
-                context["spio_bin"],
+                context["pafio_bin"],
                 "--json",
                 "project-graph",
                 "--manifest-path",
@@ -1799,7 +1799,7 @@ def build_registry_step_specs(context: dict[str, Any], styio_bin: str) -> list[d
         {
             "name": "check_registry",
             "command": lambda _state: [
-                context["spio_bin"],
+                context["pafio_bin"],
                 "--json",
                 "check",
                 "--manifest-path",
@@ -1818,7 +1818,7 @@ def build_registry_step_specs(context: dict[str, Any], styio_bin: str) -> list[d
         {
             "name": "run_registry",
             "command": lambda _state: [
-                context["spio_bin"],
+                context["pafio_bin"],
                 "--json",
                 "run",
                 "--manifest-path",
@@ -1861,7 +1861,7 @@ def build_step_specs(context: dict[str, Any], styio_bin: str) -> list[dict[str, 
 def build_scenario_context(
     name: str,
     temp_root: pathlib.Path,
-    spio_bin: str,
+    pafio_bin: str,
     styio_bin: str,
 ) -> dict[str, Any]:
     if name == "single-package-managed-toolchain":
@@ -1874,8 +1874,8 @@ def build_scenario_context(
         context = write_registry_project(temp_root)
     else:
         raise RuntimeError(f"unknown scenario: {name}")
-    context["spio_bin"] = spio_bin
-    context["spio_home"] = temp_root / ".spio-home"
+    context["pafio_bin"] = pafio_bin
+    context["pafio_home"] = temp_root / ".pafio-home"
     if name == "single-package-managed-toolchain":
         alternate_version = "0.0.2"
         alternate_channel = "stable"
@@ -1894,13 +1894,13 @@ def run_scenario(
     name: str,
     *,
     styio_bin: str,
-    spio_bin: str,
+    pafio_bin: str,
     keep_temp: bool,
 ) -> dict[str, Any]:
     temp_root = pathlib.Path(tempfile.mkdtemp(prefix=f"styio-ecosystem-{name}-"))
-    context = build_scenario_context(name, temp_root, spio_bin, styio_bin)
+    context = build_scenario_context(name, temp_root, pafio_bin, styio_bin)
     env = dict(os.environ)
-    env["SPIO_HOME"] = str(context["spio_home"])
+    env["PAFIO_HOME"] = str(context["pafio_home"])
     steps: list[dict[str, Any]] = []
     validation_errors: list[str] = []
     state: dict[str, Any] = {}
@@ -1970,7 +1970,7 @@ def run_scenario(
         "name": name,
         "ok": ok,
         "sample_workspace_root": str(temp_root),
-        "spio_home": str(context["spio_home"]),
+        "pafio_home": str(context["pafio_home"]),
         "steps": steps,
         "validation_errors": validation_errors,
     }
@@ -1979,13 +1979,13 @@ def run_scenario(
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="ecosystem-sample-workflow-gate.py")
     parser.add_argument("--styio-bin", required=True, help="published styio binary used for workflow checks")
-    parser.add_argument("--spio-bin", default=str(DEFAULT_SPIO), help="spio wrapper or binary used for package-manager checks")
+    parser.add_argument("--pafio-bin", default=str(DEFAULT_PAFIO), help="pafio wrapper or binary used for package-manager checks")
     parser.add_argument("--keep-temp", action="store_true", help="keep the generated sample workspaces on disk")
     parser.add_argument("--json", action="store_true", help="emit machine-readable summary")
     args = parser.parse_args(argv)
 
     styio_bin = canonical(pathlib.Path(args.styio_bin))
-    spio_bin = canonical(pathlib.Path(args.spio_bin))
+    pafio_bin = canonical(pathlib.Path(args.pafio_bin))
     scenario_names = [
         "single-package-managed-toolchain",
         "workspace-package-selection",
@@ -1997,7 +1997,7 @@ def main(argv: list[str] | None = None) -> int:
         run_scenario(
             name,
             styio_bin=styio_bin,
-            spio_bin=spio_bin,
+            pafio_bin=pafio_bin,
             keep_temp=args.keep_temp,
         )
         for name in scenario_names
@@ -2011,7 +2011,7 @@ def main(argv: list[str] | None = None) -> int:
     payload = {
         "ok": ok,
         "styio_bin": styio_bin,
-        "spio_bin": spio_bin,
+        "pafio_bin": pafio_bin,
         "scenarios": scenarios,
         "sample_workspace_roots": [scenario["sample_workspace_root"] for scenario in scenarios],
         "validation_errors": validation_errors,

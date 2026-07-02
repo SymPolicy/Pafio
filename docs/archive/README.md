@@ -1,6 +1,6 @@
 # Archive Docs
 
-**Purpose:** Hold archived `spio` documentation provenance and lifecycle metadata; active summaries stay in `docs/rollups/`, active recovery notes stay in `docs/history/`, and only retired raw material belongs here.
+**Purpose:** Hold archived `pafio` documentation provenance and lifecycle metadata; active summaries stay in `docs/rollups/`, active recovery notes stay in `docs/history/`, and only retired raw material belongs here.
 
 **Last updated:** 2026-04-17
 

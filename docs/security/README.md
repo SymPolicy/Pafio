@@ -1,6 +1,6 @@
 # Security Docs
 
-**Purpose:** Define the public/private boundary for security-sensitive `spio` code so registry auth, account policy, and trust decisions do not leak into the open-source tree.
+**Purpose:** Define the public/private boundary for security-sensitive `pafio` code so registry auth, account policy, and trust decisions do not leak into the open-source tree.
 
 **Last updated:** 2026-04-13
 
@@ -12,8 +12,8 @@
 
 ## Ownership
 
-- the public interface boundary lives in [Spio-Private-Security-Module-Contract.md](./Spio-Private-Security-Module-Contract.md)
-- registry layout and non-secret transport rules remain owned by [../registry/Spio-Registry-V2-Protocol.md](../registry/Spio-Registry-V2-Protocol.md)
+- the public interface boundary lives in [Pafio-Private-Security-Module-Contract.md](./Pafio-Private-Security-Module-Contract.md)
+- registry layout and non-secret transport rules remain owned by [../registry/Pafio-Registry-V2-Protocol.md](../registry/Pafio-Registry-V2-Protocol.md)
 - client/server registry behavior remains owned by the documents under [../registry/](../registry/)
 
 ## Maintenance Rules

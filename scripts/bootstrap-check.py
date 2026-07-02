@@ -10,7 +10,7 @@ import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 SCHEMA = ROOT / "contracts" / "compile-plan" / "v1" / "compile-plan.schema.json"
-CLI = ROOT / "scripts" / "spio"
+CLI = ROOT / "scripts" / "pafio"
 
 
 def main() -> int:

@@ -1,7 +1,9 @@
-#include "SpioCore/Process.hpp"
+#include "PafioCore/Process.hpp"
 
 #include <csignal>
 #include <chrono>
+#include <cstdlib>
+#include <optional>
 #include <string>
 
 #include <gtest/gtest.h>
@@ -10,7 +12,7 @@ using namespace std::chrono_literals;
 
 TEST(ProcessTests, CapturesStdoutAndStderrWithoutDeadlocking)
 {
-  const spio::ProcessResult result = spio::RunProcess({
+  const pafio::ProcessResult result = pafio::RunProcess({
       .program = "/bin/sh",
       .args = {
           "-c",
@@ -30,7 +32,7 @@ TEST(ProcessTests, CapturesStdoutAndStderrWithoutDeadlocking)
 
 TEST(ProcessTests, TimesOutAndTerminatesProcessGroup)
 {
-  const spio::ProcessResult result = spio::RunProcess({
+  const pafio::ProcessResult result = pafio::RunProcess({
       .program = "/bin/sh",
       .args = {"-c", "sleep 2"},
       .search_path = false,
@@ -46,7 +48,7 @@ TEST(ProcessTests, TimesOutAndTerminatesProcessGroup)
 TEST(ProcessTests, TimesOutWhenChildKeepsProducingOutput)
 {
   const auto start = std::chrono::steady_clock::now();
-  const spio::ProcessResult result = spio::RunProcess({
+  const pafio::ProcessResult result = pafio::RunProcess({
       .program = "python3",
       .args = {
           "-c",
@@ -72,7 +74,7 @@ TEST(ProcessTests, TimesOutWhenChildKeepsProducingOutput)
 
 TEST(ProcessTests, TracksSignalTermination)
 {
-  const spio::ProcessResult result = spio::RunProcess({
+  const pafio::ProcessResult result = pafio::RunProcess({
       .program = "/bin/sh",
       .args = {"-c", "kill -TERM $$"},
       .search_path = false,
@@ -85,9 +87,32 @@ TEST(ProcessTests, TracksSignalTermination)
   EXPECT_EQ(result.exit_code, 128 + SIGTERM);
 }
 
+TEST(ProcessTests, ClearsEnvironmentBeforeApplyingOverrides)
+{
+  setenv("PAFIO_PARENT_ONLY_MARKER", "leak", 1);
+  const pafio::ProcessResult result = pafio::RunProcess({
+      .program = "/bin/sh",
+      .args = {
+          "-c",
+          "if [ \"${PAFIO_PARENT_ONLY_MARKER+x}\" = x ]; then exit 7; fi; "
+          "if [ \"$PAFIO_CHILD_MARKER\" != present ]; then exit 8; fi; "
+          "printf ok",
+      },
+      .search_path = false,
+      .environment_overrides = {{"PAFIO_CHILD_MARKER", std::optional<std::string>{"present"}}},
+      .clear_environment = true,
+      .timeout = 5s,
+      .error_context = "clear environment test",
+  });
+  unsetenv("PAFIO_PARENT_ONLY_MARKER");
+
+  EXPECT_EQ(result.exit_code, 0);
+  EXPECT_EQ(result.stdout_text, "ok");
+}
+
 TEST(ProcessTests, MarksTruncatedOutput)
 {
-  const spio::ProcessResult result = spio::RunProcess({
+  const pafio::ProcessResult result = pafio::RunProcess({
       .program = "/bin/sh",
       .args = {
           "-c",
@@ -110,7 +135,7 @@ TEST(ProcessTests, MarksTruncatedOutput)
 TEST(ProcessTests, StreamsLargeStdinWhileDrainingStdout)
 {
   const std::string stdin_text(1U << 18, 'i');
-  const spio::ProcessResult result = spio::RunProcess({
+  const pafio::ProcessResult result = pafio::RunProcess({
       .program = "python3",
       .args = {
           "-c",

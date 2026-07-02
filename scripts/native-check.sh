@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-BUILD_DIR="${SPIO_BUILD_DIR:-$ROOT/build-codex}"
+BUILD_DIR="${PAFIO_BUILD_DIR:-$ROOT/build-codex}"
 
 cmake -S "$ROOT" -B "$BUILD_DIR"
 cmake --build "$BUILD_DIR" --parallel 4

@@ -9,7 +9,7 @@
 
 ## Context
 
-`ADR-0027` introduced repeatable `spio publish --registry-header <name:value>` for remote write origins. That solved the immediate integration problem, but it still left two gaps:
+`ADR-0027` introduced repeatable `pafio publish --registry-header <name:value>` for remote write origins. That solved the immediate integration problem, but it still left two gaps:
 
 1. Operators had to repeat the same upload-gateway headers on every publish command.
 2. There was no reusable file format that deployment tooling or black-box server gates could point at without changing read-side fetch behavior.
@@ -18,7 +18,7 @@ The current phase still defers real auth and account policy. However, remote wri
 
 ## Decision
 
-1. Add `spio publish --registry-policy-file <path>`.
+1. Add `pafio publish --registry-policy-file <path>`.
 2. The file format is TOML and must declare `schema-version = 1`.
 3. The file must contain one exact matching `[[registry]]` entry for the selected remote registry root.
 4. Supported entry shape:
@@ -27,8 +27,8 @@ The current phase still defers real auth and account policy. However, remote wri
 schema-version = 1
 
 [[registry]]
-root = "https://registry-upload.example.internal"
-headers = ["X-Spio-Write-Token: dev-token"]
+root = "https://registry-upload.example.invalid"
+headers = ["X-Pafio-Write-Token: <write-token>"]
 ```
 
 5. Policy-derived headers are applied only to remote publish-side `GET`, `HEAD`, and `PUT`.

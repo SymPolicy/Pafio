@@ -14,7 +14,7 @@ from urllib.parse import urlsplit
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-DEFAULT_SPIO = ROOT / "scripts" / "spio"
+DEFAULT_PAFIO = ROOT / "scripts" / "pafio"
 
 
 def run_step(
@@ -118,11 +118,11 @@ def expected_publish_transport(registry_root: str) -> str:
 
 
 def write_publishable_package(root: pathlib.Path) -> pathlib.Path:
-    manifest_path = root / "spio.toml"
+    manifest_path = root / "pafio.toml"
     source_path = root / "src" / "lib.styio"
     source_path.parent.mkdir(parents=True, exist_ok=True)
     manifest_path.write_text(
-        "[spio]\n"
+        "[pafio]\n"
         "manifest-version = 1\n\n"
         "[package]\n"
         "name = \"acme/server-gate\"\n"
@@ -141,11 +141,11 @@ def write_publishable_package(root: pathlib.Path) -> pathlib.Path:
 
 
 def write_consumer_package(root: pathlib.Path, fetch_root: str) -> pathlib.Path:
-    manifest_path = root / "spio.toml"
+    manifest_path = root / "pafio.toml"
     source_path = root / "src" / "main.styio"
     source_path.parent.mkdir(parents=True, exist_ok=True)
     manifest_path.write_text(
-        "[spio]\n"
+        "[pafio]\n"
         "manifest-version = 1\n\n"
         "[package]\n"
         "name = \"acme/server-gate-client\"\n"
@@ -165,8 +165,8 @@ def write_consumer_package(root: pathlib.Path, fetch_root: str) -> pathlib.Path:
     return manifest_path
 
 
-def write_publish_profile(spio_home: pathlib.Path, profile_name: str, publish_root: str, headers: list[str]) -> pathlib.Path:
-    profile_root = spio_home / "server" / "registry" / "publish-profiles"
+def write_publish_profile(pafio_home: pathlib.Path, profile_name: str, publish_root: str, headers: list[str]) -> pathlib.Path:
+    profile_root = pafio_home / "server" / "registry" / "publish-profiles"
     profile_root.mkdir(parents=True, exist_ok=True)
     profile_path = profile_root / f"{profile_name}.toml"
     header_lines = ", ".join(json.dumps(header) for header in headers)
@@ -237,15 +237,15 @@ def validate_publish_payload(
 
     if expected_transport == "http":
         control_plane_base = publish_root.rstrip("/")
-        if not control_plane_base.endswith("/api/spio-registry-control/v1"):
-            control_plane_base = control_plane_base + "/api/spio-registry-control/v1"
+        if not control_plane_base.endswith("/api/pafio-registry-control/v1"):
+            control_plane_base = control_plane_base + "/api/pafio-registry-control/v1"
         if payload.get("control_plane_base_url") != control_plane_base:
             errors.append("publish payload field 'control_plane_base_url' did not match the expected control-plane base")
         if payload.get("publish_endpoint") != control_plane_base + "/publish":
             errors.append("publish payload field 'publish_endpoint' did not match the expected control-plane publish route")
         for key, suffix in (
             ("registry_index_path", "index/acme/server-gate.jsonl"),
-            ("registry_artifact_path", ".spio.src.tar"),
+            ("registry_artifact_path", ".pafio.src.tar"),
             ("registry_log_leaf_path", "log/leaves/000000000001.json"),
         ):
             value = payload.get(key)
@@ -257,13 +257,13 @@ def validate_publish_payload(
         for key, suffix in (
             ("registry_config_path", "config.json"),
             ("registry_index_path", os.path.join("index", "acme", "server-gate.jsonl")),
-            ("registry_artifact_path", ".spio.src.tar"),
+            ("registry_artifact_path", ".pafio.src.tar"),
             ("registry_log_leaf_path", os.path.join("log", "leaves", "000000000001.json")),
         ):
             value = payload.get(key)
             if not isinstance(value, str) or not value:
                 errors.append(f"publish payload field '{key}' must be a non-empty string")
-            elif suffix in (".spio.src.tar",):
+            elif suffix in (".pafio.src.tar",):
                 if not value.endswith(suffix):
                     errors.append(f"publish payload field '{key}' must end with '{suffix}'")
             else:
@@ -320,11 +320,11 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument(
         "--publish-profile",
-        help="registry publish profile name written into the isolated SPIO_HOME and used only for remote publish requests",
+        help="registry publish profile name written into the isolated PAFIO_HOME and used only for remote publish requests",
     )
     parser.add_argument("--sync-timeout-seconds", type=float, default=0.0, help="time budget for publish-to-fetch sync")
     parser.add_argument("--fetch-trust-descriptor", help="registry trust descriptor imported before remote fetch validation")
-    parser.add_argument("--spio-bin", default=str(DEFAULT_SPIO), help="spio wrapper used for publish/fetch checks")
+    parser.add_argument("--pafio-bin", default=str(DEFAULT_PAFIO), help="pafio wrapper used for publish/fetch checks")
     parser.add_argument("--json", action="store_true", help="emit machine-readable summary")
     args = parser.parse_args(argv)
 
@@ -335,7 +335,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.publish_policy_file and args.publish_profile:
         parser.error("--publish-policy-file cannot be combined with --publish-profile")
 
-    spio_bin = str(pathlib.Path(args.spio_bin).resolve())
+    pafio_bin = str(pathlib.Path(args.pafio_bin).resolve())
     publish_header_args = sum((["--registry-header", header] for header in args.publish_header), [])
     publish_policy_args = ["--registry-policy-file", os.path.abspath(args.publish_policy_file)] if args.publish_policy_file else []
     publish_profile_args: list[str] = []
@@ -347,13 +347,13 @@ def main(argv: list[str] | None = None) -> int:
     trust_import_succeeded = not args.fetch_trust_descriptor
     fetch_succeeded = False
 
-    with tempfile.TemporaryDirectory(prefix="spio-registry-server-gate-") as temp_dir:
+    with tempfile.TemporaryDirectory(prefix="pafio-registry-server-gate-") as temp_dir:
         temp_root = pathlib.Path(temp_dir)
         isolated_env = dict(os.environ)
-        spio_home = temp_root / ".spio-home"
-        isolated_env["SPIO_HOME"] = str(spio_home)
+        pafio_home = temp_root / ".pafio-home"
+        isolated_env["PAFIO_HOME"] = str(pafio_home)
         if args.publish_profile:
-            write_publish_profile(spio_home, args.publish_profile, publish_root, args.publish_header)
+            write_publish_profile(pafio_home, args.publish_profile, publish_root, args.publish_header)
             publish_profile_args = ["--registry-profile", args.publish_profile]
             publish_header_args = []
 
@@ -361,7 +361,7 @@ def main(argv: list[str] | None = None) -> int:
         publish_step = run_step(
             "publish",
             [
-                spio_bin,
+                pafio_bin,
                 "--json",
                 "publish",
                 "--manifest-path",
@@ -379,7 +379,7 @@ def main(argv: list[str] | None = None) -> int:
 
         if publish_step["ok"]:
             try:
-                publish_payload = load_json(publish_step["stdout"], "spio publish --json")
+                publish_payload = load_json(publish_step["stdout"], "pafio publish --json")
                 validation_errors.extend(
                     validate_publish_payload(
                         publish_payload,
@@ -395,7 +395,7 @@ def main(argv: list[str] | None = None) -> int:
             duplicate_step = run_step(
                 "republish_conflict",
                 [
-                    spio_bin,
+                    pafio_bin,
                     "--json",
                     "publish",
                     "--manifest-path",
@@ -426,7 +426,7 @@ def main(argv: list[str] | None = None) -> int:
                 trust_step = run_step(
                     "trust_import",
                     [
-                        spio_bin,
+                        pafio_bin,
                         "--json",
                         "registry",
                         "trust",
@@ -447,7 +447,7 @@ def main(argv: list[str] | None = None) -> int:
                 fetch_step = run_step(
                     "fetch",
                     [
-                        spio_bin,
+                        pafio_bin,
                         "--json",
                         "fetch",
                         "--manifest-path",
@@ -464,7 +464,7 @@ def main(argv: list[str] | None = None) -> int:
 
             if steps[-1]["ok"]:
                 try:
-                    fetch_payload = load_json(steps[-1]["stdout"], "spio fetch --json")
+                    fetch_payload = load_json(steps[-1]["stdout"], "pafio fetch --json")
                     validation_errors.extend(validate_fetch_payload(fetch_payload))
                 except RuntimeError as err:
                     validation_errors.append(str(err))
@@ -475,7 +475,7 @@ def main(argv: list[str] | None = None) -> int:
         "ok": ok,
         "publish_root": publish_root,
         "fetch_root": fetch_root,
-        "spio_bin": spio_bin,
+        "pafio_bin": pafio_bin,
         "publish_headers": args.publish_header,
         "publish_policy_file": os.path.abspath(args.publish_policy_file) if args.publish_policy_file else "",
         "publish_profile": args.publish_profile or "",

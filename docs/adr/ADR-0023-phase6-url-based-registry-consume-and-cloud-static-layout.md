@@ -9,7 +9,7 @@
 
 ## Context
 
-`spio` already had deterministic source packaging and a local filesystem-registry publish transport:
+`pafio` already had deterministic source packaging and a local filesystem-registry publish transport:
 
 - immutable tar blobs under `blobs/sha256/`
 - per-version metadata under `index/<namespace>/<name>/<version>.json`
@@ -44,9 +44,9 @@ The next useful step is therefore not a custom network protocol. It is to treat 
    - loading the version entry for `package@version`
    - downloading or reusing the immutable blob identified by `sha256`
    - verifying the blob digest before extraction
-   - materializing an extracted snapshot under `SPIO_HOME`
+   - materializing an extracted snapshot under `PAFIO_HOME`
 
-4. Registry client cache state lives under `SPIO_HOME/registry/`:
+4. Registry client cache state lives under `PAFIO_HOME/registry/`:
    - cached marker and entry metadata under `registry/index/`
    - blob cache under `registry/blobs/`
    - extracted snapshots under `registry/checkouts/`
@@ -82,7 +82,7 @@ The next useful step is therefore not a custom network protocol. It is to treat 
 
 Positive:
 
-- `spio` can now consume packages from a single shared package repository.
+- `pafio` can now consume packages from a single shared package repository.
 - the same repository can be hosted locally or deployed behind plain HTTP(S) without inventing custom RPC.
 - client integrity improves because fetched blobs are verified against recorded `sha256` digests before use.
 - publish and consume now share one concrete repository contract.

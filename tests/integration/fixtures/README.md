@@ -1,6 +1,6 @@
-# spio Integration Fixtures
+# pafio Integration Fixtures
 
-**Purpose:** Hold black-box sample projects used by `spio` integration tests.
+**Purpose:** Hold black-box sample projects used by `pafio` integration tests.
 
 **Last updated:** 2026-04-09
 

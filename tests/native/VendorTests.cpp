@@ -1,5 +1,5 @@
-#include "SpioCLI/CLI.hpp"
-#include "SpioCore/Errors.hpp"
+#include "PafioCLI/CLI.hpp"
+#include "PafioCore/Errors.hpp"
 
 #include <array>
 #include <cstdlib>
@@ -152,7 +152,7 @@ fs::path CanonicalAbsolutePath(const fs::path &path)
 
 fs::path MakeTempDir(const std::string &label)
 {
-  const fs::path root = fs::temp_directory_path() / "spio-native-vendor-tests" / label;
+  const fs::path root = fs::temp_directory_path() / "pafio-native-vendor-tests" / label;
   fs::remove_all(root);
   fs::create_directories(root);
   return root;
@@ -194,15 +194,15 @@ std::string CreateWorkspaceGitRepo(const fs::path &repo_root, const std::string 
   RunGitOrAssert({"init", "--initial-branch=main", repo_root.string()});
 
   WriteFile(
-      repo_root / "spio.toml",
-      "[spio]\n"
+      repo_root / "pafio.toml",
+      "[pafio]\n"
       "manifest-version = 1\n\n"
       "[workspace]\n"
       "members = [\"packages/feed\", \"packages/util\"]\n"
       "resolver = \"1\"\n");
   WriteFile(
-      repo_root / "packages/feed/spio.toml",
-      "[spio]\n"
+      repo_root / "packages/feed/pafio.toml",
+      "[pafio]\n"
       "manifest-version = 1\n\n"
       "[package]\n"
       "name = \"acme/feed\"\n"
@@ -216,9 +216,9 @@ std::string CreateWorkspaceGitRepo(const fs::path &repo_root, const std::string 
       "[dependencies]\n"
       "util = { package = \"acme/util\", path = \"../util\" }\n");
   WriteFile(
-      repo_root / "packages/util/spio.toml",
+      repo_root / "packages/util/pafio.toml",
       std::string(
-          "[spio]\n"
+          "[pafio]\n"
           "manifest-version = 1\n\n"
           "[package]\n"
           "name = \"acme/util\"\n"
@@ -233,9 +233,9 @@ std::string CreateWorkspaceGitRepo(const fs::path &repo_root, const std::string 
           "path = \"src/lib.styio\"\n");
 
   RunGitOrAssert(
-      {"-C", repo_root.string(), "-c", "user.email=spio-tests@example.com", "-c", "user.name=spio-tests", "add", "."});
+      {"-C", repo_root.string(), "-c", "user.email=pafio-tests@example.com", "-c", "user.name=pafio-tests", "add", "."});
   RunGitOrAssert(
-      {"-C", repo_root.string(), "-c", "user.email=spio-tests@example.com", "-c", "user.name=spio-tests", "commit", "--quiet", "-m", "initial"});
+      {"-C", repo_root.string(), "-c", "user.email=pafio-tests@example.com", "-c", "user.name=pafio-tests", "commit", "--quiet", "-m", "initial"});
   return GitHeadRev(repo_root);
 }
 
@@ -244,15 +244,15 @@ std::string CreateWorkspaceGitRepo(const fs::path &repo_root, const std::string 
 TEST(VendorCliTests, WritesProjectLocalVendorSnapshotsAndMetadata)
 {
   const fs::path root = MakeTempDir("vendor-write");
-  const ScopedEnvVar spio_home("SPIO_HOME", (root / ".spio-home").string());
+  const ScopedEnvVar pafio_home("PAFIO_HOME", (root / ".pafio-home").string());
   const fs::path git_repo = root / "remote-feed";
   const std::string rev = CreateWorkspaceGitRepo(git_repo, "0.9.0");
-  const fs::path manifest_path = root / "spio.toml";
+  const fs::path manifest_path = root / "pafio.toml";
 
   WriteFile(
       manifest_path,
       std::string(
-          "[spio]\n"
+          "[pafio]\n"
           "manifest-version = 1\n\n"
           "[package]\n"
           "name = \"acme/app\"\n"
@@ -270,16 +270,16 @@ TEST(VendorCliTests, WritesProjectLocalVendorSnapshotsAndMetadata)
           "\", rev = \"" + rev + "\" }\n");
 
   testing::internal::CaptureStdout();
-  EXPECT_EQ(spio::RunCli({"--json", "vendor", "--manifest-path", manifest_path.string()}), spio::kExitSuccess);
+  EXPECT_EQ(pafio::RunCli({"--json", "vendor", "--manifest-path", manifest_path.string()}), pafio::kExitSuccess);
   const json payload = json::parse(testing::internal::GetCapturedStdout());
 
-  const fs::path vendor_root = root / ".spio" / "vendor";
+  const fs::path vendor_root = root / ".pafio" / "vendor";
   EXPECT_EQ(payload.at("command").get<std::string>(), "vendor");
   EXPECT_EQ(payload.at("vendor_root").get<std::string>(), CanonicalAbsolutePath(vendor_root).string());
   EXPECT_EQ(payload.at("git_snapshots").get<size_t>(), 1U);
-  EXPECT_TRUE(fs::exists(vendor_root / "spio-vendor.json"));
+  EXPECT_TRUE(fs::exists(vendor_root / "pafio-vendor.json"));
 
-  const json metadata = json::parse(ReadFile(vendor_root / "spio-vendor.json"));
+  const json metadata = json::parse(ReadFile(vendor_root / "pafio-vendor.json"));
   ASSERT_EQ(metadata.at("git_snapshots").size(), 1U);
   EXPECT_EQ(metadata.at("git_snapshots")[0].at("rev").get<std::string>(), rev);
   EXPECT_TRUE(fs::exists(metadata.at("git_snapshots")[0].at("path").get<std::string>()));
@@ -288,15 +288,15 @@ TEST(VendorCliTests, WritesProjectLocalVendorSnapshotsAndMetadata)
 TEST(FetchCliTests, OfflineUsesVendoredSnapshotsWithoutGlobalCache)
 {
   const fs::path root = MakeTempDir("vendor-offline-fetch");
-  const ScopedEnvVar spio_home("SPIO_HOME", (root / ".spio-home").string());
+  const ScopedEnvVar pafio_home("PAFIO_HOME", (root / ".pafio-home").string());
   const fs::path git_repo = root / "remote-feed";
   const std::string rev = CreateWorkspaceGitRepo(git_repo, "0.9.0");
-  const fs::path manifest_path = root / "spio.toml";
+  const fs::path manifest_path = root / "pafio.toml";
 
   WriteFile(
       manifest_path,
       std::string(
-          "[spio]\n"
+          "[pafio]\n"
           "manifest-version = 1\n\n"
           "[package]\n"
           "name = \"acme/app\"\n"
@@ -313,11 +313,11 @@ TEST(FetchCliTests, OfflineUsesVendoredSnapshotsWithoutGlobalCache)
           CanonicalAbsolutePath(git_repo).generic_string() +
           "\", rev = \"" + rev + "\" }\n");
 
-  ASSERT_EQ(spio::RunCli({"vendor", "--manifest-path", manifest_path.string()}), spio::kExitSuccess);
-  fs::remove_all(root / ".spio-home");
+  ASSERT_EQ(pafio::RunCli({"vendor", "--manifest-path", manifest_path.string()}), pafio::kExitSuccess);
+  fs::remove_all(root / ".pafio-home");
 
   testing::internal::CaptureStdout();
-  EXPECT_EQ(spio::RunCli({"--json", "fetch", "--offline", "--manifest-path", manifest_path.string()}), spio::kExitSuccess);
+  EXPECT_EQ(pafio::RunCli({"--json", "fetch", "--offline", "--manifest-path", manifest_path.string()}), pafio::kExitSuccess);
   const json payload = json::parse(testing::internal::GetCapturedStdout());
 
   EXPECT_TRUE(payload.at("offline").get<bool>());
@@ -328,12 +328,12 @@ TEST(FetchCliTests, OfflineUsesVendoredSnapshotsWithoutGlobalCache)
 TEST(CheckCliTests, LockedRequiresAdjacentLockfile)
 {
   const fs::path root = MakeTempDir("locked-check-missing-lock");
-  const ScopedEnvVar spio_home("SPIO_HOME", (root / ".spio-home").string());
-  const fs::path manifest_path = root / "spio.toml";
+  const ScopedEnvVar pafio_home("PAFIO_HOME", (root / ".pafio-home").string());
+  const fs::path manifest_path = root / "pafio.toml";
 
   WriteFile(
       manifest_path,
-      "[spio]\n"
+      "[pafio]\n"
       "manifest-version = 1\n\n"
       "[package]\n"
       "name = \"acme/app\"\n"
@@ -346,17 +346,17 @@ TEST(CheckCliTests, LockedRequiresAdjacentLockfile)
       "name = \"app\"\n"
       "path = \"src/main.styio\"\n");
 
-  EXPECT_EQ(spio::RunCli({"check", "--locked", "--manifest-path", manifest_path.string()}), spio::kExitLock);
+  EXPECT_EQ(pafio::RunCli({"check", "--locked", "--manifest-path", manifest_path.string()}), pafio::kExitLock);
 }
 
 TEST(BuildCliTests, FrozenDryRunRequiresAdjacentLockfile)
 {
   const fs::path root = MakeTempDir("frozen-build-missing-lock");
-  const fs::path manifest_path = root / "spio.toml";
+  const fs::path manifest_path = root / "pafio.toml";
 
   WriteFile(
       manifest_path,
-      "[spio]\n"
+      "[pafio]\n"
       "manifest-version = 1\n\n"
       "[package]\n"
       "name = \"acme/demo\"\n"
@@ -370,5 +370,5 @@ TEST(BuildCliTests, FrozenDryRunRequiresAdjacentLockfile)
       "path = \"src/lib.styio\"\n");
   WriteFile(root / "src/lib.styio", "# value := 1\n");
 
-  EXPECT_EQ(spio::RunCli({"build", "--dry-run", "--frozen", "--manifest-path", manifest_path.string(), "--lib"}), spio::kExitLock);
+  EXPECT_EQ(pafio::RunCli({"build", "--dry-run", "--frozen", "--manifest-path", manifest_path.string(), "--lib"}), pafio::kExitLock);
 }

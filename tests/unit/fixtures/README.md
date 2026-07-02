@@ -1,4 +1,4 @@
-# spio Unit Fixtures
+# pafio Unit Fixtures
 
 **Purpose:** Hold bootstrap manifest and lockfile fixtures used to freeze parsing and validation expectations before the full resolver exists.
 

@@ -13,8 +13,8 @@ SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-from spio_registry_v2 import verify_registry_root  # noqa: E402
-from spio_registry_v2.common import (  # noqa: E402
+from pafio_registry_v2 import verify_registry_root  # noqa: E402
+from pafio_registry_v2.common import (  # noqa: E402
     RegistryV2Error,
     copy_if_missing_or_same,
     load_json_file,

@@ -9,7 +9,7 @@
 
 ## Context
 
-`spio` already had:
+`pafio` already had:
 
 - deterministic package archives
 - local publish preflight
@@ -23,12 +23,12 @@ At the same time, auth is still unsettled. Blocking remote writes on auth would 
 ## Decision
 
 1. Activate remote non-dry-run `publish` for `http://` and `https://` registry roots.
-   - `spio publish --registry https://packages.example.test`
+   - `pafio publish --registry https://packages.example.test`
    - the existing `--registry` flag now accepts either a local path, `file://...`, or `http(s)://...`
 
 2. Keep the repository layout identical to the existing local/filesystem registry contract.
    - marker:
-     - `spio-registry.json`
+     - `pafio-registry.json`
    - immutable blob:
      - `blobs/sha256/<xx>/<yy>/<sha256>.tar`
    - version entry:
@@ -63,7 +63,7 @@ At the same time, auth is still unsettled. Blocking remote writes on auth would 
    - Rejected because it would create two registry contracts at once and make publish/consume harder to reason about.
 
 3. Continue to support only local filesystem publication.
-   - Rejected because that leaves cloud-hosted registries read-only from the perspective of `spio`.
+   - Rejected because that leaves cloud-hosted registries read-only from the perspective of `pafio`.
 
 ## Consequences
 

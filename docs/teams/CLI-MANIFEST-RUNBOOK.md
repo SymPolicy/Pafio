@@ -1,6 +1,6 @@
 # CLI / Manifest Runbook
 
-**Purpose:** Provide the daily-work entrypoint for maintainers of the `spio` CLI surface, entry-argument routing, and manifest or lock semantics.
+**Purpose:** Provide the daily-work entrypoint for maintainers of the `pafio` CLI surface, entry-argument routing, and manifest or lock semantics.
 
 **Last updated:** 2026-04-16
 
@@ -12,19 +12,19 @@ Own user-facing command shape, manifest and lock interpretation, and stable argu
 
 Primary paths:
 
-1. `src/SpioCLI/`
-2. `src/SpioManifest/`
-3. `src/SpioTool/`
-4. `docs/governance/Spio-CLI-Contract.md`
-5. `docs/governance/Spio-Entry-Argument-Index.md`
-6. `docs/governance/Spio-Manifest-and-Lock-Conventions.md`
+1. `src/PafioCLI/`
+2. `src/PafioManifest/`
+3. `src/PafioTool/`
+4. `docs/governance/Pafio-CLI-Contract.md`
+5. `docs/governance/Pafio-Entry-Argument-Index.md`
+6. `docs/governance/Pafio-Manifest-and-Lock-Conventions.md`
 7. `tests/unit/fixtures/`
 
 Key SSOTs:
 
-1. `CLI contract -> ../governance/Spio-CLI-Contract.md`
-2. `Argument index -> ../governance/Spio-Entry-Argument-Index.md`
-3. `Manifest and lock conventions -> ../governance/Spio-Manifest-and-Lock-Conventions.md`
+1. `CLI contract -> ../governance/Pafio-CLI-Contract.md`
+2. `Argument index -> ../governance/Pafio-Entry-Argument-Index.md`
+3. `Manifest and lock conventions -> ../governance/Pafio-Manifest-and-Lock-Conventions.md`
 
 ## Daily Workflow
 
@@ -45,8 +45,8 @@ Minimum:
 
 ```bash
 ./scripts/native-check.sh
-./scripts/spio --version
-./scripts/spio machine-info --json
+./scripts/pafio --version
+./scripts/pafio machine-info --json
 ```
 
 Expanded:
@@ -69,4 +69,4 @@ Record:
 1. Commands, flags, or manifest fields changed.
 2. Fixtures updated and gates already run.
 3. JSON payload or exit-code deltas still pending.
-4. Rollback point and next owner in `../planning/Spio-Workstreams-and-TODOs.md` when work spans another checkpoint.
+4. Rollback point and next owner in `../planning/Pafio-Workstreams-and-TODOs.md` when work spans another checkpoint.

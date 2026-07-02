@@ -10,13 +10,13 @@ Accepted
 
 ## Context
 
-Phase 2 established a native manifest/lock core plus canonical write-back, and `ADR-0005` intentionally kept `spio lock` limited to local graphs. The next critical-path step is phase 3: a real resolver that can cover `workspace`, `path`, and pinned `git` sources under the intentionally conservative `single-version-v1` policy.
+Phase 2 established a native manifest/lock core plus canonical write-back, and `ADR-0005` intentionally kept `pafio lock` limited to local graphs. The next critical-path step is phase 3: a real resolver that can cover `workspace`, `path`, and pinned `git` sources under the intentionally conservative `single-version-v1` policy.
 
 Without freezing the first resolver boundary, `git` support would drift between CLI behavior, lockfile output, and cache implementation details.
 
 ## Decision
 
-1. Replace the phase-2 local-only lock generation path with a resolver-backed phase-3 path for `spio lock`.
+1. Replace the phase-2 local-only lock generation path with a resolver-backed phase-3 path for `pafio lock`.
 2. The first native phase-3 resolver must support:
    - workspace packages
    - local `path` dependencies
@@ -49,7 +49,7 @@ Without freezing the first resolver boundary, `git` support would drift between 
 
 Positive:
 
-1. `spio lock` becomes a real resolver-backed command instead of a local graph expander.
+1. `pafio lock` becomes a real resolver-backed command instead of a local graph expander.
 2. Pinned `git` dependencies participate in the same graph and conflict rules as workspace and path packages.
 3. The single-version policy stays explicit and deterministic.
 

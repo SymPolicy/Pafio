@@ -1,14 +1,14 @@
 # Styio External Interface Requirement Spec
 
-**Purpose:** Define the published `styio` interfaces that `spio` depends on, so the compiler team can implement them without reading `spio` internals and the package-manager team can validate them through black-box gates.
+**Purpose:** Define the published `styio` interfaces that `pafio` depends on, so the compiler team can implement them without reading `pafio` internals and the package-manager team can validate them through black-box gates.
 
-**Audience:** `styio` maintainers implementing compiler-side interfaces, and `spio` maintainers validating published compiler compatibility.
+**Audience:** `styio` maintainers implementing compiler-side interfaces, and `pafio` maintainers validating published compiler compatibility.
 
 **Last updated:** 2026-04-12
 
 ## 1. Ownership and Boundary
 
-`spio` owns:
+`pafio` owns:
 
 - the package-manager-side compile-plan schema under `contracts/compile-plan/`
 - the compatibility matrix under `contracts/compat/styio-support.toml`
@@ -204,16 +204,16 @@ Minimum diagnostic information per entry:
 - message
 - optional file/line/column location
 
-Human-readable stderr may still exist, but `spio` integration must not depend on parsing prose-only messages.
+Human-readable stderr may still exist, but `pafio` integration must not depend on parsing prose-only messages.
 
 ## 5. Machine-Info to Compatibility Mapping
 
-`spio` decides compiler compatibility from:
+`pafio` decides compiler compatibility from:
 
 1. `styio --machine-info=json`
 2. `contracts/compat/styio-support.toml`
 
-That means the `styio` team must not ask `spio` to infer support from:
+That means the `styio` team must not ask `pafio` to infer support from:
 
 - repository branch names
 - compiler source layout
@@ -240,7 +240,7 @@ The gate validates:
 
 - machine-info command availability
 - required handshake fields and types
-- direct compatibility acceptance through `spio check`
+- direct compatibility acceptance through `pafio check`
 - compile-plan advertisement when requested
 - direct `styio --compile-plan <path>` execution against a dry-run plan when requested
 - output-directory materialization for compile-plan execution
@@ -262,9 +262,9 @@ The compiler team handoff is complete only when all of these are true:
 
 This spec does not require:
 
-- embedding `spio` inside `styio`
+- embedding `pafio` inside `styio`
 - exposing parser or type-checker APIs
-- linking `spio` against compiler libraries
+- linking `pafio` against compiler libraries
 - defining remote package registry behavior
 - defining package-manager-side resolver policy
 
@@ -272,4 +272,4 @@ This spec does not require:
 
 - This spec is intentionally stricter than ad hoc CLI compatibility.
 - Requiring explicit machine contracts slows one-off local experimentation.
-- The payoff is that `spio` and `styio` can evolve independently once the contract is published.
+- The payoff is that `pafio` and `styio` can evolve independently once the contract is published.

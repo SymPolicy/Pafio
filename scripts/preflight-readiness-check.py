@@ -12,9 +12,9 @@ import sys
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 NATIVE_CHECK = ROOT / "scripts" / "native-check.sh"
 EXTRACTABILITY_CHECK = ROOT / "scripts" / "extractability-check.sh"
-SPIO = ROOT / "scripts" / "spio"
+PAFIO = ROOT / "scripts" / "pafio"
 STYIO_INTERFACE_GATE = ROOT / "scripts" / "styio-interface-gate.py"
-FIXTURE_MANIFEST = ROOT / "tests" / "unit" / "fixtures" / "manifests" / "ok-single-package" / "spio.toml"
+FIXTURE_MANIFEST = ROOT / "tests" / "unit" / "fixtures" / "manifests" / "ok-single-package" / "pafio.toml"
 
 
 def run_step(name: str, command: list[str], env: dict[str, str] | None = None) -> dict:
@@ -47,12 +47,12 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.styio_bin:
         env = dict(os.environ)
-        env["SPIO_STYIO_BIN"] = args.styio_bin
+        env["PAFIO_STYIO_BIN"] = args.styio_bin
         steps.append(
             run_step(
                 "compatibility_check",
                 [
-                    str(SPIO),
+                    str(PAFIO),
                     "--json",
                     "check",
                     "--manifest-path",

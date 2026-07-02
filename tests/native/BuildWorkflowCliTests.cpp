@@ -1,28 +1,28 @@
 #include "BuildTestSupport.hpp"
 
-#include "SpioCLI/CLI.hpp"
-#include "SpioCore/Errors.hpp"
+#include "PafioCLI/CLI.hpp"
+#include "PafioCore/Errors.hpp"
 
 #include <nlohmann/json.hpp>
 
 using json = nlohmann::json;
 
-using spio::testsupport::CanonicalAbsolutePath;
-using spio::testsupport::MakeTempDir;
-using spio::testsupport::ReadFile;
-using spio::testsupport::ScopedEnvVar;
-using spio::testsupport::WriteExecutable;
-using spio::testsupport::WriteFakeCompilePlanStyio;
-using spio::testsupport::WriteFakeSourceToolchain;
-using spio::testsupport::WriteFile;
+using pafio::testsupport::CanonicalAbsolutePath;
+using pafio::testsupport::MakeTempDir;
+using pafio::testsupport::ReadFile;
+using pafio::testsupport::ScopedEnvVar;
+using pafio::testsupport::WriteExecutable;
+using pafio::testsupport::WriteFakeCompilePlanStyio;
+using pafio::testsupport::WriteFakeSourceToolchain;
+using pafio::testsupport::WriteFile;
 
 TEST(BuildCliTests, NonDryRunBuildRejectsCompilerWithoutRequiredCompilePlanVersion)
 {
   const fs::path root = MakeTempDir("build-contract-gate");
-  const ScopedEnvVar spio_home("SPIO_HOME", (root / ".spio-home").string());
+  const ScopedEnvVar pafio_home("PAFIO_HOME", (root / ".pafio-home").string());
   WriteFile(
-      root / "spio.toml",
-      "[spio]\n"
+      root / "pafio.toml",
+      "[pafio]\n"
       "manifest-version = 1\n\n"
       "[package]\n"
       "name = \"acme/app\"\n"
@@ -48,23 +48,23 @@ TEST(BuildCliTests, NonDryRunBuildRejectsCompilerWithoutRequiredCompilePlanVersi
       "echo unexpected invocation >&2\n"
       "exit 64\n");
 
-  const int exit_code = spio::RunCli({
+  const int exit_code = pafio::RunCli({
       "build",
       "--manifest-path",
-      (root / "spio.toml").string(),
+      (root / "pafio.toml").string(),
       "--styio-bin",
       fake_styio.string(),
   });
-  EXPECT_EQ(exit_code, spio::kExitContract);
+  EXPECT_EQ(exit_code, pafio::kExitContract);
 }
 
 TEST(BuildCliTests, NonDryRunBuildExecutesPublishedCompilePlan)
 {
   const fs::path root = MakeTempDir("build-compile-plan-live");
-  const ScopedEnvVar spio_home("SPIO_HOME", (root / ".spio-home").string());
+  const ScopedEnvVar pafio_home("PAFIO_HOME", (root / ".pafio-home").string());
   WriteFile(
-      root / "spio.toml",
-      "[spio]\n"
+      root / "pafio.toml",
+      "[pafio]\n"
       "manifest-version = 1\n\n"
       "[package]\n"
       "name = \"acme/app\"\n"
@@ -83,17 +83,17 @@ TEST(BuildCliTests, NonDryRunBuildExecutesPublishedCompilePlan)
   WriteFakeCompilePlanStyio(fake_styio);
 
   testing::internal::CaptureStdout();
-  const int exit_code = spio::RunCli({
+  const int exit_code = pafio::RunCli({
       "--json",
       "build",
       "--manifest-path",
-      (root / "spio.toml").string(),
+      (root / "pafio.toml").string(),
       "--styio-bin",
       fake_styio.string(),
   });
   const std::string stdout_text = testing::internal::GetCapturedStdout();
 
-  EXPECT_EQ(exit_code, spio::kExitSuccess);
+  EXPECT_EQ(exit_code, pafio::kExitSuccess);
   const json payload = json::parse(stdout_text);
   EXPECT_EQ(payload.at("mode").get<std::string>(), "execute");
   EXPECT_EQ(payload.at("intent").get<std::string>(), "build");
@@ -111,8 +111,8 @@ TEST(BuildCliTests, DryRunBuildMinimalReportsProjectToolchainState)
 {
   const fs::path root = MakeTempDir("build-minimal-dry-run-state");
   WriteFile(
-      root / "spio.toml",
-      "[spio]\n"
+      root / "pafio.toml",
+      "[pafio]\n"
       "manifest-version = 1\n\n"
       "[package]\n"
       "name = \"acme/app\"\n"
@@ -128,26 +128,26 @@ TEST(BuildCliTests, DryRunBuildMinimalReportsProjectToolchainState)
   WriteFile(root / "src/main.styio", ">_(\"app\")\n");
 
   ASSERT_EQ(
-      spio::RunCli({
+      pafio::RunCli({
           "use",
           "build",
           "--manifest-path",
-          (root / "spio.toml").string(),
+          (root / "pafio.toml").string(),
       }),
-      spio::kExitSuccess);
+      pafio::kExitSuccess);
 
   testing::internal::CaptureStdout();
-  const int exit_code = spio::RunCli({
+  const int exit_code = pafio::RunCli({
       "--json",
       "build",
       "minimal",
       "--manifest-path",
-      (root / "spio.toml").string(),
+      (root / "pafio.toml").string(),
       "--dry-run",
   });
   const std::string stdout_text = testing::internal::GetCapturedStdout();
 
-  EXPECT_EQ(exit_code, spio::kExitSuccess);
+  EXPECT_EQ(exit_code, pafio::kExitSuccess);
   const json payload = json::parse(stdout_text);
   EXPECT_EQ(payload.at("mode").get<std::string>(), "dry-run");
   EXPECT_EQ(payload.at("toolchain_mode").get<std::string>(), "build");
@@ -159,10 +159,10 @@ TEST(BuildCliTests, DryRunBuildMinimalReportsProjectToolchainState)
 TEST(BuildCliTests, BuildModeUsesLocalSourceRootToProduceCompiler)
 {
   const fs::path root = MakeTempDir("build-mode-local-source-root");
-  const ScopedEnvVar spio_home("SPIO_HOME", (root / ".spio-home").string());
+  const ScopedEnvVar pafio_home("PAFIO_HOME", (root / ".pafio-home").string());
   WriteFile(
-      root / "project/spio.toml",
-      "[spio]\n"
+      root / "project/pafio.toml",
+      "[pafio]\n"
       "manifest-version = 1\n\n"
       "[package]\n"
       "name = \"acme/app\"\n"
@@ -179,37 +179,37 @@ TEST(BuildCliTests, BuildModeUsesLocalSourceRootToProduceCompiler)
   WriteFakeSourceToolchain(root / "styio-source");
 
   ASSERT_EQ(
-      spio::RunCli({
+      pafio::RunCli({
           "use",
           "build",
           "--manifest-path",
-          (root / "project/spio.toml").string(),
+          (root / "project/pafio.toml").string(),
       }),
-      spio::kExitSuccess);
+      pafio::kExitSuccess);
   ASSERT_EQ(
-      spio::RunCli({
+      pafio::RunCli({
           "set",
           "channel",
           "as",
           "nightly",
           "--manifest-path",
-          (root / "project/spio.toml").string(),
+          (root / "project/pafio.toml").string(),
       }),
-      spio::kExitSuccess);
+      pafio::kExitSuccess);
 
   testing::internal::CaptureStdout();
-  const int exit_code = spio::RunCli({
+  const int exit_code = pafio::RunCli({
       "--json",
       "build",
       "minimal",
       "--manifest-path",
-      (root / "project/spio.toml").string(),
+      (root / "project/pafio.toml").string(),
       "--source-root",
       (root / "styio-source").string(),
   });
   const std::string stdout_text = testing::internal::GetCapturedStdout();
 
-  EXPECT_EQ(exit_code, spio::kExitSuccess);
+  EXPECT_EQ(exit_code, pafio::kExitSuccess);
   const json payload = json::parse(stdout_text);
   EXPECT_EQ(payload.at("toolchain_mode").get<std::string>(), "build");
   EXPECT_EQ(payload.at("build_mode").get<std::string>(), "minimal");
@@ -217,5 +217,5 @@ TEST(BuildCliTests, BuildModeUsesLocalSourceRootToProduceCompiler)
   EXPECT_EQ(payload.at("styio").at("mode").get<std::string>(), "build");
   EXPECT_EQ(payload.at("styio").at("source_root").get<std::string>(), CanonicalAbsolutePath(root / "styio-source").string());
   EXPECT_TRUE(fs::exists(payload.at("styio").at("compiler_binary").get<std::string>()));
-  EXPECT_NE(ReadFile(root / "project/spio-toolchain.lock").find("[source]"), std::string::npos);
+  EXPECT_NE(ReadFile(root / "project/pafio-toolchain.lock").find("[source]"), std::string::npos);
 }

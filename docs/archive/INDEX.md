@@ -10,10 +10,10 @@
 
 | Path | Entry | Summary |
 |------|-------|---------|
-| `history/` | [Archive History Index](./history/INDEX.md) | Hold raw historical spio daily notes after they are no longer active in docs/history/; these files preserve provenance without competing with the active recovery surface. |
+| `history/` | [Archive History Index](./history/INDEX.md) | Hold raw historical pafio daily notes after they are no longer active in docs/history/; these files preserve provenance without competing with the active recovery surface. |
 
 ## Files
 
 | Path | Entry | Summary |
 |------|-------|---------|
-| `ARCHIVE-LEDGER.md` | [Archive Ledger](./ARCHIVE-LEDGER.md) | Track archived spio documentation provenance and lifecycle status; the machine-readable source of truth lives in ARCHIVE-MANIFEST.json. |
+| `ARCHIVE-LEDGER.md` | [Archive Ledger](./ARCHIVE-LEDGER.md) | Track archived pafio documentation provenance and lifecycle status; the machine-readable source of truth lives in ARCHIVE-MANIFEST.json. |

@@ -12,18 +12,18 @@ Own write-side registry publication, immutable object creation, and origin-facin
 
 Primary paths:
 
-1. `src/SpioRegistryServer/`
-2. `src/SpioPublish/`
-3. `docs/registry/Spio-Registry-Server-Contract.md`
-4. `docs/registry/Spio-Registry-Deployment-Baseline.md`
-5. `docs/operations/Spio-Registry-Server-Runbook.md`
+1. `src/PafioRegistryServer/`
+2. `src/PafioPublish/`
+3. `docs/registry/Pafio-Registry-Server-Contract.md`
+4. `docs/registry/Pafio-Registry-Deployment-Baseline.md`
+5. `docs/operations/Pafio-Registry-Server-Runbook.md`
 6. `tests/interop/registry-server-gate.sh`
 
 Key SSOTs:
 
-1. `Registry repository contract -> ../governance/Spio-Registry-Repository-Contract.md`
-2. `Registry server contract -> ../registry/Spio-Registry-Server-Contract.md`
-3. `Registry server operations -> ../operations/Spio-Registry-Server-Runbook.md`
+1. `Registry repository contract -> ../governance/Pafio-Registry-Repository-Contract.md`
+2. `Registry server contract -> ../registry/Pafio-Registry-Server-Contract.md`
+3. `Registry server operations -> ../operations/Pafio-Registry-Server-Runbook.md`
 
 ## Daily Workflow
 
