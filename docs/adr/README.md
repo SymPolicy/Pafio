@@ -8,7 +8,7 @@
 
 1. Store architecture, lifecycle, workflow-boundary, and implementation-scope decisions that need durable context here.
 2. Keep normative policy in `docs/governance/`.
-3. Keep execution sequencing in `docs/planning/`.
+3. Keep execution sequencing in `docs/plan/`.
 4. Keep gate commands and operational procedures in `docs/operations/`.
 
 ## Conventions

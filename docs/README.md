@@ -7,11 +7,11 @@
 ## Entry Points
 
 1. Build and dev environment: [BUILD-AND-DEV-ENV.md](./BUILD-AND-DEV-ENV.md)
-2. Planning roadmap: [planning/Pafio-Master-Plan.md](./planning/Pafio-Master-Plan.md)
-3. Stage review and future direction: [planning/Pafio-Stage-Review-and-Future-Features.md](./planning/Pafio-Stage-Review-and-Future-Features.md)
+2. Planning roadmap: [plan/repository-delivery-convergence/Evidence.md](./plan/repository-delivery-convergence/Evidence.md)
+3. Stage review and future direction: [plan/repository-delivery-convergence/Evidence.md](./plan/repository-delivery-convergence/Evidence.md)
 4. Version-decoupling rules: [governance/Pafio-Version-Decoupling-Constraints.md](./governance/Pafio-Version-Decoupling-Constraints.md)
 5. Local offline package contract: [governance/Pafio-Local-Offline-Package-Contract.md](./governance/Pafio-Local-Offline-Package-Contract.md)
-6. Platform migration handoff: [planning/Pafio-Styio-Cloud-Migration-Handoff.md](./planning/Pafio-Styio-Cloud-Migration-Handoff.md)
+6. Platform migration handoff: [plan/repository-delivery-convergence/Evidence.md](./plan/repository-delivery-convergence/Evidence.md)
 7. Package-manager verification matrix: [operations/Pafio-Verification-Matrix.md](./operations/Pafio-Verification-Matrix.md)
 7. Verification matrix: [operations/Pafio-Verification-Matrix.md](./operations/Pafio-Verification-Matrix.md)
 8. External compiler knowledge pack: [external/for-styio/Styio-for-Pafio-Developers.md](./external/for-styio/Styio-for-Pafio-Developers.md)
@@ -32,9 +32,9 @@
 ## Recommended Reading Order
 
 1. `BUILD-AND-DEV-ENV.md`
-2. `planning/Pafio-Master-Plan.md`
-3. `planning/Pafio-Stage-Review-and-Future-Features.md`
-4. `planning/Pafio-Future-Direction-and-Styio-Coordination.md`
+2. `plan/repository-delivery-convergence/Evidence.md`
+3. `plan/repository-delivery-convergence/Evidence.md`
+4. `plan/repository-delivery-convergence/Evidence.md`
 5. `governance/Pafio-Version-Decoupling-Constraints.md`
 6. `adr/INDEX.md`
 7. `governance/Pafio-Cloud-Control-Plane-Contract.md`
@@ -48,9 +48,9 @@
 15. `security/Pafio-Private-Security-Module-Contract.md`
 16. `registry/Pafio-Registry-Client-Contract.md`
 17. `registry/Pafio-Registry-Deployment-Baseline.md`
-18. `planning/Pafio-Workstreams-and-TODOs.md`
+18. `plan/repository-delivery-convergence/Evidence.md`
 19. `operations/Pafio-Verification-Matrix.md`
-20. `planning/Pafio-Styio-Cloud-Migration-Handoff.md`
+20. `plan/repository-delivery-convergence/Evidence.md`
 21. `operations/Pafio-Repo-Split-Runbook.md`
 22. `external/for-styio/Styio-External-Interface-Requirement-Spec.md`
 23. `external/for-styio/Styio-for-Pafio-Developers.md`

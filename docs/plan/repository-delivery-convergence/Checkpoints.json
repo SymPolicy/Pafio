@@ -1,0 +1,1573 @@
+[
+  {
+    "id": "e8ecb3a4-d8b1-4c4d-a179-ab94bd878b46",
+    "status": "completed",
+    "role": "product_requirements",
+    "prerequisites": [],
+    "platform": "windows",
+    "difficulty": "deep",
+    "goal": "Define the current delivery contract for Pafio planning convergence.",
+    "description": "Scope: docs/plan/repository-delivery-convergence/Requirements.md and the repository planning root. Context: prior planning material existed in multiple planning roots or plan-named files, so maintainers lacked one current Better Plan contract. Target: REQ-001 through REQ-005 define one final planning structure under docs/plan. Design Considerations: use stable requirement labels and keep product implementation completion separate from plan refactoring. Design Value: a single labeled contract keeps later implementation and validation traceable. Constraints & Risks: do not claim product work is complete only because the planning format is current.",
+    "acceptance_criteria": [
+      {
+        "checked": true,
+        "text": "Requirements.md exists and defines REQ-001 through REQ-005 for the current planning workspace."
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "Define planning convergence requirements",
+      "target": "docs/plan/repository-delivery-convergence/Requirements.md"
+    },
+    "next": [
+      "ba5a0f35-57b0-4aa3-8590-9898d29158cc"
+    ]
+  },
+  {
+    "id": "ba5a0f35-57b0-4aa3-8590-9898d29158cc",
+    "status": "completed",
+    "role": "evidence",
+    "prerequisites": [
+      "e8ecb3a4-d8b1-4c4d-a179-ab94bd878b46"
+    ],
+    "platform": "windows",
+    "difficulty": "deep",
+    "goal": "Record source evidence and open-work signals for Pafio.",
+    "description": "Scope: docs/plan/repository-delivery-convergence/Evidence.md and imported planning-source inventory. Context: old plan files had to be removed as active sources while their useful delivery signals still needed traceability. Target: REQ-001 and REQ-003 are backed by a source inventory and open-work signal ledger. Design Considerations: record source summaries and signal locations instead of copying old plan prose into a second long-lived source. Design Value: reviewers can see what was consolidated without reintroducing old planning roots. Constraints & Risks: extracted signals are evidence for planning status, not proof that the underlying product work is complete.",
+    "acceptance_criteria": [
+      {
+        "checked": true,
+        "text": "Evidence.md lists imported planning sources and open-work signals derived from current repository files."
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "Record planning source evidence",
+      "target": "docs/plan/repository-delivery-convergence/Evidence.md"
+    },
+    "next": [
+      "8aa8e9b1-053a-4c3b-801b-ab8b8270f0df"
+    ]
+  },
+  {
+    "id": "8aa8e9b1-053a-4c3b-801b-ab8b8270f0df",
+    "status": "completed",
+    "role": "validation_matrix",
+    "prerequisites": [
+      "e8ecb3a4-d8b1-4c4d-a179-ab94bd878b46",
+      "ba5a0f35-57b0-4aa3-8590-9898d29158cc"
+    ],
+    "platform": "windows",
+    "difficulty": "deep",
+    "goal": "Map Pafio planning requirements to concrete checks.",
+    "description": "Scope: docs/plan/repository-delivery-convergence/Validation.md and final validation acceptance criteria. Context: Better Plan requires validation targets before implementation claims. Target: REQ-001 through REQ-005 each have an explicit check. Design Considerations: use manifest validation, search evidence, and source-inventory inspection rather than informal review. Design Value: validation remains repeatable for future agents and maintainers. Constraints & Risks: final validation must not be treated as complete until repository-level searches and manifest validation are run.",
+    "acceptance_criteria": [
+      {
+        "checked": true,
+        "text": "Validation.md maps every requirement label to a concrete check."
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "Map planning validation checks",
+      "target": "docs/plan/repository-delivery-convergence/Validation.md"
+    },
+    "next": [
+      "33eacd11-5648-4dc8-966b-11cfdc03ec17"
+    ]
+  },
+  {
+    "id": "33eacd11-5648-4dc8-966b-11cfdc03ec17",
+    "status": "completed",
+    "role": "architecture_scaffold",
+    "prerequisites": [
+      "e8ecb3a4-d8b1-4c4d-a179-ab94bd878b46",
+      "ba5a0f35-57b0-4aa3-8590-9898d29158cc",
+      "8aa8e9b1-053a-4c3b-801b-ab8b8270f0df"
+    ],
+    "platform": "windows",
+    "difficulty": "high",
+    "goal": "Establish the Pafio Better Plan workspace architecture.",
+    "description": "Scope: docs/plan/README.md, docs/plan/Manifest.json, and docs/plan/repository-delivery-convergence/Architecture.md. Context: the repository needs one machine-readable planning root with plan-local artifacts. Target: REQ-002 and REQ-004 are represented by a Manifest-only root and one dedicated plan directory. Design Considerations: keep root navigation thin, keep execution detail in Checkpoints.json, and organize by repository delivery responsibility and validation target. Design Value: this avoids duplicate plan roots and keeps state-machine validation cheap. Constraints & Risks: do not add marker files or alternate planning directories to identify the workspace.",
+    "acceptance_criteria": [
+      {
+        "checked": true,
+        "text": "Architecture.md describes the docs/plan workspace boundary and artifact ownership."
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "Establish planning workspace architecture",
+      "target": "docs/plan docs/plan/repository-delivery-convergence/Architecture.md"
+    },
+    "next": [
+      "cc8030b6-789c-44bd-a6c5-6cc834b33db6",
+      "12250f5d-cc1f-4180-ac94-e55062f884b0",
+      "48c2bb21-4837-4901-970c-070a44bc0a63",
+      "16e6c9e5-c198-4489-84ce-155fa9c61338",
+      "de30682b-2fbf-4493-a031-35956cce1428",
+      "5de707dc-80b7-4e09-9761-57358ac17153",
+      "43ae0575-77f7-4d83-8fbc-bfaa639a484b",
+      "74468dfd-2305-4040-89ef-5604cb114205",
+      "5d8b38fa-a987-4e04-8f59-b072875df85e",
+      "9a166e7e-fd7c-4d91-a91c-d226e56a9e9b",
+      "c0318620-d378-4c5c-838c-bd72cf1eda9b",
+      "51c04e03-e0b2-4f99-bf6d-6662804f1981",
+      "a7c3e031-0f97-462e-9401-c35787897feb",
+      "9bd8101b-035b-4277-868f-4e3cb958f366",
+      "bc531d8a-a6d0-4066-a006-7b4366c92753",
+      "59474cbe-d78f-46ff-85ab-dc1c4f9bdd3a",
+      "df0a9320-7aed-4864-b9e9-7c3b0f52ff05",
+      "5be23374-9368-4c0b-b909-09443479ff25",
+      "66673568-87ea-4357-8c48-cb42db764c3a",
+      "4f0d8b31-eb90-4d9f-b37a-19a3823cf89e",
+      "1f44f9ee-d262-4261-8bcc-307e3ca559d9",
+      "ca70ded9-1270-4db5-9fce-73e398cdab9d",
+      "6f77b8d5-525a-4057-8eef-771909b05ee9",
+      "b385d276-d6e1-447a-981a-71853130b5f0",
+      "c06f3d62-1a7e-45db-b99a-d1cdf76e72ef",
+      "e6e5623e-f92b-46ac-ab67-0bca57d3f702",
+      "928cb8ed-6c7c-43b5-95a7-d7b5a8c56528",
+      "30396d23-66a8-4d39-9c62-e4103065f72b",
+      "eaf6dcef-36b5-4fa2-af11-95811b80e7e7",
+      "7b9d9484-7d32-4d4a-837d-2062eec8ce8b",
+      "8dd310ae-f523-406a-8922-aa09759850bf",
+      "cb2e517a-ef09-48ff-883c-d55902341e1d",
+      "8dc7f22d-9ba1-4f32-9e9b-c42cff742b03",
+      "53a7b7f8-0a96-4341-bcfc-1a6d3e972d20",
+      "b5fc6995-52f9-4701-8f29-f46ad2652ecb",
+      "adaa53fc-4487-44e7-9ec9-ce9e4a526455",
+      "9143955e-1175-476f-933a-ca329c435432",
+      "e69c9251-9487-46aa-b702-25457a8ae220",
+      "e53965b7-f0f2-41c6-a156-1e660192bba5",
+      "dfd2c9e8-caaf-4b82-add1-38fd306dfde8",
+      "7e97bd49-b95a-4456-8f08-05a8d9b7ce65",
+      "67a995c0-397c-4347-90fd-e614f7d18380",
+      "353f5b89-e8e1-42bf-b8cc-9f584f63d187",
+      "3c9221c4-c682-4bf4-b04f-144d36b8f96f",
+      "6f603936-d046-4baf-9c81-3f5ada82f0b3"
+    ]
+  },
+  {
+    "id": "cc8030b6-789c-44bd-a6c5-6cc834b33db6",
+    "status": "in_progress",
+    "role": "implementation",
+    "prerequisites": [
+      "e8ecb3a4-d8b1-4c4d-a179-ab94bd878b46",
+      "ba5a0f35-57b0-4aa3-8590-9898d29158cc",
+      "8aa8e9b1-053a-4c3b-801b-ab8b8270f0df",
+      "33eacd11-5648-4dc8-966b-11cfdc03ec17"
+    ],
+    "platform": "windows",
+    "difficulty": "high",
+    "goal": "Close extracted open work for Docs/plan/repository Delivery Convergence/evidence Md:1.",
+    "description": "Scope: Evidence.md source `docs/plan/repository-delivery-convergence/Evidence.md:1` and the repository code, tests, contracts, or docs referenced by its open-work signals. Context: the previous planning source recorded unresolved or uncertain work that must now be tracked only through docs/plan. Target: each extracted signal is either delivered with validation evidence or explicitly skipped with rationale in the current Better Plan graph. Design Considerations: follow existing repository boundaries and avoid restoring old planning roots or compatibility-era task lists. Design Value: source-specific implementation nodes make unclosed work reviewable without preserving stale plan documents. Constraints & Risks: do not mark this node completed until every acceptance item has direct evidence.",
+    "acceptance_criteria": [
+      {
+        "checked": false,
+        "text": "Close or explicitly skip extracted open-work signal `docs/plan/repository-delivery-convergence/Evidence.md:1: # Pafio Audit Backlog 2026-04-22` with code, documentation, and validation evidence."
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "Close Docs/plan/repository Delivery Convergence/evidence Md:1 open work",
+      "target": "docs/plan repository sources"
+    },
+    "next": [
+      "84634cfa-ab2f-460c-bb71-21a5a00e1a21"
+    ]
+  },
+  {
+    "id": "12250f5d-cc1f-4180-ac94-e55062f884b0",
+    "status": "pending",
+    "role": "implementation",
+    "prerequisites": [
+      "e8ecb3a4-d8b1-4c4d-a179-ab94bd878b46",
+      "ba5a0f35-57b0-4aa3-8590-9898d29158cc",
+      "8aa8e9b1-053a-4c3b-801b-ab8b8270f0df",
+      "33eacd11-5648-4dc8-966b-11cfdc03ec17"
+    ],
+    "platform": "windows",
+    "difficulty": "high",
+    "goal": "Close extracted open work for Docs/plan/repository Delivery Convergence/evidence Md:102.",
+    "description": "Scope: Evidence.md source `docs/plan/repository-delivery-convergence/Evidence.md:102` and the repository code, tests, contracts, or docs referenced by its open-work signals. Context: the previous planning source recorded unresolved or uncertain work that must now be tracked only through docs/plan. Target: each extracted signal is either delivered with validation evidence or explicitly skipped with rationale in the current Better Plan graph. Design Considerations: follow existing repository boundaries and avoid restoring old planning roots or compatibility-era task lists. Design Value: source-specific implementation nodes make unclosed work reviewable without preserving stale plan documents. Constraints & Risks: do not mark this node completed until every acceptance item has direct evidence.",
+    "acceptance_criteria": [
+      {
+        "checked": false,
+        "text": "Close or explicitly skip extracted open-work signal `docs/plan/repository-delivery-convergence/Evidence.md:102: - same package name must resolve to one effective version and one effective source fingerprint` with code, documentation, and validation evidence."
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "Close Docs/plan/repository Delivery Convergence/evidence Md:102 open work",
+      "target": "docs/plan repository sources"
+    },
+    "next": [
+      "84634cfa-ab2f-460c-bb71-21a5a00e1a21"
+    ]
+  },
+  {
+    "id": "48c2bb21-4837-4901-970c-070a44bc0a63",
+    "status": "pending",
+    "role": "implementation",
+    "prerequisites": [
+      "e8ecb3a4-d8b1-4c4d-a179-ab94bd878b46",
+      "ba5a0f35-57b0-4aa3-8590-9898d29158cc",
+      "8aa8e9b1-053a-4c3b-801b-ab8b8270f0df",
+      "33eacd11-5648-4dc8-966b-11cfdc03ec17"
+    ],
+    "platform": "windows",
+    "difficulty": "high",
+    "goal": "Close extracted open work for Docs/plan/repository Delivery Convergence/evidence Md:103.",
+    "description": "Scope: Evidence.md source `docs/plan/repository-delivery-convergence/Evidence.md:103` and the repository code, tests, contracts, or docs referenced by its open-work signals. Context: the previous planning source recorded unresolved or uncertain work that must now be tracked only through docs/plan. Target: each extracted signal is either delivered with validation evidence or explicitly skipped with rationale in the current Better Plan graph. Design Considerations: follow existing repository boundaries and avoid restoring old planning roots or compatibility-era task lists. Design Value: source-specific implementation nodes make unclosed work reviewable without preserving stale plan documents. Constraints & Risks: do not mark this node completed until every acceptance item has direct evidence.",
+    "acceptance_criteria": [
+      {
+        "checked": false,
+        "text": "Close or explicitly skip extracted open-work signal `docs/plan/repository-delivery-convergence/Evidence.md:103: If a capability cannot be validated through a black-box gate, it is not yet ready to anchor a split-repository workflow.` with code, documentation, and validation evidence."
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "Close Docs/plan/repository Delivery Convergence/evidence Md:103 open work",
+      "target": "docs/plan repository sources"
+    },
+    "next": [
+      "84634cfa-ab2f-460c-bb71-21a5a00e1a21"
+    ]
+  },
+  {
+    "id": "16e6c9e5-c198-4489-84ce-155fa9c61338",
+    "status": "pending",
+    "role": "implementation",
+    "prerequisites": [
+      "e8ecb3a4-d8b1-4c4d-a179-ab94bd878b46",
+      "ba5a0f35-57b0-4aa3-8590-9898d29158cc",
+      "8aa8e9b1-053a-4c3b-801b-ab8b8270f0df",
+      "33eacd11-5648-4dc8-966b-11cfdc03ec17"
+    ],
+    "platform": "windows",
+    "difficulty": "high",
+    "goal": "Close extracted open work for Docs/plan/repository Delivery Convergence/evidence Md:120.",
+    "description": "Scope: Evidence.md source `docs/plan/repository-delivery-convergence/Evidence.md:120` and the repository code, tests, contracts, or docs referenced by its open-work signals. Context: the previous planning source recorded unresolved or uncertain work that must now be tracked only through docs/plan. Target: each extracted signal is either delivered with validation evidence or explicitly skipped with rationale in the current Better Plan graph. Design Considerations: follow existing repository boundaries and avoid restoring old planning roots or compatibility-era task lists. Design Value: source-specific implementation nodes make unclosed work reviewable without preserving stale plan documents. Constraints & Risks: do not mark this node completed until every acceptance item has direct evidence.",
+    "acceptance_criteria": [
+      {
+        "checked": false,
+        "text": "Close or explicitly skip extracted open-work signal `docs/plan/repository-delivery-convergence/Evidence.md:120: Needs from `styio`:` with code, documentation, and validation evidence."
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "Close Docs/plan/repository Delivery Convergence/evidence Md:120 open work",
+      "target": "docs/plan repository sources"
+    },
+    "next": [
+      "84634cfa-ab2f-460c-bb71-21a5a00e1a21"
+    ]
+  },
+  {
+    "id": "de30682b-2fbf-4493-a031-35956cce1428",
+    "status": "pending",
+    "role": "implementation",
+    "prerequisites": [
+      "e8ecb3a4-d8b1-4c4d-a179-ab94bd878b46",
+      "ba5a0f35-57b0-4aa3-8590-9898d29158cc",
+      "8aa8e9b1-053a-4c3b-801b-ab8b8270f0df",
+      "33eacd11-5648-4dc8-966b-11cfdc03ec17"
+    ],
+    "platform": "windows",
+    "difficulty": "high",
+    "goal": "Close extracted open work for Docs/plan/repository Delivery Convergence/evidence Md:13.",
+    "description": "Scope: Evidence.md source `docs/plan/repository-delivery-convergence/Evidence.md:13` and the repository code, tests, contracts, or docs referenced by its open-work signals. Context: the previous planning source recorded unresolved or uncertain work that must now be tracked only through docs/plan. Target: each extracted signal is either delivered with validation evidence or explicitly skipped with rationale in the current Better Plan graph. Design Considerations: follow existing repository boundaries and avoid restoring old planning roots or compatibility-era task lists. Design Value: source-specific implementation nodes make unclosed work reviewable without preserving stale plan documents. Constraints & Risks: do not mark this node completed until every acceptance item has direct evidence.",
+    "acceptance_criteria": [
+      {
+        "checked": false,
+        "text": "Close or explicitly skip extracted open-work signal `docs/plan/repository-delivery-convergence/Evidence.md:13: | `Pafio-Audit-Backlog-2026-04-22.md` | [Pafio Audit Backlog 2026-04-22](./Pafio-Audit-Backlog-2026-04-22.md) | Preserve the 2026-04-22 styio-pafio external audit findings as durable tracked work after removing the ignor` with code, documentation, and validation evidence."
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "Close Docs/plan/repository Delivery Convergence/evidence Md:13 open work",
+      "target": "docs/plan repository sources"
+    },
+    "next": [
+      "84634cfa-ab2f-460c-bb71-21a5a00e1a21"
+    ]
+  },
+  {
+    "id": "5de707dc-80b7-4e09-9761-57358ac17153",
+    "status": "pending",
+    "role": "implementation",
+    "prerequisites": [
+      "e8ecb3a4-d8b1-4c4d-a179-ab94bd878b46",
+      "ba5a0f35-57b0-4aa3-8590-9898d29158cc",
+      "8aa8e9b1-053a-4c3b-801b-ab8b8270f0df",
+      "33eacd11-5648-4dc8-966b-11cfdc03ec17"
+    ],
+    "platform": "windows",
+    "difficulty": "high",
+    "goal": "Close extracted open work for Docs/plan/repository Delivery Convergence/evidence Md:147.",
+    "description": "Scope: Evidence.md source `docs/plan/repository-delivery-convergence/Evidence.md:147` and the repository code, tests, contracts, or docs referenced by its open-work signals. Context: the previous planning source recorded unresolved or uncertain work that must now be tracked only through docs/plan. Target: each extracted signal is either delivered with validation evidence or explicitly skipped with rationale in the current Better Plan graph. Design Considerations: follow existing repository boundaries and avoid restoring old planning roots or compatibility-era task lists. Design Value: source-specific implementation nodes make unclosed work reviewable without preserving stale plan documents. Constraints & Risks: do not mark this node completed until every acceptance item has direct evidence.",
+    "acceptance_criteria": [
+      {
+        "checked": false,
+        "text": "Close or explicitly skip extracted open-work signal `docs/plan/repository-delivery-convergence/Evidence.md:147: - this phase depends on `styio` publishing a real consumer; `pafio` must not guess ahead` with code, documentation, and validation evidence."
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "Close Docs/plan/repository Delivery Convergence/evidence Md:147 open work",
+      "target": "docs/plan repository sources"
+    },
+    "next": [
+      "84634cfa-ab2f-460c-bb71-21a5a00e1a21"
+    ]
+  },
+  {
+    "id": "43ae0575-77f7-4d83-8fbc-bfaa639a484b",
+    "status": "pending",
+    "role": "implementation",
+    "prerequisites": [
+      "e8ecb3a4-d8b1-4c4d-a179-ab94bd878b46",
+      "ba5a0f35-57b0-4aa3-8590-9898d29158cc",
+      "8aa8e9b1-053a-4c3b-801b-ab8b8270f0df",
+      "33eacd11-5648-4dc8-966b-11cfdc03ec17"
+    ],
+    "platform": "windows",
+    "difficulty": "high",
+    "goal": "Close extracted open work for Docs/plan/repository Delivery Convergence/evidence Md:15.",
+    "description": "Scope: Evidence.md source `docs/plan/repository-delivery-convergence/Evidence.md:15` and the repository code, tests, contracts, or docs referenced by its open-work signals. Context: the previous planning source recorded unresolved or uncertain work that must now be tracked only through docs/plan. Target: each extracted signal is either delivered with validation evidence or explicitly skipped with rationale in the current Better Plan graph. Design Considerations: follow existing repository boundaries and avoid restoring old planning roots or compatibility-era task lists. Design Value: source-specific implementation nodes make unclosed work reviewable without preserving stale plan documents. Constraints & Risks: do not mark this node completed until every acceptance item has direct evidence.",
+    "acceptance_criteria": [
+      {
+        "checked": false,
+        "text": "Close or explicitly skip extracted open-work signal `docs/plan/repository-delivery-convergence/Evidence.md:15: 3. Closure evidence must name the code change, regression coverage, data or resource lifecycle proof, and gate command.` with code, documentation, and validation evidence."
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "Close Docs/plan/repository Delivery Convergence/evidence Md:15 open work",
+      "target": "docs/plan repository sources"
+    },
+    "next": [
+      "84634cfa-ab2f-460c-bb71-21a5a00e1a21"
+    ]
+  },
+  {
+    "id": "74468dfd-2305-4040-89ef-5604cb114205",
+    "status": "pending",
+    "role": "implementation",
+    "prerequisites": [
+      "e8ecb3a4-d8b1-4c4d-a179-ab94bd878b46",
+      "ba5a0f35-57b0-4aa3-8590-9898d29158cc",
+      "8aa8e9b1-053a-4c3b-801b-ab8b8270f0df",
+      "33eacd11-5648-4dc8-966b-11cfdc03ec17"
+    ],
+    "platform": "windows",
+    "difficulty": "high",
+    "goal": "Close extracted open work for Docs/plan/repository Delivery Convergence/evidence Md:16.",
+    "description": "Scope: Evidence.md source `docs/plan/repository-delivery-convergence/Evidence.md:16` and the repository code, tests, contracts, or docs referenced by its open-work signals. Context: the previous planning source recorded unresolved or uncertain work that must now be tracked only through docs/plan. Target: each extracted signal is either delivered with validation evidence or explicitly skipped with rationale in the current Better Plan graph. Design Considerations: follow existing repository boundaries and avoid restoring old planning roots or compatibility-era task lists. Design Value: source-specific implementation nodes make unclosed work reviewable without preserving stale plan documents. Constraints & Risks: do not mark this node completed until every acceptance item has direct evidence.",
+    "acceptance_criteria": [
+      {
+        "checked": false,
+        "text": "Close or explicitly skip extracted open-work signal `docs/plan/repository-delivery-convergence/Evidence.md:16: 4. If a finding moves to a GitHub issue or downstream platform task, record the durable link before removing it from this backlog.` with code, documentation, and validation evidence."
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "Close Docs/plan/repository Delivery Convergence/evidence Md:16 open work",
+      "target": "docs/plan repository sources"
+    },
+    "next": [
+      "84634cfa-ab2f-460c-bb71-21a5a00e1a21"
+    ]
+  },
+  {
+    "id": "5d8b38fa-a987-4e04-8f59-b072875df85e",
+    "status": "pending",
+    "role": "implementation",
+    "prerequisites": [
+      "e8ecb3a4-d8b1-4c4d-a179-ab94bd878b46",
+      "ba5a0f35-57b0-4aa3-8590-9898d29158cc",
+      "8aa8e9b1-053a-4c3b-801b-ab8b8270f0df",
+      "33eacd11-5648-4dc8-966b-11cfdc03ec17"
+    ],
+    "platform": "windows",
+    "difficulty": "high",
+    "goal": "Close extracted open work for Docs/plan/repository Delivery Convergence/evidence Md:164.",
+    "description": "Scope: Evidence.md source `docs/plan/repository-delivery-convergence/Evidence.md:164` and the repository code, tests, contracts, or docs referenced by its open-work signals. Context: the previous planning source recorded unresolved or uncertain work that must now be tracked only through docs/plan. Target: each extracted signal is either delivered with validation evidence or explicitly skipped with rationale in the current Better Plan graph. Design Considerations: follow existing repository boundaries and avoid restoring old planning roots or compatibility-era task lists. Design Value: source-specific implementation nodes make unclosed work reviewable without preserving stale plan documents. Constraints & Risks: do not mark this node completed until every acceptance item has direct evidence.",
+    "acceptance_criteria": [
+      {
+        "checked": false,
+        "text": "Close or explicitly skip extracted open-work signal `docs/plan/repository-delivery-convergence/Evidence.md:164: - the next meaningful gap is no longer remote publication itself; it is trust, auth, and operational hardening` with code, documentation, and validation evidence."
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "Close Docs/plan/repository Delivery Convergence/evidence Md:164 open work",
+      "target": "docs/plan repository sources"
+    },
+    "next": [
+      "84634cfa-ab2f-460c-bb71-21a5a00e1a21"
+    ]
+  },
+  {
+    "id": "9a166e7e-fd7c-4d91-a91c-d226e56a9e9b",
+    "status": "pending",
+    "role": "implementation",
+    "prerequisites": [
+      "e8ecb3a4-d8b1-4c4d-a179-ab94bd878b46",
+      "ba5a0f35-57b0-4aa3-8590-9898d29158cc",
+      "8aa8e9b1-053a-4c3b-801b-ab8b8270f0df",
+      "33eacd11-5648-4dc8-966b-11cfdc03ec17"
+    ],
+    "platform": "windows",
+    "difficulty": "high",
+    "goal": "Close extracted open work for Docs/plan/repository Delivery Convergence/evidence Md:17.",
+    "description": "Scope: Evidence.md source `docs/plan/repository-delivery-convergence/Evidence.md:17` and the repository code, tests, contracts, or docs referenced by its open-work signals. Context: the previous planning source recorded unresolved or uncertain work that must now be tracked only through docs/plan. Target: each extracted signal is either delivered with validation evidence or explicitly skipped with rationale in the current Better Plan graph. Design Considerations: follow existing repository boundaries and avoid restoring old planning roots or compatibility-era task lists. Design Value: source-specific implementation nodes make unclosed work reviewable without preserving stale plan documents. Constraints & Risks: do not mark this node completed until every acceptance item has direct evidence.",
+    "acceptance_criteria": [
+      {
+        "checked": false,
+        "text": "Close or explicitly skip extracted open-work signal `docs/plan/repository-delivery-convergence/Evidence.md:17: 5. Run `./scripts/delivery-gate.sh --mode checkpoint` and external `styio-audit gate --repo /home/unka/styio-pafio --project styio-pafio` before declaring the backlog migration complete.` with code, documentation, and validation evidence."
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "Close Docs/plan/repository Delivery Convergence/evidence Md:17 open work",
+      "target": "docs/plan repository sources"
+    },
+    "next": [
+      "84634cfa-ab2f-460c-bb71-21a5a00e1a21"
+    ]
+  },
+  {
+    "id": "c0318620-d378-4c5c-838c-bd72cf1eda9b",
+    "status": "pending",
+    "role": "implementation",
+    "prerequisites": [
+      "e8ecb3a4-d8b1-4c4d-a179-ab94bd878b46",
+      "ba5a0f35-57b0-4aa3-8590-9898d29158cc",
+      "8aa8e9b1-053a-4c3b-801b-ab8b8270f0df",
+      "33eacd11-5648-4dc8-966b-11cfdc03ec17"
+    ],
+    "platform": "windows",
+    "difficulty": "high",
+    "goal": "Close extracted open work for Docs/plan/repository Delivery Convergence/evidence Md:19.",
+    "description": "Scope: Evidence.md source `docs/plan/repository-delivery-convergence/Evidence.md:19` and the repository code, tests, contracts, or docs referenced by its open-work signals. Context: the previous planning source recorded unresolved or uncertain work that must now be tracked only through docs/plan. Target: each extracted signal is either delivered with validation evidence or explicitly skipped with rationale in the current Better Plan graph. Design Considerations: follow existing repository boundaries and avoid restoring old planning roots or compatibility-era task lists. Design Value: source-specific implementation nodes make unclosed work reviewable without preserving stale plan documents. Constraints & Risks: do not mark this node completed until every acceptance item has direct evidence.",
+    "acceptance_criteria": [
+      {
+        "checked": false,
+        "text": "Close or explicitly skip extracted open-work signal `docs/plan/repository-delivery-convergence/Evidence.md:19: ## Backlog` with code, documentation, and validation evidence."
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "Close Docs/plan/repository Delivery Convergence/evidence Md:19 open work",
+      "target": "docs/plan repository sources"
+    },
+    "next": [
+      "84634cfa-ab2f-460c-bb71-21a5a00e1a21"
+    ]
+  },
+  {
+    "id": "51c04e03-e0b2-4f99-bf6d-6662804f1981",
+    "status": "pending",
+    "role": "implementation",
+    "prerequisites": [
+      "e8ecb3a4-d8b1-4c4d-a179-ab94bd878b46",
+      "ba5a0f35-57b0-4aa3-8590-9898d29158cc",
+      "8aa8e9b1-053a-4c3b-801b-ab8b8270f0df",
+      "33eacd11-5648-4dc8-966b-11cfdc03ec17"
+    ],
+    "platform": "windows",
+    "difficulty": "high",
+    "goal": "Close extracted open work for Docs/plan/repository Delivery Convergence/evidence Md:190.",
+    "description": "Scope: Evidence.md source `docs/plan/repository-delivery-convergence/Evidence.md:190` and the repository code, tests, contracts, or docs referenced by its open-work signals. Context: the previous planning source recorded unresolved or uncertain work that must now be tracked only through docs/plan. Target: each extracted signal is either delivered with validation evidence or explicitly skipped with rationale in the current Better Plan graph. Design Considerations: follow existing repository boundaries and avoid restoring old planning roots or compatibility-era task lists. Design Value: source-specific implementation nodes make unclosed work reviewable without preserving stale plan documents. Constraints & Risks: do not mark this node completed until every acceptance item has direct evidence.",
+    "acceptance_criteria": [
+      {
+        "checked": false,
+        "text": "Close or explicitly skip extracted open-work signal `docs/plan/repository-delivery-convergence/Evidence.md:190: - local filesystem and anonymous HTTP registry transport are already live; remaining work is concentrated in auth, trust hardening, and higher-scale deployment models` with code, documentation, and validation evidence."
+      },
+      {
+        "checked": false,
+        "text": "Close or explicitly skip extracted open-work signal `docs/plan/repository-delivery-convergence/Evidence.md:190: - [ADR-0013](../adr/ADR-0013-phase4-run-dry-run-and-test-gap.md)` with code, documentation, and validation evidence."
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "Close Docs/plan/repository Delivery Convergence/evidence Md:190 open work",
+      "target": "docs/plan repository sources"
+    },
+    "next": [
+      "84634cfa-ab2f-460c-bb71-21a5a00e1a21"
+    ]
+  },
+  {
+    "id": "a7c3e031-0f97-462e-9401-c35787897feb",
+    "status": "pending",
+    "role": "implementation",
+    "prerequisites": [
+      "e8ecb3a4-d8b1-4c4d-a179-ab94bd878b46",
+      "ba5a0f35-57b0-4aa3-8590-9898d29158cc",
+      "8aa8e9b1-053a-4c3b-801b-ab8b8270f0df",
+      "33eacd11-5648-4dc8-966b-11cfdc03ec17"
+    ],
+    "platform": "windows",
+    "difficulty": "high",
+    "goal": "Close extracted open work for Docs/plan/repository Delivery Convergence/evidence Md:20.",
+    "description": "Scope: Evidence.md source `docs/plan/repository-delivery-convergence/Evidence.md:20` and the repository code, tests, contracts, or docs referenced by its open-work signals. Context: the previous planning source recorded unresolved or uncertain work that must now be tracked only through docs/plan. Target: each extracted signal is either delivered with validation evidence or explicitly skipped with rationale in the current Better Plan graph. Design Considerations: follow existing repository boundaries and avoid restoring old planning roots or compatibility-era task lists. Design Value: source-specific implementation nodes make unclosed work reviewable without preserving stale plan documents. Constraints & Risks: do not mark this node completed until every acceptance item has direct evidence.",
+    "acceptance_criteria": [
+      {
+        "checked": false,
+        "text": "Close or explicitly skip extracted open-work signal `docs/plan/repository-delivery-convergence/Evidence.md:20: That creates a new problem: the project no longer needs only phase checklists. It needs a shared direction document that explains what kind of package manager it is trying to become and which cross-team interfaces must m` with code, documentation, and validation evidence."
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "Close Docs/plan/repository Delivery Convergence/evidence Md:20 open work",
+      "target": "docs/plan repository sources"
+    },
+    "next": [
+      "84634cfa-ab2f-460c-bb71-21a5a00e1a21"
+    ]
+  },
+  {
+    "id": "9bd8101b-035b-4277-868f-4e3cb958f366",
+    "status": "pending",
+    "role": "implementation",
+    "prerequisites": [
+      "e8ecb3a4-d8b1-4c4d-a179-ab94bd878b46",
+      "ba5a0f35-57b0-4aa3-8590-9898d29158cc",
+      "8aa8e9b1-053a-4c3b-801b-ab8b8270f0df",
+      "33eacd11-5648-4dc8-966b-11cfdc03ec17"
+    ],
+    "platform": "windows",
+    "difficulty": "high",
+    "goal": "Close extracted open work for Docs/plan/repository Delivery Convergence/evidence Md:216.",
+    "description": "Scope: Evidence.md source `docs/plan/repository-delivery-convergence/Evidence.md:216` and the repository code, tests, contracts, or docs referenced by its open-work signals. Context: the previous planning source recorded unresolved or uncertain work that must now be tracked only through docs/plan. Target: each extracted signal is either delivered with validation evidence or explicitly skipped with rationale in the current Better Plan graph. Design Considerations: follow existing repository boundaries and avoid restoring old planning roots or compatibility-era task lists. Design Value: source-specific implementation nodes make unclosed work reviewable without preserving stale plan documents. Constraints & Risks: do not mark this node completed until every acceptance item has direct evidence.",
+    "acceptance_criteria": [
+      {
+        "checked": false,
+        "text": "Close or explicitly skip extracted open-work signal `docs/plan/repository-delivery-convergence/Evidence.md:216: Each workstream must end in a gate that can be run without hidden local state.` with code, documentation, and validation evidence."
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "Close Docs/plan/repository Delivery Convergence/evidence Md:216 open work",
+      "target": "docs/plan repository sources"
+    },
+    "next": [
+      "84634cfa-ab2f-460c-bb71-21a5a00e1a21"
+    ]
+  },
+  {
+    "id": "bc531d8a-a6d0-4066-a006-7b4366c92753",
+    "status": "pending",
+    "role": "implementation",
+    "prerequisites": [
+      "e8ecb3a4-d8b1-4c4d-a179-ab94bd878b46",
+      "ba5a0f35-57b0-4aa3-8590-9898d29158cc",
+      "8aa8e9b1-053a-4c3b-801b-ab8b8270f0df",
+      "33eacd11-5648-4dc8-966b-11cfdc03ec17"
+    ],
+    "platform": "windows",
+    "difficulty": "high",
+    "goal": "Close extracted open work for Docs/plan/repository Delivery Convergence/evidence Md:217.",
+    "description": "Scope: Evidence.md source `docs/plan/repository-delivery-convergence/Evidence.md:217` and the repository code, tests, contracts, or docs referenced by its open-work signals. Context: the previous planning source recorded unresolved or uncertain work that must now be tracked only through docs/plan. Target: each extracted signal is either delivered with validation evidence or explicitly skipped with rationale in the current Better Plan graph. Design Considerations: follow existing repository boundaries and avoid restoring old planning roots or compatibility-era task lists. Design Value: source-specific implementation nodes make unclosed work reviewable without preserving stale plan documents. Constraints & Risks: do not mark this node completed until every acceptance item has direct evidence.",
+    "acceptance_criteria": [
+      {
+        "checked": false,
+        "text": "Close or explicitly skip extracted open-work signal `docs/plan/repository-delivery-convergence/Evidence.md:217: - largest external dependency; work here must wait for compiler publication rather than local assumptions` with code, documentation, and validation evidence."
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "Close Docs/plan/repository Delivery Convergence/evidence Md:217 open work",
+      "target": "docs/plan repository sources"
+    },
+    "next": [
+      "84634cfa-ab2f-460c-bb71-21a5a00e1a21"
+    ]
+  },
+  {
+    "id": "59474cbe-d78f-46ff-85ab-dc1c4f9bdd3a",
+    "status": "pending",
+    "role": "implementation",
+    "prerequisites": [
+      "e8ecb3a4-d8b1-4c4d-a179-ab94bd878b46",
+      "ba5a0f35-57b0-4aa3-8590-9898d29158cc",
+      "8aa8e9b1-053a-4c3b-801b-ab8b8270f0df",
+      "33eacd11-5648-4dc8-966b-11cfdc03ec17"
+    ],
+    "platform": "windows",
+    "difficulty": "high",
+    "goal": "Close extracted open work for Docs/plan/repository Delivery Convergence/evidence Md:26.",
+    "description": "Scope: Evidence.md source `docs/plan/repository-delivery-convergence/Evidence.md:26` and the repository code, tests, contracts, or docs referenced by its open-work signals. Context: the previous planning source recorded unresolved or uncertain work that must now be tracked only through docs/plan. Target: each extracted signal is either delivered with validation evidence or explicitly skipped with rationale in the current Better Plan graph. Design Considerations: follow existing repository boundaries and avoid restoring old planning roots or compatibility-era task lists. Design Value: source-specific implementation nodes make unclosed work reviewable without preserving stale plan documents. Constraints & Risks: do not mark this node completed until every acceptance item has direct evidence.",
+    "acceptance_criteria": [
+      {
+        "checked": false,
+        "text": "Close or explicitly skip extracted open-work signal `docs/plan/repository-delivery-convergence/Evidence.md:26: | PAFIO-AUD-004 | Fixed for public client root pinning, residual tracked | Registry / Publish | Registry verification still needs an external trust anchor for non-local registries instead of trusting only metadata fetche` with code, documentation, and validation evidence."
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "Close Docs/plan/repository Delivery Convergence/evidence Md:26 open work",
+      "target": "docs/plan repository sources"
+    },
+    "next": [
+      "84634cfa-ab2f-460c-bb71-21a5a00e1a21"
+    ]
+  },
+  {
+    "id": "df0a9320-7aed-4864-b9e9-7c3b0f52ff05",
+    "status": "pending",
+    "role": "implementation",
+    "prerequisites": [
+      "e8ecb3a4-d8b1-4c4d-a179-ab94bd878b46",
+      "ba5a0f35-57b0-4aa3-8590-9898d29158cc",
+      "8aa8e9b1-053a-4c3b-801b-ab8b8270f0df",
+      "33eacd11-5648-4dc8-966b-11cfdc03ec17"
+    ],
+    "platform": "windows",
+    "difficulty": "high",
+    "goal": "Close extracted open work for Docs/plan/repository Delivery Convergence/evidence Md:27.",
+    "description": "Scope: Evidence.md source `docs/plan/repository-delivery-convergence/Evidence.md:27` and the repository code, tests, contracts, or docs referenced by its open-work signals. Context: the previous planning source recorded unresolved or uncertain work that must now be tracked only through docs/plan. Target: each extracted signal is either delivered with validation evidence or explicitly skipped with rationale in the current Better Plan graph. Design Considerations: follow existing repository boundaries and avoid restoring old planning roots or compatibility-era task lists. Design Value: source-specific implementation nodes make unclosed work reviewable without preserving stale plan documents. Constraints & Risks: do not mark this node completed until every acceptance item has direct evidence.",
+    "acceptance_criteria": [
+      {
+        "checked": false,
+        "text": "Close or explicitly skip extracted open-work signal `docs/plan/repository-delivery-convergence/Evidence.md:27: `pafio` must keep an offline path. If the required package graph is` with code, documentation, and validation evidence."
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "Close Docs/plan/repository Delivery Convergence/evidence Md:27 open work",
+      "target": "docs/plan repository sources"
+    },
+    "next": [
+      "84634cfa-ab2f-460c-bb71-21a5a00e1a21"
+    ]
+  },
+  {
+    "id": "5be23374-9368-4c0b-b909-09443479ff25",
+    "status": "pending",
+    "role": "implementation",
+    "prerequisites": [
+      "e8ecb3a4-d8b1-4c4d-a179-ab94bd878b46",
+      "ba5a0f35-57b0-4aa3-8590-9898d29158cc",
+      "8aa8e9b1-053a-4c3b-801b-ab8b8270f0df",
+      "33eacd11-5648-4dc8-966b-11cfdc03ec17"
+    ],
+    "platform": "windows",
+    "difficulty": "high",
+    "goal": "Close extracted open work for Docs/plan/repository Delivery Convergence/evidence Md:272.",
+    "description": "Scope: Evidence.md source `docs/plan/repository-delivery-convergence/Evidence.md:272` and the repository code, tests, contracts, or docs referenced by its open-work signals. Context: the previous planning source recorded unresolved or uncertain work that must now be tracked only through docs/plan. Target: each extracted signal is either delivered with validation evidence or explicitly skipped with rationale in the current Better Plan graph. Design Considerations: follow existing repository boundaries and avoid restoring old planning roots or compatibility-era task lists. Design Value: source-specific implementation nodes make unclosed work reviewable without preserving stale plan documents. Constraints & Risks: do not mark this node completed until every acceptance item has direct evidence.",
+    "acceptance_criteria": [
+      {
+        "checked": false,
+        "text": "Close or explicitly skip extracted open-work signal `docs/plan/repository-delivery-convergence/Evidence.md:272: - extractability and compatibility checks must already exist` with code, documentation, and validation evidence."
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "Close Docs/plan/repository Delivery Convergence/evidence Md:272 open work",
+      "target": "docs/plan repository sources"
+    },
+    "next": [
+      "84634cfa-ab2f-460c-bb71-21a5a00e1a21"
+    ]
+  },
+  {
+    "id": "66673568-87ea-4357-8c48-cb42db764c3a",
+    "status": "pending",
+    "role": "implementation",
+    "prerequisites": [
+      "e8ecb3a4-d8b1-4c4d-a179-ab94bd878b46",
+      "ba5a0f35-57b0-4aa3-8590-9898d29158cc",
+      "8aa8e9b1-053a-4c3b-801b-ab8b8270f0df",
+      "33eacd11-5648-4dc8-966b-11cfdc03ec17"
+    ],
+    "platform": "windows",
+    "difficulty": "high",
+    "goal": "Close extracted open work for Docs/plan/repository Delivery Convergence/evidence Md:28.",
+    "description": "Scope: Evidence.md source `docs/plan/repository-delivery-convergence/Evidence.md:28` and the repository code, tests, contracts, or docs referenced by its open-work signals. Context: the previous planning source recorded unresolved or uncertain work that must now be tracked only through docs/plan. Target: each extracted signal is either delivered with validation evidence or explicitly skipped with rationale in the current Better Plan graph. Design Considerations: follow existing repository boundaries and avoid restoring old planning roots or compatibility-era task lists. Design Value: source-specific implementation nodes make unclosed work reviewable without preserving stale plan documents. Constraints & Risks: do not mark this node completed until every acceptance item has direct evidence.",
+    "acceptance_criteria": [
+      {
+        "checked": false,
+        "text": "Close or explicitly skip extracted open-work signal `docs/plan/repository-delivery-convergence/Evidence.md:28: | PAFIO-AUD-006 | Tracked | Registry / Publish | Archive manifest discovery needs per-member size limits in addition to canonical member selection. | Reject oversized candidate manifests before reading them into memory;` with code, documentation, and validation evidence."
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "Close Docs/plan/repository Delivery Convergence/evidence Md:28 open work",
+      "target": "docs/plan repository sources"
+    },
+    "next": [
+      "84634cfa-ab2f-460c-bb71-21a5a00e1a21"
+    ]
+  },
+  {
+    "id": "4f0d8b31-eb90-4d9f-b37a-19a3823cf89e",
+    "status": "pending",
+    "role": "implementation",
+    "prerequisites": [
+      "e8ecb3a4-d8b1-4c4d-a179-ab94bd878b46",
+      "ba5a0f35-57b0-4aa3-8590-9898d29158cc",
+      "8aa8e9b1-053a-4c3b-801b-ab8b8270f0df",
+      "33eacd11-5648-4dc8-966b-11cfdc03ec17"
+    ],
+    "platform": "windows",
+    "difficulty": "high",
+    "goal": "Close extracted open work for Docs/plan/repository Delivery Convergence/evidence Md:286.",
+    "description": "Scope: Evidence.md source `docs/plan/repository-delivery-convergence/Evidence.md:286` and the repository code, tests, contracts, or docs referenced by its open-work signals. Context: the previous planning source recorded unresolved or uncertain work that must now be tracked only through docs/plan. Target: each extracted signal is either delivered with validation evidence or explicitly skipped with rationale in the current Better Plan graph. Design Considerations: follow existing repository boundaries and avoid restoring old planning roots or compatibility-era task lists. Design Value: source-specific implementation nodes make unclosed work reviewable without preserving stale plan documents. Constraints & Risks: do not mark this node completed until every acceptance item has direct evidence.",
+    "acceptance_criteria": [
+      {
+        "checked": false,
+        "text": "Close or explicitly skip extracted open-work signal `docs/plan/repository-delivery-convergence/Evidence.md:286: ## 4. What Is Still Partial or Blocked` with code, documentation, and validation evidence."
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "Close Docs/plan/repository Delivery Convergence/evidence Md:286 open work",
+      "target": "docs/plan repository sources"
+    },
+    "next": [
+      "84634cfa-ab2f-460c-bb71-21a5a00e1a21"
+    ]
+  },
+  {
+    "id": "1f44f9ee-d262-4261-8bcc-307e3ca559d9",
+    "status": "pending",
+    "role": "implementation",
+    "prerequisites": [
+      "e8ecb3a4-d8b1-4c4d-a179-ab94bd878b46",
+      "ba5a0f35-57b0-4aa3-8590-9898d29158cc",
+      "8aa8e9b1-053a-4c3b-801b-ab8b8270f0df",
+      "33eacd11-5648-4dc8-966b-11cfdc03ec17"
+    ],
+    "platform": "windows",
+    "difficulty": "high",
+    "goal": "Close extracted open work for Docs/plan/repository Delivery Convergence/evidence Md:288.",
+    "description": "Scope: Evidence.md source `docs/plan/repository-delivery-convergence/Evidence.md:288` and the repository code, tests, contracts, or docs referenced by its open-work signals. Context: the previous planning source recorded unresolved or uncertain work that must now be tracked only through docs/plan. Target: each extracted signal is either delivered with validation evidence or explicitly skipped with rationale in the current Better Plan graph. Design Considerations: follow existing repository boundaries and avoid restoring old planning roots or compatibility-era task lists. Design Value: source-specific implementation nodes make unclosed work reviewable without preserving stale plan documents. Constraints & Risks: do not mark this node completed until every acceptance item has direct evidence.",
+    "acceptance_criteria": [
+      {
+        "checked": false,
+        "text": "Close or explicitly skip extracted open-work signal `docs/plan/repository-delivery-convergence/Evidence.md:288: Before declaring the planning stage complete, every workstream must have:` with code, documentation, and validation evidence."
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "Close Docs/plan/repository Delivery Convergence/evidence Md:288 open work",
+      "target": "docs/plan repository sources"
+    },
+    "next": [
+      "84634cfa-ab2f-460c-bb71-21a5a00e1a21"
+    ]
+  },
+  {
+    "id": "ca70ded9-1270-4db5-9fce-73e398cdab9d",
+    "status": "pending",
+    "role": "implementation",
+    "prerequisites": [
+      "e8ecb3a4-d8b1-4c4d-a179-ab94bd878b46",
+      "ba5a0f35-57b0-4aa3-8590-9898d29158cc",
+      "8aa8e9b1-053a-4c3b-801b-ab8b8270f0df",
+      "33eacd11-5648-4dc8-966b-11cfdc03ec17"
+    ],
+    "platform": "windows",
+    "difficulty": "high",
+    "goal": "Close extracted open work for Docs/plan/repository Delivery Convergence/evidence Md:292.",
+    "description": "Scope: Evidence.md source `docs/plan/repository-delivery-convergence/Evidence.md:292` and the repository code, tests, contracts, or docs referenced by its open-work signals. Context: the previous planning source recorded unresolved or uncertain work that must now be tracked only through docs/plan. Target: each extracted signal is either delivered with validation evidence or explicitly skipped with rationale in the current Better Plan graph. Design Considerations: follow existing repository boundaries and avoid restoring old planning roots or compatibility-era task lists. Design Value: source-specific implementation nodes make unclosed work reviewable without preserving stale plan documents. Constraints & Risks: do not mark this node completed until every acceptance item has direct evidence.",
+    "acceptance_criteria": [
+      {
+        "checked": false,
+        "text": "Close or explicitly skip extracted open-work signal `docs/plan/repository-delivery-convergence/Evidence.md:292: - non-dry-run execution must keep producing `receipt.json` and output-root materialization evidence.` with code, documentation, and validation evidence."
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "Close Docs/plan/repository Delivery Convergence/evidence Md:292 open work",
+      "target": "docs/plan repository sources"
+    },
+    "next": [
+      "84634cfa-ab2f-460c-bb71-21a5a00e1a21"
+    ]
+  },
+  {
+    "id": "6f77b8d5-525a-4057-8eef-771909b05ee9",
+    "status": "pending",
+    "role": "implementation",
+    "prerequisites": [
+      "e8ecb3a4-d8b1-4c4d-a179-ab94bd878b46",
+      "ba5a0f35-57b0-4aa3-8590-9898d29158cc",
+      "8aa8e9b1-053a-4c3b-801b-ab8b8270f0df",
+      "33eacd11-5648-4dc8-966b-11cfdc03ec17"
+    ],
+    "platform": "windows",
+    "difficulty": "high",
+    "goal": "Close extracted open work for Docs/plan/repository Delivery Convergence/evidence Md:3.",
+    "description": "Scope: Evidence.md source `docs/plan/repository-delivery-convergence/Evidence.md:3` and the repository code, tests, contracts, or docs referenced by its open-work signals. Context: the previous planning source recorded unresolved or uncertain work that must now be tracked only through docs/plan. Target: each extracted signal is either delivered with validation evidence or explicitly skipped with rationale in the current Better Plan graph. Design Considerations: follow existing repository boundaries and avoid restoring old planning roots or compatibility-era task lists. Design Value: source-specific implementation nodes make unclosed work reviewable without preserving stale plan documents. Constraints & Risks: do not mark this node completed until every acceptance item has direct evidence.",
+    "acceptance_criteria": [
+      {
+        "checked": false,
+        "text": "Close or explicitly skip extracted open-work signal `docs/plan/repository-delivery-convergence/Evidence.md:3: **Purpose:** Describe the exact compiler-facing interfaces that `pafio` needs from `styio`, so future `pafio` maintainers know what to request, test, and vendor without depending on compiler internals.` with code, documentation, and validation evidence."
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "Close Docs/plan/repository Delivery Convergence/evidence Md:3 open work",
+      "target": "docs/plan repository sources"
+    },
+    "next": [
+      "84634cfa-ab2f-460c-bb71-21a5a00e1a21"
+    ]
+  },
+  {
+    "id": "b385d276-d6e1-447a-981a-71853130b5f0",
+    "status": "pending",
+    "role": "implementation",
+    "prerequisites": [
+      "e8ecb3a4-d8b1-4c4d-a179-ab94bd878b46",
+      "ba5a0f35-57b0-4aa3-8590-9898d29158cc",
+      "8aa8e9b1-053a-4c3b-801b-ab8b8270f0df",
+      "33eacd11-5648-4dc8-966b-11cfdc03ec17"
+    ],
+    "platform": "windows",
+    "difficulty": "high",
+    "goal": "Close extracted open work for Docs/plan/repository Delivery Convergence/evidence Md:30.",
+    "description": "Scope: Evidence.md source `docs/plan/repository-delivery-convergence/Evidence.md:30` and the repository code, tests, contracts, or docs referenced by its open-work signals. Context: the previous planning source recorded unresolved or uncertain work that must now be tracked only through docs/plan. Target: each extracted signal is either delivered with validation evidence or explicitly skipped with rationale in the current Better Plan graph. Design Considerations: follow existing repository boundaries and avoid restoring old planning roots or compatibility-era task lists. Design Value: source-specific implementation nodes make unclosed work reviewable without preserving stale plan documents. Constraints & Risks: do not mark this node completed until every acceptance item has direct evidence.",
+    "acceptance_criteria": [
+      {
+        "checked": false,
+        "text": "Close or explicitly skip extracted open-work signal `docs/plan/repository-delivery-convergence/Evidence.md:30: | PAFIO-AUD-008 | Partially fixed, residual tracked | Registry / Publish | Native registry fetch validates shape and hashes but does not yet enforce registry v2 trust-chain parity with the Python verifier. | Native remot` with code, documentation, and validation evidence."
+      },
+      {
+        "checked": false,
+        "text": "Close or explicitly skip extracted open-work signal `docs/plan/repository-delivery-convergence/Evidence.md:30: - `pafio` must remain movable as a self-contained subtree and later as its own repository.` with code, documentation, and validation evidence."
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "Close Docs/plan/repository Delivery Convergence/evidence Md:30 open work",
+      "target": "docs/plan repository sources"
+    },
+    "next": [
+      "84634cfa-ab2f-460c-bb71-21a5a00e1a21"
+    ]
+  },
+  {
+    "id": "c06f3d62-1a7e-45db-b99a-d1cdf76e72ef",
+    "status": "pending",
+    "role": "implementation",
+    "prerequisites": [
+      "e8ecb3a4-d8b1-4c4d-a179-ab94bd878b46",
+      "ba5a0f35-57b0-4aa3-8590-9898d29158cc",
+      "8aa8e9b1-053a-4c3b-801b-ab8b8270f0df",
+      "33eacd11-5648-4dc8-966b-11cfdc03ec17"
+    ],
+    "platform": "windows",
+    "difficulty": "high",
+    "goal": "Close extracted open work for Docs/plan/repository Delivery Convergence/evidence Md:302.",
+    "description": "Scope: Evidence.md source `docs/plan/repository-delivery-convergence/Evidence.md:302` and the repository code, tests, contracts, or docs referenced by its open-work signals. Context: the previous planning source recorded unresolved or uncertain work that must now be tracked only through docs/plan. Target: each extracted signal is either delivered with validation evidence or explicitly skipped with rationale in the current Better Plan graph. Design Considerations: follow existing repository boundaries and avoid restoring old planning roots or compatibility-era task lists. Design Value: source-specific implementation nodes make unclosed work reviewable without preserving stale plan documents. Constraints & Risks: do not mark this node completed until every acceptance item has direct evidence.",
+    "acceptance_criteria": [
+      {
+        "checked": false,
+        "text": "Close or explicitly skip extracted open-work signal `docs/plan/repository-delivery-convergence/Evidence.md:302: - they do not yet submit remote jobs or talk to a queue or worker pool.` with code, documentation, and validation evidence."
+      },
+      {
+        "checked": false,
+        "text": "Close or explicitly skip extracted open-work signal `docs/plan/repository-delivery-convergence/Evidence.md:302: ### Open / Not Yet Closed` with code, documentation, and validation evidence."
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "Close Docs/plan/repository Delivery Convergence/evidence Md:302 open work",
+      "target": "docs/plan repository sources"
+    },
+    "next": [
+      "84634cfa-ab2f-460c-bb71-21a5a00e1a21"
+    ]
+  },
+  {
+    "id": "e6e5623e-f92b-46ac-ab67-0bca57d3f702",
+    "status": "pending",
+    "role": "implementation",
+    "prerequisites": [
+      "e8ecb3a4-d8b1-4c4d-a179-ab94bd878b46",
+      "ba5a0f35-57b0-4aa3-8590-9898d29158cc",
+      "8aa8e9b1-053a-4c3b-801b-ab8b8270f0df",
+      "33eacd11-5648-4dc8-966b-11cfdc03ec17"
+    ],
+    "platform": "windows",
+    "difficulty": "high",
+    "goal": "Close extracted open work for Docs/plan/repository Delivery Convergence/evidence Md:304.",
+    "description": "Scope: Evidence.md source `docs/plan/repository-delivery-convergence/Evidence.md:304` and the repository code, tests, contracts, or docs referenced by its open-work signals. Context: the previous planning source recorded unresolved or uncertain work that must now be tracked only through docs/plan. Target: each extracted signal is either delivered with validation evidence or explicitly skipped with rationale in the current Better Plan graph. Design Considerations: follow existing repository boundaries and avoid restoring old planning roots or compatibility-era task lists. Design Value: source-specific implementation nodes make unclosed work reviewable without preserving stale plan documents. Constraints & Risks: do not mark this node completed until every acceptance item has direct evidence.",
+    "acceptance_criteria": [
+      {
+        "checked": false,
+        "text": "Close or explicitly skip extracted open-work signal `docs/plan/repository-delivery-convergence/Evidence.md:304: - **A, B, C, D, E, F, G, H** remain open for full stage closure unless the stream-specific TODO list is fully converted to verified acceptance items.` with code, documentation, and validation evidence."
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "Close Docs/plan/repository Delivery Convergence/evidence Md:304 open work",
+      "target": "docs/plan repository sources"
+    },
+    "next": [
+      "84634cfa-ab2f-460c-bb71-21a5a00e1a21"
+    ]
+  },
+  {
+    "id": "928cb8ed-6c7c-43b5-95a7-d7b5a8c56528",
+    "status": "pending",
+    "role": "implementation",
+    "prerequisites": [
+      "e8ecb3a4-d8b1-4c4d-a179-ab94bd878b46",
+      "ba5a0f35-57b0-4aa3-8590-9898d29158cc",
+      "8aa8e9b1-053a-4c3b-801b-ab8b8270f0df",
+      "33eacd11-5648-4dc8-966b-11cfdc03ec17"
+    ],
+    "platform": "windows",
+    "difficulty": "high",
+    "goal": "Close extracted open work for Docs/plan/repository Delivery Convergence/evidence Md:31.",
+    "description": "Scope: Evidence.md source `docs/plan/repository-delivery-convergence/Evidence.md:31` and the repository code, tests, contracts, or docs referenced by its open-work signals. Context: the previous planning source recorded unresolved or uncertain work that must now be tracked only through docs/plan. Target: each extracted signal is either delivered with validation evidence or explicitly skipped with rationale in the current Better Plan graph. Design Considerations: follow existing repository boundaries and avoid restoring old planning roots or compatibility-era task lists. Design Value: source-specific implementation nodes make unclosed work reviewable without preserving stale plan documents. Constraints & Risks: do not mark this node completed until every acceptance item has direct evidence.",
+    "acceptance_criteria": [
+      {
+        "checked": false,
+        "text": "Close or explicitly skip extracted open-work signal `docs/plan/repository-delivery-convergence/Evidence.md:31: | PAFIO-AUD-009 | Tracked | Registry / Publish | Native registry checkout needs pre-extraction tar entry validation. | Pre-scan and reject absolute paths, `..` segments, links, and special files before extraction; add ma` with code, documentation, and validation evidence."
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "Close Docs/plan/repository Delivery Convergence/evidence Md:31 open work",
+      "target": "docs/plan repository sources"
+    },
+    "next": [
+      "84634cfa-ab2f-460c-bb71-21a5a00e1a21"
+    ]
+  },
+  {
+    "id": "30396d23-66a8-4d39-9c62-e4103065f72b",
+    "status": "pending",
+    "role": "implementation",
+    "prerequisites": [
+      "e8ecb3a4-d8b1-4c4d-a179-ab94bd878b46",
+      "ba5a0f35-57b0-4aa3-8590-9898d29158cc",
+      "8aa8e9b1-053a-4c3b-801b-ab8b8270f0df",
+      "33eacd11-5648-4dc8-966b-11cfdc03ec17"
+    ],
+    "platform": "windows",
+    "difficulty": "high",
+    "goal": "Close extracted open work for Docs/plan/repository Delivery Convergence/evidence Md:32.",
+    "description": "Scope: Evidence.md source `docs/plan/repository-delivery-convergence/Evidence.md:32` and the repository code, tests, contracts, or docs referenced by its open-work signals. Context: the previous planning source recorded unresolved or uncertain work that must now be tracked only through docs/plan. Target: each extracted signal is either delivered with validation evidence or explicitly skipped with rationale in the current Better Plan graph. Design Considerations: follow existing repository boundaries and avoid restoring old planning roots or compatibility-era task lists. Design Value: source-specific implementation nodes make unclosed work reviewable without preserving stale plan documents. Constraints & Risks: do not mark this node completed until every acceptance item has direct evidence.",
+    "acceptance_criteria": [
+      {
+        "checked": false,
+        "text": "Close or explicitly skip extracted open-work signal `docs/plan/repository-delivery-convergence/Evidence.md:32: 2. `PafioCLI/CLI.cpp` remains a routing shell and must not become a second service layer.` with code, documentation, and validation evidence."
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "Close Docs/plan/repository Delivery Convergence/evidence Md:32 open work",
+      "target": "docs/plan repository sources"
+    },
+    "next": [
+      "84634cfa-ab2f-460c-bb71-21a5a00e1a21"
+    ]
+  },
+  {
+    "id": "eaf6dcef-36b5-4fa2-af11-95811b80e7e7",
+    "status": "pending",
+    "role": "implementation",
+    "prerequisites": [
+      "e8ecb3a4-d8b1-4c4d-a179-ab94bd878b46",
+      "ba5a0f35-57b0-4aa3-8590-9898d29158cc",
+      "8aa8e9b1-053a-4c3b-801b-ab8b8270f0df",
+      "33eacd11-5648-4dc8-966b-11cfdc03ec17"
+    ],
+    "platform": "windows",
+    "difficulty": "high",
+    "goal": "Close extracted open work for Docs/plan/repository Delivery Convergence/evidence Md:33.",
+    "description": "Scope: Evidence.md source `docs/plan/repository-delivery-convergence/Evidence.md:33` and the repository code, tests, contracts, or docs referenced by its open-work signals. Context: the previous planning source recorded unresolved or uncertain work that must now be tracked only through docs/plan. Target: each extracted signal is either delivered with validation evidence or explicitly skipped with rationale in the current Better Plan graph. Design Considerations: follow existing repository boundaries and avoid restoring old planning roots or compatibility-era task lists. Design Value: source-specific implementation nodes make unclosed work reviewable without preserving stale plan documents. Constraints & Risks: do not mark this node completed until every acceptance item has direct evidence.",
+    "acceptance_criteria": [
+      {
+        "checked": false,
+        "text": "Close or explicitly skip extracted open-work signal `docs/plan/repository-delivery-convergence/Evidence.md:33: | PAFIO-AUD-011 | Tracked | Registry / Publish | Registry v2 trust policy still needs threshold, expiration, freeze, and monotonic-version enforcement. | Enforce thresholds, expiry, and monotonic metadata versions; add e` with code, documentation, and validation evidence."
+      },
+      {
+        "checked": false,
+        "text": "Close or explicitly skip extracted open-work signal `docs/plan/repository-delivery-convergence/Evidence.md:33: - `pafio` must only assume compile-plan support for versions that `styio` advertises and the compatibility matrix enables.` with code, documentation, and validation evidence."
+      },
+      {
+        "checked": false,
+        "text": "Close or explicitly skip extracted open-work signal `docs/plan/repository-delivery-convergence/Evidence.md:33: 3. Future hosted/control-plane binaries should compose from backend/service targets and must not depend on `pafio_cli_shell` unless they intentionally expose CLI behavior.` with code, documentation, and validation evidence."
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "Close Docs/plan/repository Delivery Convergence/evidence Md:33 open work",
+      "target": "docs/plan repository sources"
+    },
+    "next": [
+      "84634cfa-ab2f-460c-bb71-21a5a00e1a21"
+    ]
+  },
+  {
+    "id": "7b9d9484-7d32-4d4a-837d-2062eec8ce8b",
+    "status": "pending",
+    "role": "implementation",
+    "prerequisites": [
+      "e8ecb3a4-d8b1-4c4d-a179-ab94bd878b46",
+      "ba5a0f35-57b0-4aa3-8590-9898d29158cc",
+      "8aa8e9b1-053a-4c3b-801b-ab8b8270f0df",
+      "33eacd11-5648-4dc8-966b-11cfdc03ec17"
+    ],
+    "platform": "windows",
+    "difficulty": "high",
+    "goal": "Close extracted open work for Docs/plan/repository Delivery Convergence/evidence Md:336.",
+    "description": "Scope: Evidence.md source `docs/plan/repository-delivery-convergence/Evidence.md:336` and the repository code, tests, contracts, or docs referenced by its open-work signals. Context: the previous planning source recorded unresolved or uncertain work that must now be tracked only through docs/plan. Target: each extracted signal is either delivered with validation evidence or explicitly skipped with rationale in the current Better Plan graph. Design Considerations: follow existing repository boundaries and avoid restoring old planning roots or compatibility-era task lists. Design Value: source-specific implementation nodes make unclosed work reviewable without preserving stale plan documents. Constraints & Risks: do not mark this node completed until every acceptance item has direct evidence.",
+    "acceptance_criteria": [
+      {
+        "checked": false,
+        "text": "Close or explicitly skip extracted open-work signal `docs/plan/repository-delivery-convergence/Evidence.md:336: ### 5.3 Manifest Rules Must Be Frozen Before Resolver Work Grows` with code, documentation, and validation evidence."
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "Close Docs/plan/repository Delivery Convergence/evidence Md:336 open work",
+      "target": "docs/plan repository sources"
+    },
+    "next": [
+      "84634cfa-ab2f-460c-bb71-21a5a00e1a21"
+    ]
+  },
+  {
+    "id": "8dd310ae-f523-406a-8922-aa09759850bf",
+    "status": "pending",
+    "role": "implementation",
+    "prerequisites": [
+      "e8ecb3a4-d8b1-4c4d-a179-ab94bd878b46",
+      "ba5a0f35-57b0-4aa3-8590-9898d29158cc",
+      "8aa8e9b1-053a-4c3b-801b-ab8b8270f0df",
+      "33eacd11-5648-4dc8-966b-11cfdc03ec17"
+    ],
+    "platform": "windows",
+    "difficulty": "high",
+    "goal": "Close extracted open work for Docs/plan/repository Delivery Convergence/evidence Md:34.",
+    "description": "Scope: Evidence.md source `docs/plan/repository-delivery-convergence/Evidence.md:34` and the repository code, tests, contracts, or docs referenced by its open-work signals. Context: the previous planning source recorded unresolved or uncertain work that must now be tracked only through docs/plan. Target: each extracted signal is either delivered with validation evidence or explicitly skipped with rationale in the current Better Plan graph. Design Considerations: follow existing repository boundaries and avoid restoring old planning roots or compatibility-era task lists. Design Value: source-specific implementation nodes make unclosed work reviewable without preserving stale plan documents. Constraints & Risks: do not mark this node completed until every acceptance item has direct evidence.",
+    "acceptance_criteria": [
+      {
+        "checked": false,
+        "text": "Close or explicitly skip extracted open-work signal `docs/plan/repository-delivery-convergence/Evidence.md:34: | PAFIO-AUD-012 | Fixed for scoped runtime paths, residual tracked | Core / Workflow | Runtime subprocesses now have scoped wall-clock timeouts, but timeout configurability and curl low-speed controls remain residual wor` with code, documentation, and validation evidence."
+      },
+      {
+        "checked": false,
+        "text": "Close or explicitly skip extracted open-work signal `docs/plan/repository-delivery-convergence/Evidence.md:34: - source, cache, build output, test temp data, and integration fixtures must remain isolated.` with code, documentation, and validation evidence."
+      },
+      {
+        "checked": false,
+        "text": "Close or explicitly skip extracted open-work signal `docs/plan/repository-delivery-convergence/Evidence.md:34: 4. `frontend/console/` must stay decoupled from `src/` implementation details and consume published contracts instead of direct native coupling.` with code, documentation, and validation evidence."
+      },
+      {
+        "checked": false,
+        "text": "Close or explicitly skip extracted open-work signal `docs/plan/repository-delivery-convergence/Evidence.md:34: 1. Any change to compiler compatibility or machine-info assumptions must be reviewed by Compat / Security.` with code, documentation, and validation evidence."
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "Close Docs/plan/repository Delivery Convergence/evidence Md:34 open work",
+      "target": "docs/plan repository sources"
+    },
+    "next": [
+      "84634cfa-ab2f-460c-bb71-21a5a00e1a21"
+    ]
+  },
+  {
+    "id": "cb2e517a-ef09-48ff-883c-d55902341e1d",
+    "status": "pending",
+    "role": "implementation",
+    "prerequisites": [
+      "e8ecb3a4-d8b1-4c4d-a179-ab94bd878b46",
+      "ba5a0f35-57b0-4aa3-8590-9898d29158cc",
+      "8aa8e9b1-053a-4c3b-801b-ab8b8270f0df",
+      "33eacd11-5648-4dc8-966b-11cfdc03ec17"
+    ],
+    "platform": "windows",
+    "difficulty": "high",
+    "goal": "Close extracted open work for Docs/plan/repository Delivery Convergence/evidence Md:35.",
+    "description": "Scope: Evidence.md source `docs/plan/repository-delivery-convergence/Evidence.md:35` and the repository code, tests, contracts, or docs referenced by its open-work signals. Context: the previous planning source recorded unresolved or uncertain work that must now be tracked only through docs/plan. Target: each extracted signal is either delivered with validation evidence or explicitly skipped with rationale in the current Better Plan graph. Design Considerations: follow existing repository boundaries and avoid restoring old planning roots or compatibility-era task lists. Design Value: source-specific implementation nodes make unclosed work reviewable without preserving stale plan documents. Constraints & Risks: do not mark this node completed until every acceptance item has direct evidence.",
+    "acceptance_criteria": [
+      {
+        "checked": false,
+        "text": "Close or explicitly skip extracted open-work signal `docs/plan/repository-delivery-convergence/Evidence.md:35: 5. If a new domain needs public machine payloads, the owning contract still lives under `contracts/` or `docs/governance/`, not inside this planning note.` with code, documentation, and validation evidence."
+      },
+      {
+        "checked": false,
+        "text": "Close or explicitly skip extracted open-work signal `docs/plan/repository-delivery-convergence/Evidence.md:35: 2. Any new project graph or workflow payload must be mirrored into `styio-view` handoff docs and fixtures in the same checkpoint.` with code, documentation, and validation evidence."
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "Close Docs/plan/repository Delivery Convergence/evidence Md:35 open work",
+      "target": "docs/plan repository sources"
+    },
+    "next": [
+      "84634cfa-ab2f-460c-bb71-21a5a00e1a21"
+    ]
+  },
+  {
+    "id": "8dc7f22d-9ba1-4f32-9e9b-c42cff742b03",
+    "status": "pending",
+    "role": "implementation",
+    "prerequisites": [
+      "e8ecb3a4-d8b1-4c4d-a179-ab94bd878b46",
+      "ba5a0f35-57b0-4aa3-8590-9898d29158cc",
+      "8aa8e9b1-053a-4c3b-801b-ab8b8270f0df",
+      "33eacd11-5648-4dc8-966b-11cfdc03ec17"
+    ],
+    "platform": "windows",
+    "difficulty": "high",
+    "goal": "Close extracted open work for Docs/plan/repository Delivery Convergence/evidence Md:364.",
+    "description": "Scope: Evidence.md source `docs/plan/repository-delivery-convergence/Evidence.md:364` and the repository code, tests, contracts, or docs referenced by its open-work signals. Context: the previous planning source recorded unresolved or uncertain work that must now be tracked only through docs/plan. Target: each extracted signal is either delivered with validation evidence or explicitly skipped with rationale in the current Better Plan graph. Design Considerations: follow existing repository boundaries and avoid restoring old planning roots or compatibility-era task lists. Design Value: source-specific implementation nodes make unclosed work reviewable without preserving stale plan documents. Constraints & Risks: do not mark this node completed until every acceptance item has direct evidence.",
+    "acceptance_criteria": [
+      {
+        "checked": false,
+        "text": "Close or explicitly skip extracted open-work signal `docs/plan/repository-delivery-convergence/Evidence.md:364: ### 5.5 Pinned Git Needs Hermetic Snapshots, Not Host-Leaking Paths` with code, documentation, and validation evidence."
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "Close Docs/plan/repository Delivery Convergence/evidence Md:364 open work",
+      "target": "docs/plan repository sources"
+    },
+    "next": [
+      "84634cfa-ab2f-460c-bb71-21a5a00e1a21"
+    ]
+  },
+  {
+    "id": "53a7b7f8-0a96-4341-bcfc-1a6d3e972d20",
+    "status": "pending",
+    "role": "implementation",
+    "prerequisites": [
+      "e8ecb3a4-d8b1-4c4d-a179-ab94bd878b46",
+      "ba5a0f35-57b0-4aa3-8590-9898d29158cc",
+      "8aa8e9b1-053a-4c3b-801b-ab8b8270f0df",
+      "33eacd11-5648-4dc8-966b-11cfdc03ec17"
+    ],
+    "platform": "windows",
+    "difficulty": "high",
+    "goal": "Close extracted open work for Docs/plan/repository Delivery Convergence/evidence Md:37.",
+    "description": "Scope: Evidence.md source `docs/plan/repository-delivery-convergence/Evidence.md:37` and the repository code, tests, contracts, or docs referenced by its open-work signals. Context: the previous planning source recorded unresolved or uncertain work that must now be tracked only through docs/plan. Target: each extracted signal is either delivered with validation evidence or explicitly skipped with rationale in the current Better Plan graph. Design Considerations: follow existing repository boundaries and avoid restoring old planning roots or compatibility-era task lists. Design Value: source-specific implementation nodes make unclosed work reviewable without preserving stale plan documents. Constraints & Risks: do not mark this node completed until every acceptance item has direct evidence.",
+    "acceptance_criteria": [
+      {
+        "checked": false,
+        "text": "Close or explicitly skip extracted open-work signal `docs/plan/repository-delivery-convergence/Evidence.md:37: 4. If `styio` has not published a capability, `pafio` must return a machine-readable contract error instead of guessing.` with code, documentation, and validation evidence."
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "Close Docs/plan/repository Delivery Convergence/evidence Md:37 open work",
+      "target": "docs/plan repository sources"
+    },
+    "next": [
+      "84634cfa-ab2f-460c-bb71-21a5a00e1a21"
+    ]
+  },
+  {
+    "id": "b5fc6995-52f9-4701-8f29-f46ad2652ecb",
+    "status": "pending",
+    "role": "implementation",
+    "prerequisites": [
+      "e8ecb3a4-d8b1-4c4d-a179-ab94bd878b46",
+      "ba5a0f35-57b0-4aa3-8590-9898d29158cc",
+      "8aa8e9b1-053a-4c3b-801b-ab8b8270f0df",
+      "33eacd11-5648-4dc8-966b-11cfdc03ec17"
+    ],
+    "platform": "windows",
+    "difficulty": "high",
+    "goal": "Close extracted open work for Docs/plan/repository Delivery Convergence/evidence Md:372.",
+    "description": "Scope: Evidence.md source `docs/plan/repository-delivery-convergence/Evidence.md:372` and the repository code, tests, contracts, or docs referenced by its open-work signals. Context: the previous planning source recorded unresolved or uncertain work that must now be tracked only through docs/plan. Target: each extracted signal is either delivered with validation evidence or explicitly skipped with rationale in the current Better Plan graph. Design Considerations: follow existing repository boundaries and avoid restoring old planning roots or compatibility-era task lists. Design Value: source-specific implementation nodes make unclosed work reviewable without preserving stale plan documents. Constraints & Risks: do not mark this node completed until every acceptance item has direct evidence.",
+    "acceptance_criteria": [
+      {
+        "checked": false,
+        "text": "Close or explicitly skip extracted open-work signal `docs/plan/repository-delivery-convergence/Evidence.md:372: - pinned sources must be materialized into immutable snapshots, and transitive path traversal must remain inside that snapshot boundary` with code, documentation, and validation evidence."
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "Close Docs/plan/repository Delivery Convergence/evidence Md:372 open work",
+      "target": "docs/plan repository sources"
+    },
+    "next": [
+      "84634cfa-ab2f-460c-bb71-21a5a00e1a21"
+    ]
+  },
+  {
+    "id": "adaa53fc-4487-44e7-9ec9-ce9e4a526455",
+    "status": "pending",
+    "role": "implementation",
+    "prerequisites": [
+      "e8ecb3a4-d8b1-4c4d-a179-ab94bd878b46",
+      "ba5a0f35-57b0-4aa3-8590-9898d29158cc",
+      "8aa8e9b1-053a-4c3b-801b-ab8b8270f0df",
+      "33eacd11-5648-4dc8-966b-11cfdc03ec17"
+    ],
+    "platform": "windows",
+    "difficulty": "high",
+    "goal": "Close extracted open work for Docs/plan/repository Delivery Convergence/evidence Md:38.",
+    "description": "Scope: Evidence.md source `docs/plan/repository-delivery-convergence/Evidence.md:38` and the repository code, tests, contracts, or docs referenced by its open-work signals. Context: the previous planning source recorded unresolved or uncertain work that must now be tracked only through docs/plan. Target: each extracted signal is either delivered with validation evidence or explicitly skipped with rationale in the current Better Plan graph. Design Considerations: follow existing repository boundaries and avoid restoring old planning roots or compatibility-era task lists. Design Value: source-specific implementation nodes make unclosed work reviewable without preserving stale plan documents. Constraints & Risks: do not mark this node completed until every acceptance item has direct evidence.",
+    "acceptance_criteria": [
+      {
+        "checked": false,
+        "text": "Close or explicitly skip extracted open-work signal `docs/plan/repository-delivery-convergence/Evidence.md:38: 5. Any cross-repo milestone, repo exit, or checkpoint-ID change must first land in the authoritative nightly plan, then in this mirror, then in local owner docs.` with code, documentation, and validation evidence."
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "Close Docs/plan/repository Delivery Convergence/evidence Md:38 open work",
+      "target": "docs/plan repository sources"
+    },
+    "next": [
+      "84634cfa-ab2f-460c-bb71-21a5a00e1a21"
+    ]
+  },
+  {
+    "id": "9143955e-1175-476f-933a-ca329c435432",
+    "status": "pending",
+    "role": "implementation",
+    "prerequisites": [
+      "e8ecb3a4-d8b1-4c4d-a179-ab94bd878b46",
+      "ba5a0f35-57b0-4aa3-8590-9898d29158cc",
+      "8aa8e9b1-053a-4c3b-801b-ab8b8270f0df",
+      "33eacd11-5648-4dc8-966b-11cfdc03ec17"
+    ],
+    "platform": "windows",
+    "difficulty": "high",
+    "goal": "Close extracted open work for Docs/plan/repository Delivery Convergence/evidence Md:39.",
+    "description": "Scope: Evidence.md source `docs/plan/repository-delivery-convergence/Evidence.md:39` and the repository code, tests, contracts, or docs referenced by its open-work signals. Context: the previous planning source recorded unresolved or uncertain work that must now be tracked only through docs/plan. Target: each extracted signal is either delivered with validation evidence or explicitly skipped with rationale in the current Better Plan graph. Design Considerations: follow existing repository boundaries and avoid restoring old planning roots or compatibility-era task lists. Design Value: source-specific implementation nodes make unclosed work reviewable without preserving stale plan documents. Constraints & Risks: do not mark this node completed until every acceptance item has direct evidence.",
+    "acceptance_criteria": [
+      {
+        "checked": false,
+        "text": "Close or explicitly skip extracted open-work signal `docs/plan/repository-delivery-convergence/Evidence.md:39: This split is not yet a process-level service decomposition. It is the native build-graph prerequisite for that next step:` with code, documentation, and validation evidence."
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "Close Docs/plan/repository Delivery Convergence/evidence Md:39 open work",
+      "target": "docs/plan repository sources"
+    },
+    "next": [
+      "84634cfa-ab2f-460c-bb71-21a5a00e1a21"
+    ]
+  },
+  {
+    "id": "e69c9251-9487-46aa-b702-25457a8ae220",
+    "status": "pending",
+    "role": "implementation",
+    "prerequisites": [
+      "e8ecb3a4-d8b1-4c4d-a179-ab94bd878b46",
+      "ba5a0f35-57b0-4aa3-8590-9898d29158cc",
+      "8aa8e9b1-053a-4c3b-801b-ab8b8270f0df",
+      "33eacd11-5648-4dc8-966b-11cfdc03ec17"
+    ],
+    "platform": "windows",
+    "difficulty": "high",
+    "goal": "Close extracted open work for Docs/plan/repository Delivery Convergence/evidence Md:428.",
+    "description": "Scope: Evidence.md source `docs/plan/repository-delivery-convergence/Evidence.md:428` and the repository code, tests, contracts, or docs referenced by its open-work signals. Context: the previous planning source recorded unresolved or uncertain work that must now be tracked only through docs/plan. Target: each extracted signal is either delivered with validation evidence or explicitly skipped with rationale in the current Better Plan graph. Design Considerations: follow existing repository boundaries and avoid restoring old planning roots or compatibility-era task lists. Design Value: source-specific implementation nodes make unclosed work reviewable without preserving stale plan documents. Constraints & Risks: do not mark this node completed until every acceptance item has direct evidence.",
+    "acceptance_criteria": [
+      {
+        "checked": false,
+        "text": "Close or explicitly skip extracted open-work signal `docs/plan/repository-delivery-convergence/Evidence.md:428: - install and activation must be split` with code, documentation, and validation evidence."
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "Close Docs/plan/repository Delivery Convergence/evidence Md:428 open work",
+      "target": "docs/plan repository sources"
+    },
+    "next": [
+      "84634cfa-ab2f-460c-bb71-21a5a00e1a21"
+    ]
+  },
+  {
+    "id": "e53965b7-f0f2-41c6-a156-1e660192bba5",
+    "status": "pending",
+    "role": "implementation",
+    "prerequisites": [
+      "e8ecb3a4-d8b1-4c4d-a179-ab94bd878b46",
+      "ba5a0f35-57b0-4aa3-8590-9898d29158cc",
+      "8aa8e9b1-053a-4c3b-801b-ab8b8270f0df",
+      "33eacd11-5648-4dc8-966b-11cfdc03ec17"
+    ],
+    "platform": "windows",
+    "difficulty": "high",
+    "goal": "Close extracted open work for Docs/plan/repository Delivery Convergence/evidence Md:46.",
+    "description": "Scope: Evidence.md source `docs/plan/repository-delivery-convergence/Evidence.md:46` and the repository code, tests, contracts, or docs referenced by its open-work signals. Context: the previous planning source recorded unresolved or uncertain work that must now be tracked only through docs/plan. Target: each extracted signal is either delivered with validation evidence or explicitly skipped with rationale in the current Better Plan graph. Design Considerations: follow existing repository boundaries and avoid restoring old planning roots or compatibility-era task lists. Design Value: source-specific implementation nodes make unclosed work reviewable without preserving stale plan documents. Constraints & Risks: do not mark this node completed until every acceptance item has direct evidence.",
+    "acceptance_criteria": [
+      {
+        "checked": false,
+        "text": "Close or explicitly skip extracted open-work signal `docs/plan/repository-delivery-convergence/Evidence.md:46: `pafio` needs:` with code, documentation, and validation evidence."
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "Close Docs/plan/repository Delivery Convergence/evidence Md:46 open work",
+      "target": "docs/plan repository sources"
+    },
+    "next": [
+      "84634cfa-ab2f-460c-bb71-21a5a00e1a21"
+    ]
+  },
+  {
+    "id": "dfd2c9e8-caaf-4b82-add1-38fd306dfde8",
+    "status": "pending",
+    "role": "implementation",
+    "prerequisites": [
+      "e8ecb3a4-d8b1-4c4d-a179-ab94bd878b46",
+      "ba5a0f35-57b0-4aa3-8590-9898d29158cc",
+      "8aa8e9b1-053a-4c3b-801b-ab8b8270f0df",
+      "33eacd11-5648-4dc8-966b-11cfdc03ec17"
+    ],
+    "platform": "windows",
+    "difficulty": "high",
+    "goal": "Close extracted open work for Docs/plan/repository Delivery Convergence/evidence Md:460.",
+    "description": "Scope: Evidence.md source `docs/plan/repository-delivery-convergence/Evidence.md:460` and the repository code, tests, contracts, or docs referenced by its open-work signals. Context: the previous planning source recorded unresolved or uncertain work that must now be tracked only through docs/plan. Target: each extracted signal is either delivered with validation evidence or explicitly skipped with rationale in the current Better Plan graph. Design Considerations: follow existing repository boundaries and avoid restoring old planning roots or compatibility-era task lists. Design Value: source-specific implementation nodes make unclosed work reviewable without preserving stale plan documents. Constraints & Risks: do not mark this node completed until every acceptance item has direct evidence.",
+    "acceptance_criteria": [
+      {
+        "checked": false,
+        "text": "Close or explicitly skip extracted open-work signal `docs/plan/repository-delivery-convergence/Evidence.md:460: ### 6.2 rustup and Go: Toolchain Selection Must Be a Real Dependency Axis` with code, documentation, and validation evidence."
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "Close Docs/plan/repository Delivery Convergence/evidence Md:460 open work",
+      "target": "docs/plan repository sources"
+    },
+    "next": [
+      "84634cfa-ab2f-460c-bb71-21a5a00e1a21"
+    ]
+  },
+  {
+    "id": "7e97bd49-b95a-4456-8f08-05a8d9b7ce65",
+    "status": "pending",
+    "role": "implementation",
+    "prerequisites": [
+      "e8ecb3a4-d8b1-4c4d-a179-ab94bd878b46",
+      "ba5a0f35-57b0-4aa3-8590-9898d29158cc",
+      "8aa8e9b1-053a-4c3b-801b-ab8b8270f0df",
+      "33eacd11-5648-4dc8-966b-11cfdc03ec17"
+    ],
+    "platform": "windows",
+    "difficulty": "high",
+    "goal": "Close extracted open work for Docs/plan/repository Delivery Convergence/evidence Md:509.",
+    "description": "Scope: Evidence.md source `docs/plan/repository-delivery-convergence/Evidence.md:509` and the repository code, tests, contracts, or docs referenced by its open-work signals. Context: the previous planning source recorded unresolved or uncertain work that must now be tracked only through docs/plan. Target: each extracted signal is either delivered with validation evidence or explicitly skipped with rationale in the current Better Plan graph. Design Considerations: follow existing repository boundaries and avoid restoring old planning roots or compatibility-era task lists. Design Value: source-specific implementation nodes make unclosed work reviewable without preserving stale plan documents. Constraints & Risks: do not mark this node completed until every acceptance item has direct evidence.",
+    "acceptance_criteria": [
+      {
+        "checked": false,
+        "text": "Close or explicitly skip extracted open-work signal `docs/plan/repository-delivery-convergence/Evidence.md:509: - `pafio` already has a workspace model and a hermetic home directory; a content-addressed store is a natural next step` with code, documentation, and validation evidence."
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "Close Docs/plan/repository Delivery Convergence/evidence Md:509 open work",
+      "target": "docs/plan repository sources"
+    },
+    "next": [
+      "84634cfa-ab2f-460c-bb71-21a5a00e1a21"
+    ]
+  },
+  {
+    "id": "67a995c0-397c-4347-90fd-e614f7d18380",
+    "status": "pending",
+    "role": "implementation",
+    "prerequisites": [
+      "e8ecb3a4-d8b1-4c4d-a179-ab94bd878b46",
+      "ba5a0f35-57b0-4aa3-8590-9898d29158cc",
+      "8aa8e9b1-053a-4c3b-801b-ab8b8270f0df",
+      "33eacd11-5648-4dc8-966b-11cfdc03ec17"
+    ],
+    "platform": "windows",
+    "difficulty": "high",
+    "goal": "Close extracted open work for Docs/plan/repository Delivery Convergence/evidence Md:56.",
+    "description": "Scope: Evidence.md source `docs/plan/repository-delivery-convergence/Evidence.md:56` and the repository code, tests, contracts, or docs referenced by its open-work signals. Context: the previous planning source recorded unresolved or uncertain work that must now be tracked only through docs/plan. Target: each extracted signal is either delivered with validation evidence or explicitly skipped with rationale in the current Better Plan graph. Design Considerations: follow existing repository boundaries and avoid restoring old planning roots or compatibility-era task lists. Design Value: source-specific implementation nodes make unclosed work reviewable without preserving stale plan documents. Constraints & Risks: do not mark this node completed until every acceptance item has direct evidence.",
+    "acceptance_criteria": [
+      {
+        "checked": false,
+        "text": "Close or explicitly skip extracted open-work signal `docs/plan/repository-delivery-convergence/Evidence.md:56: - must not be guessed or reverse-engineered from compiler internals` with code, documentation, and validation evidence."
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "Close Docs/plan/repository Delivery Convergence/evidence Md:56 open work",
+      "target": "docs/plan repository sources"
+    },
+    "next": [
+      "84634cfa-ab2f-460c-bb71-21a5a00e1a21"
+    ]
+  },
+  {
+    "id": "353f5b89-e8e1-42bf-b8cc-9f584f63d187",
+    "status": "pending",
+    "role": "implementation",
+    "prerequisites": [
+      "e8ecb3a4-d8b1-4c4d-a179-ab94bd878b46",
+      "ba5a0f35-57b0-4aa3-8590-9898d29158cc",
+      "8aa8e9b1-053a-4c3b-801b-ab8b8270f0df",
+      "33eacd11-5648-4dc8-966b-11cfdc03ec17"
+    ],
+    "platform": "windows",
+    "difficulty": "high",
+    "goal": "Close extracted open work for Docs/plan/repository Delivery Convergence/evidence Md:605.",
+    "description": "Scope: Evidence.md source `docs/plan/repository-delivery-convergence/Evidence.md:605` and the repository code, tests, contracts, or docs referenced by its open-work signals. Context: the previous planning source recorded unresolved or uncertain work that must now be tracked only through docs/plan. Target: each extracted signal is either delivered with validation evidence or explicitly skipped with rationale in the current Better Plan graph. Design Considerations: follow existing repository boundaries and avoid restoring old planning roots or compatibility-era task lists. Design Value: source-specific implementation nodes make unclosed work reviewable without preserving stale plan documents. Constraints & Risks: do not mark this node completed until every acceptance item has direct evidence.",
+    "acceptance_criteria": [
+      {
+        "checked": false,
+        "text": "Close or explicitly skip extracted open-work signal `docs/plan/repository-delivery-convergence/Evidence.md:605: - current hermetic directories are correct, but they are not yet fully content-addressed` with code, documentation, and validation evidence."
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "Close Docs/plan/repository Delivery Convergence/evidence Md:605 open work",
+      "target": "docs/plan repository sources"
+    },
+    "next": [
+      "84634cfa-ab2f-460c-bb71-21a5a00e1a21"
+    ]
+  },
+  {
+    "id": "3c9221c4-c682-4bf4-b04f-144d36b8f96f",
+    "status": "pending",
+    "role": "implementation",
+    "prerequisites": [
+      "e8ecb3a4-d8b1-4c4d-a179-ab94bd878b46",
+      "ba5a0f35-57b0-4aa3-8590-9898d29158cc",
+      "8aa8e9b1-053a-4c3b-801b-ab8b8270f0df",
+      "33eacd11-5648-4dc8-966b-11cfdc03ec17"
+    ],
+    "platform": "windows",
+    "difficulty": "high",
+    "goal": "Close extracted open work for Docs/plan/repository Delivery Convergence/evidence Md:68.",
+    "description": "Scope: Evidence.md source `docs/plan/repository-delivery-convergence/Evidence.md:68` and the repository code, tests, contracts, or docs referenced by its open-work signals. Context: the previous planning source recorded unresolved or uncertain work that must now be tracked only through docs/plan. Target: each extracted signal is either delivered with validation evidence or explicitly skipped with rationale in the current Better Plan graph. Design Considerations: follow existing repository boundaries and avoid restoring old planning roots or compatibility-era task lists. Design Value: source-specific implementation nodes make unclosed work reviewable without preserving stale plan documents. Constraints & Risks: do not mark this node completed until every acceptance item has direct evidence.",
+    "acceptance_criteria": [
+      {
+        "checked": false,
+        "text": "Close or explicitly skip extracted open-work signal `docs/plan/repository-delivery-convergence/Evidence.md:68: `pafio` and `styio` must continue to integrate only through:` with code, documentation, and validation evidence."
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "Close Docs/plan/repository Delivery Convergence/evidence Md:68 open work",
+      "target": "docs/plan repository sources"
+    },
+    "next": [
+      "84634cfa-ab2f-460c-bb71-21a5a00e1a21"
+    ]
+  },
+  {
+    "id": "6f603936-d046-4baf-9c81-3f5ada82f0b3",
+    "status": "pending",
+    "role": "implementation",
+    "prerequisites": [
+      "e8ecb3a4-d8b1-4c4d-a179-ab94bd878b46",
+      "ba5a0f35-57b0-4aa3-8590-9898d29158cc",
+      "8aa8e9b1-053a-4c3b-801b-ab8b8270f0df",
+      "33eacd11-5648-4dc8-966b-11cfdc03ec17"
+    ],
+    "platform": "windows",
+    "difficulty": "high",
+    "goal": "Close extracted open work for Docs/plan/repository Delivery Convergence/evidence Md:9.",
+    "description": "Scope: Evidence.md source `docs/plan/repository-delivery-convergence/Evidence.md:9` and the repository code, tests, contracts, or docs referenced by its open-work signals. Context: the previous planning source recorded unresolved or uncertain work that must now be tracked only through docs/plan. Target: each extracted signal is either delivered with validation evidence or explicitly skipped with rationale in the current Better Plan graph. Design Considerations: follow existing repository boundaries and avoid restoring old planning roots or compatibility-era task lists. Design Value: source-specific implementation nodes make unclosed work reviewable without preserving stale plan documents. Constraints & Risks: do not mark this node completed until every acceptance item has direct evidence.",
+    "acceptance_criteria": [
+      {
+        "checked": false,
+        "text": "Close or explicitly skip extracted open-work signal `docs/plan/repository-delivery-convergence/Evidence.md:9: This backlog migrates the ignored `docs/audit/defects/STYIO-PAFIO-2026-04-22.md` record into tracked planning ownership. The migration does not claim unresolved defects are fixed. It gives each finding a stable identifie` with code, documentation, and validation evidence."
+      },
+      {
+        "checked": false,
+        "text": "Close or explicitly skip extracted open-work signal `docs/plan/repository-delivery-convergence/Evidence.md:9: The bootstrap stage is considered prepared when these areas all have an owner, a TODO list, and a gate:` with code, documentation, and validation evidence."
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "Close Docs/plan/repository Delivery Convergence/evidence Md:9 open work",
+      "target": "docs/plan repository sources"
+    },
+    "next": [
+      "84634cfa-ab2f-460c-bb71-21a5a00e1a21"
+    ]
+  },
+  {
+    "id": "84634cfa-ab2f-460c-bb71-21a5a00e1a21",
+    "status": "pending",
+    "role": "final_validation",
+    "prerequisites": [
+      "cc8030b6-789c-44bd-a6c5-6cc834b33db6",
+      "12250f5d-cc1f-4180-ac94-e55062f884b0",
+      "48c2bb21-4837-4901-970c-070a44bc0a63",
+      "16e6c9e5-c198-4489-84ce-155fa9c61338",
+      "de30682b-2fbf-4493-a031-35956cce1428",
+      "5de707dc-80b7-4e09-9761-57358ac17153",
+      "43ae0575-77f7-4d83-8fbc-bfaa639a484b",
+      "74468dfd-2305-4040-89ef-5604cb114205",
+      "5d8b38fa-a987-4e04-8f59-b072875df85e",
+      "9a166e7e-fd7c-4d91-a91c-d226e56a9e9b",
+      "c0318620-d378-4c5c-838c-bd72cf1eda9b",
+      "51c04e03-e0b2-4f99-bf6d-6662804f1981",
+      "a7c3e031-0f97-462e-9401-c35787897feb",
+      "9bd8101b-035b-4277-868f-4e3cb958f366",
+      "bc531d8a-a6d0-4066-a006-7b4366c92753",
+      "59474cbe-d78f-46ff-85ab-dc1c4f9bdd3a",
+      "df0a9320-7aed-4864-b9e9-7c3b0f52ff05",
+      "5be23374-9368-4c0b-b909-09443479ff25",
+      "66673568-87ea-4357-8c48-cb42db764c3a",
+      "4f0d8b31-eb90-4d9f-b37a-19a3823cf89e",
+      "1f44f9ee-d262-4261-8bcc-307e3ca559d9",
+      "ca70ded9-1270-4db5-9fce-73e398cdab9d",
+      "6f77b8d5-525a-4057-8eef-771909b05ee9",
+      "b385d276-d6e1-447a-981a-71853130b5f0",
+      "c06f3d62-1a7e-45db-b99a-d1cdf76e72ef",
+      "e6e5623e-f92b-46ac-ab67-0bca57d3f702",
+      "928cb8ed-6c7c-43b5-95a7-d7b5a8c56528",
+      "30396d23-66a8-4d39-9c62-e4103065f72b",
+      "eaf6dcef-36b5-4fa2-af11-95811b80e7e7",
+      "7b9d9484-7d32-4d4a-837d-2062eec8ce8b",
+      "8dd310ae-f523-406a-8922-aa09759850bf",
+      "cb2e517a-ef09-48ff-883c-d55902341e1d",
+      "8dc7f22d-9ba1-4f32-9e9b-c42cff742b03",
+      "53a7b7f8-0a96-4341-bcfc-1a6d3e972d20",
+      "b5fc6995-52f9-4701-8f29-f46ad2652ecb",
+      "adaa53fc-4487-44e7-9ec9-ce9e4a526455",
+      "9143955e-1175-476f-933a-ca329c435432",
+      "e69c9251-9487-46aa-b702-25457a8ae220",
+      "e53965b7-f0f2-41c6-a156-1e660192bba5",
+      "dfd2c9e8-caaf-4b82-add1-38fd306dfde8",
+      "7e97bd49-b95a-4456-8f08-05a8d9b7ce65",
+      "67a995c0-397c-4347-90fd-e614f7d18380",
+      "353f5b89-e8e1-42bf-b8cc-9f584f63d187",
+      "3c9221c4-c682-4bf4-b04f-144d36b8f96f",
+      "6f603936-d046-4baf-9c81-3f5ada82f0b3",
+      "8aa8e9b1-053a-4c3b-801b-ab8b8270f0df"
+    ],
+    "platform": "windows",
+    "difficulty": "high",
+    "goal": "Validate repository delivery convergence after extracted work closes.",
+    "description": "Scope: docs/plan Manifest.json, Checkpoints.json, Evidence.md, repository search results, and validation commands. Context: final validation must prove the Better Plan workspace remains the only current planning root and all extracted source-specific work has closure evidence. Target: REQ-001 through REQ-005 are proven by manifest validation, audit gate evidence, and completed implementation nodes. Design Considerations: run the same checks used by styio-audit Better Plan policy and project-local gates relevant to touched code. Design Value: final validation ties planning structure to actual closure evidence instead of treating formatting as delivery. Constraints & Risks: do not complete this node while any source-specific implementation node remains pending or in_progress.",
+    "acceptance_criteria": [
+      {
+        "checked": false,
+        "text": "manifest_tool.py validate docs/plan passes."
+      },
+      {
+        "checked": false,
+        "text": "styio-audit Better Plan policy reports zero findings for this repository."
+      },
+      {
+        "checked": false,
+        "text": "All source-specific implementation nodes are completed or intentionally skipped with evidence."
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "Validate delivery convergence",
+      "target": "docs/plan"
+    },
+    "next": []
+  }
+]

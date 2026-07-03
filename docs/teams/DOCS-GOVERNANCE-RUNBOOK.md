@@ -19,7 +19,7 @@ Primary paths:
 5. `docs/history/`
 6. `docs/archive/`
 7. `docs/adr/`
-8. `docs/planning/`
+8. `docs/plan/`
 9. `docs/teams/`
 10. `scripts/docs-index.py`
 11. `scripts/docs-lifecycle.py`
@@ -28,11 +28,11 @@ Primary paths:
 Key SSOTs:
 
 1. `Docs maintenance model -> ../governance/Docs-Maintenance-Model.md`
-2. `Ecosystem milestone mirror -> ../planning/Styio-Ecosystem-Delivery-Master-Plan.md`
-3. `File-governance mirror -> ../planning/Styio-Ecosystem-File-Governance-Alignment-Plan.md`
+2. `Ecosystem milestone mirror -> ../plan/repository-delivery-convergence/Evidence.md`
+3. `File-governance mirror -> ../plan/repository-delivery-convergence/Evidence.md`
 4. `Current state -> ../rollups/CURRENT-STATE.md`
-5. `Master plan -> ../planning/Pafio-Master-Plan.md`
-6. `Future direction and coordination -> ../planning/Pafio-Future-Direction-and-Styio-Coordination.md`
+5. `Master plan -> ../plan/repository-delivery-convergence/Evidence.md`
+6. `Future direction and coordination -> ../plan/repository-delivery-convergence/Evidence.md`
 
 ## Daily Workflow
 

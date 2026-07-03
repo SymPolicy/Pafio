@@ -69,4 +69,4 @@ Record:
 1. Commands, flags, or manifest fields changed.
 2. Fixtures updated and gates already run.
 3. JSON payload or exit-code deltas still pending.
-4. Rollback point and next owner in `../planning/Pafio-Workstreams-and-TODOs.md` when work spans another checkpoint.
+4. Rollback point and next owner in `../plan/repository-delivery-convergence/Evidence.md` when work spans another checkpoint.
