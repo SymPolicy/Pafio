@@ -19,5 +19,5 @@ These files document the external compiler dependency. They must not become a ba
 
 1. `Styio-External-Interface-Requirement-Spec.md`
 2. `Styio-Public-Interface-Roadmap.md`
-3. `../../planning/Pafio-Future-Direction-and-Styio-Coordination.md`
+3. `../../plan/repository-delivery-convergence/Evidence.md`
 4. `Styio-for-Pafio-Developers.md`

@@ -1,0 +1,18 @@
+[
+  {
+    "id": "cb932e54-192c-4f84-8830-f18bd6cec5a8",
+    "status": "in_progress",
+    "title": "Pafio Repository Delivery Convergence",
+    "directory": "repository-delivery-convergence",
+    "source_files": [
+      "docs/plan/repository-delivery-convergence/Requirements.md",
+      "docs/plan/repository-delivery-convergence/Evidence.md",
+      "docs/plan/repository-delivery-convergence/Validation.md",
+      "docs/plan/repository-delivery-convergence/Architecture.md",
+      "docs/plan/repository-delivery-convergence/Source-Material.md"
+    ],
+    "goal": "Keep SymPolicy/Pafio planning under one Better Plan workspace rooted at docs/plan.",
+    "description": "Current planning workspace for SymPolicy/Pafio; executable scope and validation live in repository-delivery-convergence/Checkpoints.json.",
+    "checkpoints": "repository-delivery-convergence/Checkpoints.json"
+  }
+]

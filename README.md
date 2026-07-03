@@ -87,7 +87,7 @@ The codebase composes from internal static libraries:
 
 The `pafio` executable links only the shell target. Source-level details live in
 [src/README.md](src/README.md) and
-[Pafio-Native-Target-Split.md](docs/planning/Pafio-Native-Target-Split.md).
+[Pafio-Native-Target-Split.md](docs/plan/repository-delivery-convergence/Evidence.md).
 
 ## Independence Rules
 
@@ -118,9 +118,9 @@ automation, contract gates, and registry helper tooling.
 
 ## Planning
 
-- [Pafio-Master-Plan.md](docs/planning/Pafio-Master-Plan.md)
-- [Pafio-Stage-Review-and-Future-Features.md](docs/planning/Pafio-Stage-Review-and-Future-Features.md)
-- [Pafio-Workstreams-and-TODOs.md](docs/planning/Pafio-Workstreams-and-TODOs.md)
+- [Pafio-Master-Plan.md](docs/plan/repository-delivery-convergence/Evidence.md)
+- [Pafio-Stage-Review-and-Future-Features.md](docs/plan/repository-delivery-convergence/Evidence.md)
+- [Pafio-Workstreams-and-TODOs.md](docs/plan/repository-delivery-convergence/Evidence.md)
 - [Pafio-Verification-Matrix.md](docs/operations/Pafio-Verification-Matrix.md)
 - [Pafio-Local-Offline-Package-Contract.md](docs/governance/Pafio-Local-Offline-Package-Contract.md)
 

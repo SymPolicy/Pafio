@@ -19,13 +19,13 @@ Primary paths:
 5. `src/PafioTree/`
 6. `src/PafioVendor/`
 7. `src/PafioPack/`
-8. `docs/planning/Pafio-Workstreams-and-TODOs.md`
+8. `docs/plan/repository-delivery-convergence/Evidence.md`
 
 Key SSOTs:
 
-1. `Ecosystem milestone mirror -> ../planning/Styio-Ecosystem-Delivery-Master-Plan.md`
-2. `Master plan -> ../planning/Pafio-Master-Plan.md`
-3. `Workstreams -> ../planning/Pafio-Workstreams-and-TODOs.md`
+1. `Ecosystem milestone mirror -> ../plan/repository-delivery-convergence/Evidence.md`
+2. `Master plan -> ../plan/repository-delivery-convergence/Evidence.md`
+3. `Workstreams -> ../plan/repository-delivery-convergence/Evidence.md`
 4. `Verification matrix -> ../operations/Pafio-Verification-Matrix.md`
 
 ## Daily Workflow

@@ -14,8 +14,8 @@
 ## Read Order
 
 1. `NEXT-STAGE-GAP-LEDGER.md`
-2. `../planning/Styio-Ecosystem-File-Governance-Alignment-Plan.md`
-3. `../planning/Pafio-Master-Plan.md`
+2. `../plan/repository-delivery-convergence/Evidence.md`
+3. `../plan/repository-delivery-convergence/Evidence.md`
 4. `../operations/Pafio-Verification-Matrix.md`
 5. `../governance/Docs-Maintenance-Model.md`
 
