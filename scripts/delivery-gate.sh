@@ -14,8 +14,8 @@ Options:
   --base <ref>              Base ref for team-docs-gate branch checks
   --range <rev-range>       Explicit revision range for repo-hygiene push mode
   --skip-health             Skip checkpoint-health (docs/process-only deliveries)
-  --skip-audit              Skip external styio-audit gate
-  --audit-bin <path>        Explicit styio-audit executable
+  --skip-audit              Skip external General-Auditor gate
+  --audit-root <path>        Trusted General-Auditor checkout
   --styio-bin <path>        Optional external styio binary for checkpoint-health
   --build-dir <dir>         Forwarded to checkpoint-health
   -h, --help                Show this help
@@ -162,7 +162,7 @@ while [[ $# -gt 0 ]]; do
       RUN_AUDIT=0
       shift
       ;;
-    --audit-bin)
+    --audit-root)
       AUDIT_BIN="$2"
       shift 2
       ;;
@@ -192,7 +192,7 @@ AUDIT_CMD=(./scripts/audit-gate.sh)
 HEALTH_CMD=(./scripts/checkpoint-health.sh)
 
 if [[ -n "$AUDIT_BIN" ]]; then
-  AUDIT_CMD+=(--audit-bin "$AUDIT_BIN")
+  AUDIT_CMD+=(--audit-root "$AUDIT_BIN")
 fi
 if [[ -n "$BUILD_DIR" ]]; then
   HEALTH_CMD+=(--build-dir "$BUILD_DIR")
@@ -266,7 +266,7 @@ esac
 if [[ "$RUN_AUDIT" -eq 1 ]]; then
   run_cmd "${AUDIT_CMD[@]}"
 else
-  log "styio-audit skipped"
+  log "General-Auditor skipped"
 fi
 
 if [[ "$RUN_HEALTH" -eq 1 ]]; then

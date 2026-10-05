@@ -1,29 +1,10 @@
 #!/bin/sh
 set -eu
-
 repo_root="$(git rev-parse --show-toplevel)"
-project="Pafio"
-
-framework_root="${STYIO_AUDIT_FRAMEWORK_ROOT:-}"
-if [ -z "$framework_root" ]; then
-  for candidate in \
-    "$repo_root" \
-    "$repo_root/../styio-audit" \
-    "$repo_root/../../SymPolicy/styio-audit"
-  do
-    if [ -x "$candidate/bin/styio-audit" ]; then
-      framework_root="$candidate"
-      break
-    fi
-  done
-fi
-
-if [ -z "$framework_root" ] || [ ! -x "$framework_root/bin/styio-audit" ]; then
-  echo "[styio-audit] pre-commit failed: cannot locate styio-audit; set STYIO_AUDIT_FRAMEWORK_ROOT" >&2
-  exit 1
-fi
-
-python3 "$framework_root/bin/styio-audit" pre-commit --repo "$repo_root" --project "$project"
+auditor_root="${GENERAL_AUDITOR_ROOT:?Set GENERAL_AUDITOR_ROOT to a trusted General-Auditor checkout on only}"
+report="$(git rev-parse --git-path general-auditor/staged.json)"
+python3 -I "$auditor_root/action_entry.py" scan --policy-root "$auditor_root" \
+  --directory "$repo_root" --repository "SymPolicy/Pafio" --scope staged --output "$report"
 
 git_common_dir="$(git rev-parse --git-common-dir)"
 legacy_hook="$git_common_dir/hooks/pre-commit"

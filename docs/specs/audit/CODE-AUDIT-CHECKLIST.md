@@ -8,7 +8,7 @@
 
 Every agent performing code review, implementation review, defect triage, or closure verification must apply this checklist. If a finding violates one of the seven design principles below, record the principle number in the defect note or review finding. Every closure decision must also record the test evidence used, the data lifecycle evidence for touched structures or resources, and whether the delivery gate is strict enough to protect software quality.
 
-For data and resource lifecycle claims, use the centralized `styio-audit` framework as the auditable source of truth: `modules/default` plus `for-pafio`.
+For data and resource lifecycle claims, use the centralized `General-Auditor` framework as the auditable source of truth: `modules/default` plus `for-pafio`.
 
 ## 1. Check The Seven Design Principles First
 
