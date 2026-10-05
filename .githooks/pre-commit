@@ -1,7 +1,18 @@
 #!/bin/sh
 set -eu
 repo_root="$(git rev-parse --show-toplevel)"
-auditor_root="${GENERAL_AUDITOR_ROOT:?Set GENERAL_AUDITOR_ROOT to a trusted General-Auditor checkout on only}"
+auditor_root="${GENERAL_AUDITOR_ROOT:-}"
+if [ -z "${auditor_root:-}" ]; then
+  auditor_root="$(git -C "$repo_root" config --local --get generalAuditor.root || true)"
+fi
+case "$auditor_root" in
+  /*) ;;
+  *) echo 'General-Auditor requires an absolute trusted root; use GENERAL_AUDITOR_ROOT or local git config generalAuditor.root.' >&2; exit 2 ;;
+esac
+if [ ! -f "$auditor_root/action_entry.py" ] || [ ! -f "$auditor_root/profiles/SymPolicy/Pafio.json" ]; then
+  echo 'General-Auditor root must contain action_entry.py and the exact repository profile.' >&2
+  exit 2
+fi
 report="$(git rev-parse --git-path general-auditor/staged.json)"
 python3 -I "$auditor_root/action_entry.py" scan --policy-root "$auditor_root" \
   --directory "$repo_root" --repository "SymPolicy/Pafio" --scope staged --output "$report"

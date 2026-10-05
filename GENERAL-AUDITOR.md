@@ -4,8 +4,20 @@ CI uses `Unka-Malloc/General-Auditor@only` and audits this repository only.
 The native `styio-audit` status context is retained where branch protection requires it.
 Keyword findings are advisory and require contextual review by the contributor's local Agent.
 
-For local checks, use a trusted checkout of General-Auditor's `only` branch and set
-`GENERAL_AUDITOR_ROOT` to that checkout. The local scope commands require the
+For local checks, use a trusted checkout of General-Auditor's `only` branch.
+Select its absolute directory with `--audit-root` where supported, otherwise
+`GENERAL_AUDITOR_ROOT`, or repository-local `git config --local generalAuditor.root`.
+An explicit argument overrides the environment, which overrides local Git configuration.
+The directory must contain `action_entry.py` and this repository's exact
+`profiles/SymPolicy/Pafio.json`; missing profiles are errors.
+There is no PATH lookup or common-only fallback.
+
+```sh
+git config --local generalAuditor.root "$GENERAL_AUDITOR_ROOT"
+```
+
+The command below uses an explicit environment value; hooks and delivery wrappers
+also accept the local Git configuration. The local scope commands require the
 scope implementation from [General-Auditor PR #1](https://github.com/Unka-Malloc/General-Auditor/pull/1).
 Do not fetch or execute Auditor code from a contributor's branch.
 
