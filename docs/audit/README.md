@@ -10,7 +10,7 @@ Active audit records live under ignored `docs/audit/defects/` so large explorato
 
 Generated inventory: [INDEX.md](./INDEX.md).
 
-External `styio-audit` runs outside this repository and enforces this rule when an audit is performed:
+External `General-Auditor` runs outside this repository and enforces this rule when an audit is performed:
 
 1. Missing or empty `docs/audit/defects/` passes.
 2. Every markdown record in `docs/audit/defects/` must declare `**Status:** Closed`, `Resolved`, or `Cleared`.

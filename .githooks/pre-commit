@@ -1,29 +1,20 @@
 #!/bin/sh
 set -eu
-
 repo_root="$(git rev-parse --show-toplevel)"
-project="Pafio"
-
-framework_root="${STYIO_AUDIT_FRAMEWORK_ROOT:-}"
-if [ -z "$framework_root" ]; then
-  for candidate in \
-    "$repo_root" \
-    "$repo_root/../styio-audit" \
-    "$repo_root/../../SymPolicy/styio-audit"
-  do
-    if [ -x "$candidate/bin/styio-audit" ]; then
-      framework_root="$candidate"
-      break
-    fi
-  done
+auditor_root="${GENERAL_AUDITOR_ROOT:-}"
+if [ -z "${auditor_root:-}" ]; then
+  auditor_root="$(git -C "$repo_root" config --local --get generalAuditor.root || true)"
 fi
-
-if [ -z "$framework_root" ] || [ ! -x "$framework_root/bin/styio-audit" ]; then
-  echo "[styio-audit] pre-commit failed: cannot locate styio-audit; set STYIO_AUDIT_FRAMEWORK_ROOT" >&2
-  exit 1
+case "$auditor_root" in
+  /*) ;;
+  *) echo 'General-Auditor requires an absolute trusted root; use GENERAL_AUDITOR_ROOT or local git config generalAuditor.root.' >&2; exit 2 ;;
+esac
+if [ ! -f "$auditor_root/action_entry.py" ] || [ ! -f "$auditor_root/profiles/SymPolicy/Pafio.json" ]; then
+  echo 'General-Auditor root must contain action_entry.py and the exact repository profile.' >&2
+  exit 2
 fi
-
-python3 "$framework_root/bin/styio-audit" pre-commit --repo "$repo_root" --project "$project"
+python3 -I "$auditor_root/action_entry.py" scan --policy-root "$auditor_root" \
+  --directory "$repo_root" --repository "SymPolicy/Pafio" --scope staged
 
 git_common_dir="$(git rev-parse --git-common-dir)"
 legacy_hook="$git_common_dir/hooks/pre-commit"
