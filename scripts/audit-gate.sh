@@ -20,10 +20,9 @@ if [ ! -f "$AUDITOR_ROOT/action_entry.py" ] || [ ! -f "$AUDITOR_ROOT/profiles/Sy
   echo 'General-Auditor root must contain action_entry.py and the exact repository profile.' >&2
   exit 2
 fi
-report="$(git -C "$ROOT" rev-parse --path-format=absolute --git-path general-auditor)"
 audit_status=0
 python3 -I "$AUDITOR_ROOT/action_entry.py" scan --policy-root "$AUDITOR_ROOT" \
-  --directory "$ROOT" --repository "SymPolicy/Pafio" --scope history --output "$report/history.json" || audit_status=$?
+  --directory "$ROOT" --repository "SymPolicy/Pafio" --scope history || audit_status=$?
 python3 -I "$AUDITOR_ROOT/action_entry.py" scan --policy-root "$AUDITOR_ROOT" \
-  --directory "$ROOT" --repository "SymPolicy/Pafio" --scope worktree --output "$report/worktree.json" || audit_status=$?
+  --directory "$ROOT" --repository "SymPolicy/Pafio" --scope worktree || audit_status=$?
 exit "$audit_status"

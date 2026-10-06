@@ -99,3 +99,6 @@ src-private/
 tests-private/
 docs-private/
 scripts-private/
+
+# Private General-Auditor source evidence and local reports.
+/.general-auditor/local/

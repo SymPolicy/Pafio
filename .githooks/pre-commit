@@ -13,9 +13,8 @@ if [ ! -f "$auditor_root/action_entry.py" ] || [ ! -f "$auditor_root/profiles/Sy
   echo 'General-Auditor root must contain action_entry.py and the exact repository profile.' >&2
   exit 2
 fi
-report="$(git rev-parse --git-path general-auditor/staged.json)"
 python3 -I "$auditor_root/action_entry.py" scan --policy-root "$auditor_root" \
-  --directory "$repo_root" --repository "SymPolicy/Pafio" --scope staged --output "$report"
+  --directory "$repo_root" --repository "SymPolicy/Pafio" --scope staged
 
 git_common_dir="$(git rev-parse --git-common-dir)"
 legacy_hook="$git_common_dir/hooks/pre-commit"
