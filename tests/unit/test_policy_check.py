@@ -175,7 +175,7 @@ class PolicyCheckTests(unittest.TestCase):
 
     def test_undeclared_template_host_fails(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
-            root = self._repo(tmp_dir, None, {"scripts/serve.py": 'url = "http://{" + "endpoint}/x"\n'})
+            root = self._repo(tmp_dir, None, {"scripts/serve.py": 'url = "http://' + '{endpoint}/x"\n'})
             subprocess.run(["git", "add", "-A"], cwd=root, check=True, capture_output=True)
             self.assertTrue(any("plaintext" in e for e in self._errors(root)))
 
