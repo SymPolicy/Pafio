@@ -6,7 +6,7 @@
 
 `pafio` is an Apache-2.0 C++/Python source project. Its current build and test dependency boundary is:
 
-- CMake `FetchContent` downloads `tomlplusplus` for TOML parsing, `nlohmann_json` for JSON serialization, and `googletest` for native test execution.
+- CMake `FetchContent` downloads `tomlplusplus` (MIT) for TOML parsing, `nlohmann_json` (MIT) for JSON serialization, and `googletest` (BSD-3-Clause) for native test execution.
 - Repository Python scripts and tests use the Python standard library only.
 - Runtime registry and transport checks may invoke system tools such as `curl`, `git`, `tar`, `cmake`, and the configured `styio` compiler binary through explicit process boundaries.
 

@@ -1,5 +1,8 @@
 # Evidence
 
+**Purpose:** Source material inventory supporting the repository-delivery-convergence plan.
+**Last updated:** 2026-10-31
+
 ## Source Inventory
 
 - `docs/plan/repository-delivery-convergence/Evidence.md`: Styio Public Interface Roadmap for Pafio (signal lines captured: 3)
@@ -21,12 +24,12 @@
 - `docs/plan/repository-delivery-convergence/Evidence.md:3`: **Purpose:** Describe the exact compiler-facing interfaces that `pafio` needs from `styio`, so future `pafio` maintainers know what to request, test, and vendor without depending on compiler internals.
 - `docs/plan/repository-delivery-convergence/Evidence.md:46`: `pafio` needs:
 - `docs/plan/repository-delivery-convergence/Evidence.md:56`: - must not be guessed or reverse-engineered from compiler internals
-- `docs/plan/repository-delivery-convergence/Evidence.md:13`: | `Pafio-Audit-Backlog-2026-04-22.md` | [Pafio Audit Backlog 2026-04-22](./Pafio-Audit-Backlog-2026-04-22.md) | Preserve the 2026-04-22 styio-pafio external audit findings as durable tracked work after removing the ignor
+- `docs/plan/repository-delivery-convergence/Evidence.md:13`: | `Pafio-Audit-Backlog-2026-04-22.md` | [Pafio Audit Backlog 2026-04-22](./Pafio-Audit-Backlog-2026-04-22.md) | Preserve the 2026-04-22 pre-split external audit findings as durable tracked work after removing the ignor
 - `docs/plan/repository-delivery-convergence/Evidence.md:1`: # Pafio Audit Backlog 2026-04-22
-- `docs/plan/repository-delivery-convergence/Evidence.md:9`: This backlog migrates the ignored `docs/audit/defects/STYIO-PAFIO-2026-04-22.md` record into tracked planning ownership. The migration does not claim unresolved defects are fixed. It gives each finding a stable identifie
+- `docs/plan/repository-delivery-convergence/Evidence.md:9`: This backlog migrates the ignored `docs/audit/defects/PRE-SPLIT-2026-04-22.md` record into tracked planning ownership. The migration does not claim unresolved defects are fixed. It gives each finding a stable identifie
 - `docs/plan/repository-delivery-convergence/Evidence.md:15`: 3. Closure evidence must name the code change, regression coverage, data or resource lifecycle proof, and gate command.
 - `docs/plan/repository-delivery-convergence/Evidence.md:16`: 4. If a finding moves to a GitHub issue or downstream platform task, record the durable link before removing it from this backlog.
-- `docs/plan/repository-delivery-convergence/Evidence.md:17`: 5. Run `./scripts/delivery-gate.sh --mode checkpoint` and external `audit gate --repo $HOME/styio-pafio --project styio-pafio` before declaring the backlog migration complete.
+- `docs/plan/repository-delivery-convergence/Evidence.md:17`: 5. Run `./scripts/delivery-gate.sh --mode checkpoint` before declaring the backlog migration complete.
 - `docs/plan/repository-delivery-convergence/Evidence.md:19`: ## Backlog
 - `docs/plan/repository-delivery-convergence/Evidence.md:26`: | PAFIO-AUD-004 | Fixed for public client root pinning, residual tracked | Registry / Publish | Registry verification still needs an external trust anchor for non-local registries instead of trusting only metadata fetche
 - `docs/plan/repository-delivery-convergence/Evidence.md:28`: | PAFIO-AUD-006 | Tracked | Registry / Publish | Archive manifest discovery needs per-member size limits in addition to canonical member selection. | Reject oversized candidate manifests before reading them into memory;

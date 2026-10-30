@@ -28,8 +28,7 @@ Docs/process-only delivery:
 
 1. worktree hygiene and docs ownership checks when local changes exist
 2. push-range hygiene and docs ownership checks when `HEAD` is ahead of the delivery base
-3. `./scripts/audit-gate.sh`
-4. `./scripts/checkpoint-health.sh`
+3. `./scripts/checkpoint-health.sh`
 
 `auto` mode is the default. It must not report success from an empty staged
 diff when unstaged worktree changes or PR-range changes exist. Low-level

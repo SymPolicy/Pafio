@@ -19,7 +19,7 @@
 - `pafio_registry_split_origin_http_gate`
 - `pafio_workflow_gate`
 - `pafio_extractability_gate`
-- `styio_pafio_dual_maintenance_gate`
+- `dual_maintenance_gate`
 
 Private auth-bearing publish gates are intentionally excluded from this tracked directory and should live under `tests-private/` when a closed-source security module is in use.
 

@@ -281,7 +281,7 @@
     "acceptance_criteria": [
       {
         "checked": false,
-        "text": "Close or explicitly skip extracted open-work signal `docs/plan/repository-delivery-convergence/Evidence.md:13: | `Pafio-Audit-Backlog-2026-04-22.md` | [Pafio Audit Backlog 2026-04-22](./Pafio-Audit-Backlog-2026-04-22.md) | Preserve the 2026-04-22 styio-pafio external audit findings as durable tracked work after removing the ignor` with code, documentation, and validation evidence."
+        "text": "Close or explicitly skip extracted open-work signal `docs/plan/repository-delivery-convergence/Evidence.md:13: | `Pafio-Audit-Backlog-2026-04-22.md` | [Pafio Audit Backlog 2026-04-22](./Pafio-Audit-Backlog-2026-04-22.md) | Preserve the 2026-04-22 pre-split external audit findings as durable tracked work after removing the ignor` with code, documentation, and validation evidence."
       }
     ],
     "commit": {
@@ -426,7 +426,7 @@
     "acceptance_criteria": [
       {
         "checked": false,
-        "text": "Close or explicitly skip extracted open-work signal `docs/plan/repository-delivery-convergence/Evidence.md:17: 5. Run `./scripts/delivery-gate.sh --mode checkpoint` and external `audit gate --repo $HOME/styio-pafio --project styio-pafio` before declaring the backlog migration complete.` with code, documentation, and validation evidence."
+        "text": "Close or explicitly skip extracted open-work signal `docs/plan/repository-delivery-convergence/Evidence.md:17: 5. Run `./scripts/delivery-gate.sh --mode checkpoint` before declaring the backlog migration complete.` with code, documentation, and validation evidence."
       }
     ],
     "commit": {
@@ -1477,7 +1477,7 @@
     "acceptance_criteria": [
       {
         "checked": false,
-        "text": "Close or explicitly skip extracted open-work signal `docs/plan/repository-delivery-convergence/Evidence.md:9: This backlog migrates the ignored `docs/audit/defects/STYIO-PAFIO-2026-04-22.md` record into tracked planning ownership. The migration does not claim unresolved defects are fixed. It gives each finding a stable identifie` with code, documentation, and validation evidence."
+        "text": "Close or explicitly skip extracted open-work signal `docs/plan/repository-delivery-convergence/Evidence.md:9: This backlog migrates the ignored `docs/audit/defects/PRE-SPLIT-2026-04-22.md` record into tracked planning ownership. The migration does not claim unresolved defects are fixed. It gives each finding a stable identifie` with code, documentation, and validation evidence."
       },
       {
         "checked": false,
@@ -1548,7 +1548,7 @@
     "platform": "windows",
     "difficulty": "high",
     "goal": "Validate repository delivery convergence after extracted work closes.",
-    "description": "Scope: docs/plan Manifest.json, Checkpoints.json, Evidence.md, repository search results, and validation commands. Context: final validation must prove the Better Plan workspace remains the only current planning root and all extracted source-specific work has closure evidence. Target: REQ-001 through REQ-005 are proven by manifest validation, audit gate evidence, and completed implementation nodes. Design Considerations: run the same checks used by audit Better Plan policy and project-local gates relevant to touched code. Design Value: final validation ties planning structure to actual closure evidence instead of treating formatting as delivery. Constraints & Risks: do not complete this node while any source-specific implementation node remains pending or in_progress.",
+    "description": "Scope: docs/plan Manifest.json, Checkpoints.json, Evidence.md, repository search results, and validation commands. Context: final validation must prove the Better Plan workspace remains the only current planning root and all extracted source-specific work has closure evidence. Target: REQ-001 through REQ-005 are proven by manifest validation, audit gate evidence, and completed implementation nodes. Design Considerations: run the same checks used by external audit Better Plan policy and project-local gates relevant to touched code. Design Value: final validation ties planning structure to actual closure evidence instead of treating formatting as delivery. Constraints & Risks: do not complete this node while any source-specific implementation node remains pending or in_progress.",
     "acceptance_criteria": [
       {
         "checked": false,
@@ -1556,7 +1556,7 @@
       },
       {
         "checked": false,
-        "text": "audit Better Plan policy reports zero findings for this repository."
+        "text": "the repository-local policy gates report zero findings for this repository."
       },
       {
         "checked": false,

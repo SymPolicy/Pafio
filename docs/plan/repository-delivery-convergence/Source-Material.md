@@ -116,7 +116,7 @@ and the required compile-plan handoff gate:
 
 | Path | Entry | Summary |
 |------|-------|---------|
-| `Pafio-Audit-Backlog-2026-04-22.md` | [Pafio Audit Backlog 2026-04-22](./Pafio-Audit-Backlog-2026-04-22.md) | Preserve the 2026-04-22 styio-pafio external audit findings as durable tracked work after removing the ignored temporary defect ledger. |
+| `Pafio-Audit-Backlog-2026-04-22.md` | [Pafio Audit Backlog 2026-04-22](./Pafio-Audit-Backlog-2026-04-22.md) | Preserve the 2026-04-22 pre-split external audit findings as durable tracked work after removing the ignored temporary defect ledger. |
 | `Pafio-Bootstrap-Checklist.md` | [Pafio Bootstrap Checklist](./Pafio-Bootstrap-Checklist.md) | Provide a compact bootstrap summary without duplicating the detailed task definitions and gate commands owned elsewhere. |
 | `Pafio-Future-Direction-and-Styio-Coordination.md` | [Pafio Future Direction and Styio Coordination](./Pafio-Future-Direction-and-Styio-Coordination.md) | Define the next development direction for pafio, the engineering qualities it should optimize for, and the shared coordination expectations that styio developers also need to reference. |
 | `Pafio-Master-Plan.md` | [Pafio Master Plan](./Pafio-Master-Plan.md) | Provide the full delivery map for pafio from bootstrap scaffold to split-ready package manager, while preserving strict decoupling from styio. |
@@ -133,13 +133,13 @@ and the required compile-plan handoff gate:
 ```text
 # Pafio Audit Backlog 2026-04-22
 
-**Purpose:** Preserve the 2026-04-22 `styio-pafio` external audit findings as durable tracked work after removing the ignored temporary defect ledger.
+**Purpose:** Preserve the 2026-04-22 pre-split external audit findings as durable tracked work after removing the ignored temporary defect ledger.
 
 **Last updated:** 2026-05-02
 
 ## Scope
 
-This backlog migrates the ignored `docs/audit/defects/STYIO-PAFIO-2026-04-22.md` record into tracked planning ownership. The migration does not claim unresolved defects are fixed. It gives each finding a stable identifier, owner stream, closure rule, and verification gate so the external `audit` defect queue can be empty while real work remains visible.
+This backlog migrates the ignored `docs/audit/defects/PRE-SPLIT-2026-04-22.md` record into tracked planning ownership. The migration does not claim unresolved defects are fixed. It gives each finding a stable identifier, owner stream, closure rule, and verification gate so the external audit defect queue can be empty while real work remains visible.
 
 ## Closure Rules
 
@@ -147,7 +147,7 @@ This backlog migrates the ignored `docs/audit/defects/STYIO-PAFIO-2026-04-22.md`
 2. Do not close an item with documentation alone when the finding describes unsafe runtime behavior.
 3. Closure evidence must name the code change, regression coverage, data or resource lifecycle proof, and gate command.
 4. If a finding moves to a GitHub issue or downstream platform task, record the durable link before removing it from this backlog.
-5. Run `./scripts/delivery-gate.sh --mode checkpoint` and external `audit gate --repo $HOME/styio-pafio --project styio-pafio` before declaring the backlog migration complete.
+5. Run `./scripts/delivery-gate.sh --mode checkpoint` before declaring the backlog migration complete.
 
 ## Backlog
 
@@ -178,14 +178,14 @@ The temporary defect ledger has been moved here instead of being marked closed. 
 3. `docs/audit/agent-findings/pafio-core-process-2026-04-22.md`
 4. `docs/audit/agent-findings/pafio-subprocess-timeouts-2026-04-22.md`
 
-The durable backlog state is complete only when the ignored `docs/audit/defects/` queue is empty and external `audit` reports zero blocking findings.
+The durable backlog state is complete only when the ignored `docs/audit/defects/` queue is empty and external audit reports zero blocking findings.
 
 ## 2026-05-02 Registry Trust Closure Evidence
 
 - `styio-cloud` owns `/api/pafio-registry-control/v1/descriptor` and returns
   the registry read root, control-plane base URL, and pinned `trust/root.json`
   SHA-256.
-- `styio-pafio` exposes `pafio registry trust import` and
+- `pafio` exposes `pafio registry trust import` and
   `pafio registry trust status --json`; imported pins are stored under
   `PAFIO_HOME/registry/trust/registry-trust.json`.
 - Native remote HTTP registry fetches fail closed when no descriptor pin exists
@@ -243,7 +243,7 @@ Bootstrap planning is only considered closed when:
 
 - `styio_contract_compat_gate` is green
 - `pafio_extractability_gate` is green
-- `styio_pafio_dual_maintenance_gate` has a documented preflight entry point
+- `dual_maintenance_gate` has a documented preflight entry point
 
 ## Known Defect
 
@@ -700,7 +700,7 @@ Deliverables:
 
 Exit gate:
 
-- `styio_pafio_dual_maintenance_gate`
+- `dual_maintenance_gate`
 
 Primary defect:
 
@@ -1824,7 +1824,7 @@ Feeds:
 
 Gate:
 
-- `styio_pafio_dual_maintenance_gate`
+- `dual_maintenance_gate`
 
 Defect:
 
@@ -1906,7 +1906,7 @@ Planning documents describe what to do and in what order. They do not own policy
 | `M0` | 闀滃儚鎬荤翰銆佺淮鎶ゆā鍨嬨�佸崗璋� runbook銆乿erification matrix 鎺ョ嚎 | `docs/plan/Styio-Ecosystem-Delivery-Master-Plan.md` `docs/governance/Docs-Maintenance-Model.md` | `repo-hygiene-check.py` `submit-gate.py --profile pre-push` |
 | `M1` | compat matrix銆乣machine-info`/`compile-plan` round-trip銆乧ompiler failure payload | `docs/styio/Styio-External-Interface-Requirement-Spec.md` | `styio_contract_compat_gate` `styio_compile_plan_contract_gate` |
 | `M2` | manifest/lock銆乺esolver/cache銆乫etch/vendor銆乥uild/run/test銆乸ack/publish銆乼ool lifecycle live | `docs/governance/Pafio-CLI-Contract.md` `docs/operations/Pafio-Verification-Matrix.md` | `pafio_cli_gate` `pafio_manifest_lock_gate` `pafio_workflow_gate` `pafio_registry_server_gate` |
-| `M3` | `project_graph`銆乣toolchain_state`銆乣source_state`銆乨eploy preflight 鎴愪负 `view` 鐨勬�ｅ紡娑堣垂鎺ュ彛 | `docs/governance/Pafio-Entry-Argument-Index.md` `docs/styio/` `docs/for-pafio` consumers | `submit-gate.py --profile pre-push` + cross-repo fixtures |
+| `M3` | `project_graph`銆乣toolchain_state`銆乣source_state`銆乨eploy preflight 鎴愪负 `view` 鐨勬�ｅ紡娑堣垂鎺ュ彛 | `docs/governance/Pafio-Entry-Argument-Index.md` `docs/styio/` repository-local gate consumers | `submit-gate.py --profile pre-push` + cross-repo fixtures |
 | `M4` | module/distribution/agent-support payload 涓� registry/deploy 娣卞寲 | `docs/registry/` `docs/teams/` `docs/plan/Pafio-Workstreams-and-TODOs.md` | distribution/registry/toolchain gates |
 | `M5` | hosted/cloud/mobile support 鎵�闇� environment/distribution contract | `docs/registry/` `docs/operations/` | hosted/distribution fixtures |
 | `M6` | split-ready銆乺elease-grade package manager銆乻ample matrix hardening | `docs/plan/Pafio-Master-Plan.md` `docs/operations/Pafio-Verification-Matrix.md` | full submit/release floor |

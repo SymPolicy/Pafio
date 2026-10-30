@@ -32,5 +32,5 @@ This package is shared by `pafio` and `pafio`.
 - Services must preserve the published method, path, and envelope spelling exactly.
 - The descriptor operation is the public client trust handoff: it exposes the
   read-root URL, control-plane base URL, and pinned `trust/root.json` SHA-256
-  that `styio-pafio` imports before remote registry fetches.
+  that `pafio` imports before remote registry fetches.
 - Generated third-party API-description artifacts are not valid source of truth for this contract.

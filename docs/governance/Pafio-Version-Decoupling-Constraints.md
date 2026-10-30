@@ -123,7 +123,7 @@ The following gates are required before declaring the split architecture ready:
 - `pafio_version_decouple_gate`
 - `pafio_extractability_gate`
 - `styio_contract_compat_gate`
-- `styio_pafio_dual_maintenance_gate`
+- `dual_maintenance_gate`
 
 Each gate must run in an isolated temporary environment and must not reuse developer-local caches.
 

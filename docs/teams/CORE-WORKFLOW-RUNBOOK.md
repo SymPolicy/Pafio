@@ -51,9 +51,11 @@ compiler contracts.
 
 ```bash
 ./scripts/checkpoint-health.sh
-./scripts/delivery-gate.sh --skip-audit --skip-health
+./scripts/delivery-gate.sh --skip-health
 ctest --test-dir build-codex -R pafio_installer_bootstrap_smoke --output-on-failure
 python3 tests/unit/test_registry_v2.py
+python3 tests/unit/test_docs_audit.py  # covers defect queue states, wrong-type roots, symlink rejection
+python3 tests/unit/test_dependency_policy_check.py  # covers allowlist, keyword allowlist incl. SOURCE_DIR, per-dep license lines
 ./build-codex/bin/pafio_native_tests --gtest_filter='SecurityTests.*'
 ./build-codex/bin/pafio_native_tests --gtest_filter='ToolInstallTests.*'
 ```

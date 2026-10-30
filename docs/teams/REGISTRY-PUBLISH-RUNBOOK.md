@@ -45,7 +45,7 @@ contracts, or `pafio` server control-plane behavior.
 ./scripts/checkpoint-health.sh
 python3 ./tests/interop/registry-control-plane-contract-gate.py
 python3 ./tests/interop/native-contract-source-gate.py
-./scripts/delivery-gate.sh --skip-audit --skip-health
+./scripts/delivery-gate.sh --skip-health
 ```
 
 ## Cross-Team Dependencies

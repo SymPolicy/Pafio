@@ -13,7 +13,6 @@ For fresh-machine bootstrap and the common build/test flow, start with [../docs/
 - docs/process gate
 - repository hygiene gate
 - team runbook maintenance gate
-- external `audit` gate
 - checkpoint health gate
 - delivery gate
 - curl-pipe installer for installing the `pafio` binary and managed `styio` shim into a PATH directory

@@ -132,7 +132,6 @@ jobs:
           --mode push
           --base "${{ steps.ci_refs.outputs.base_ref }}"
           --range "${{ steps.ci_refs.outputs.range }}"
-          --skip-audit
           --skip-health
 
       - name: Run unified submit gate

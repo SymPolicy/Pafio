@@ -1,0 +1,23 @@
+{
+  "approved_dependencies": {
+    "tomlplusplus": {
+      "source_prefix": "https://github.com/marzer/tomlplusplus/",
+      "scope": "build",
+      "sha256": "8517f65938a4faae9ccf8ebb36631a38c1cadfb5efa85d9a72e15b9e97d25155",
+      "license": "MIT"
+    },
+    "nlohmann_json": {
+      "source_prefix": "https://github.com/nlohmann/json/",
+      "scope": "build",
+      "sha256": "d6c65aca6b1ed68e7a182f4757257b107ae403032760ed6ef121c9d55e81757d",
+      "license": "MIT"
+    },
+    "googletest": {
+      "source_prefix": "https://github.com/google/googletest/",
+      "scope": "test",
+      "sha256": "edd885a1ab32b6999515a880f669efadb80b3f880215f315985fa3f6eca7c4d3",
+      "license": "BSD-3-Clause"
+    }
+  },
+  "project_license": "Apache-2.0"
+}

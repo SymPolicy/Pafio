@@ -28,6 +28,7 @@ class SubmitGateTests(unittest.TestCase):
             [
                 "quality_no_binaries",
                 "quality_repo_hygiene",
+                "quality_docs_governance",
                 "quality_ecosystem_cli_docs",
                 "regression_native_check",
                 "regression_extractability",
@@ -154,5 +155,5 @@ class SubmitGateTests(unittest.TestCase):
                     )
         payload = json.loads(stdout.getvalue())
         self.assertEqual(rc, 0)
-        self.assertEqual(run_step_mock.call_count, 7)
+        self.assertEqual(run_step_mock.call_count, 8)
         self.assertTrue(any("disabled by default" in warning for warning in payload["warnings"]))

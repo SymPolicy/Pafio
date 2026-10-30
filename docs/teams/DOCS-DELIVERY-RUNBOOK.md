@@ -17,30 +17,31 @@ without redefining planning, registry, compiler, or service contract semantics.
 3. `LICENSE-POLICY.md`
 4. `DEPENDENCY-USAGE.md`
 5. `.github/workflows/local-ci-gate.yml`
-6. `docs/`
-7. `docs/external/`
-8. `docs/audit/`
-9. `scripts/audit-gate.sh`
-10. `scripts/docs-index.py`
-11. `scripts/docs-lifecycle.py`
-12. `scripts/docs-audit.py`
-13. `scripts/repo-hygiene-gate.py`
-14. `scripts/team-docs-gate.py`
-15. `scripts/docs-gate.sh`
-16. `scripts/delivery-gate.sh`
-17. `scripts/ecosystem-cli-doc-gate.py`
-18. `scripts/install-pafio.sh`
-19. `scripts/repo-hygiene-check.py`
-20. `scripts/submit-gate.py`
-21. `scripts/perf-gate.py`
-22. `scripts/delivery-gate.py`
+6. `.github/workflows/audit.yml`
+7. `docs/`
+8. `docs/external/`
+9. `docs/audit/`
+10. `scripts/dependency-policy-check.py`
+11. `scripts/docs-index.py`
+12. `scripts/docs-lifecycle.py`
+13. `scripts/docs-audit.py`
+14. `scripts/repo-hygiene-gate.py`
+15. `scripts/team-docs-gate.py`
+16. `scripts/docs-gate.sh`
+17. `scripts/delivery-gate.sh`
+18. `scripts/ecosystem-cli-doc-gate.py`
+19. `scripts/install-pafio.sh`
+20. `scripts/repo-hygiene-check.py`
+21. `scripts/submit-gate.py`
+22. `scripts/perf-gate.py`
+23. `scripts/delivery-gate.py`
 
 ## Daily Workflow
 
 1. Keep repository-level build, docs, and delivery entrypoints consistent.
 2. Regenerate `INDEX.md` files after docs-tree changes.
 3. Keep workflow docs in `docs/assets/workflow/` aligned with the actual scripts.
-4. Keep the shared `styio-pafio` / `styio-nightly` toolchain baseline explicit in docs and CI: Debian 13, LLVM 18.1.x, CMake/CTest 3.31.6, and Python 3.13.5.
+4. Keep the shared `styio` / `styio-nightly` toolchain baseline explicit in docs and CI: Debian 13, LLVM 18.1.x, CMake/CTest 3.31.6, and Python 3.13.5.
 5. Keep the official command grammar consistent across docs: `pafio use <mode>`, `pafio set <subject> as <value>`, `pafio sync`, `pafio project-graph --json`, `pafio install styio@latest`, `pafio cloud status --json`, `pafio cloud plan --json`, and `pafio tool status --json`.
 6. Keep repo entry docs and closure docs aligned: `README.md`, `docs/BUILD-AND-DEV-ENV.md`, `docs/plan/repository-delivery-convergence/Evidence.md`, `docs/plan/repository-delivery-convergence/Evidence.md`, `docs/plan/repository-delivery-convergence/Evidence.md`, `docs/operations/Pafio-Verification-Matrix.md`, `docs/operations/Pafio-Cloud-Compile-Stress-Runbook.md`, and `docs/operations/Pafio-Repo-Split-Runbook.md` must agree on wrapper-vs-binary entrypoints, current implementation status, and root-relative command paths.
 7. When `docs/governance/Pafio-CLI-Contract.md` changes source-build wording, run the cross-repo ecosystem CLI doc gate from `styio-nightly` and keep its fixed source-build needles exact.
@@ -48,17 +49,33 @@ without redefining planning, registry, compiler, or service contract semantics.
 9. Keep sibling-repository handoff docs under `docs/external/for-*` or explicit planning handoff docs; do not recreate root-level external handoff collections.
 10. Keep `docs/plan/Pafio-Platform-Migration-Handoff.md` aligned with downstream `styio-platform` docs when server/platform ownership moves.
 11. Keep `docs/governance/Pafio-Local-Offline-Package-Contract.md` aligned with README and registry docs when offline package or local import/export wording changes.
-12. Keep top-level Apache-2.0 license, source-distribution policy, and dependency usage-boundary evidence aligned with `audit`.
+12. Keep top-level Apache-2.0 license, source-distribution policy, and dependency usage-boundary evidence aligned with the repository-local policy gates.
 13. Treat regenerated `docs/audit/` reports as evidence snapshots: update ownership metadata and indexes when they move, but leave defect status changes to code/test gate evidence.
-14. Keep [../specs/TECHNOLOGY-COMPONENT-INVENTORY.md](../specs/TECHNOLOGY-COMPONENT-INVENTORY.md) aligned with `audit` whenever the technology stack, internal components, open-source components, dependency manifests, Apache-2.0 evidence, or commercial-risk boundaries change.
+14. Keep [../specs/TECHNOLOGY-COMPONENT-INVENTORY.md](../specs/TECHNOLOGY-COMPONENT-INVENTORY.md) aligned with the policy gates whenever the technology stack, internal components, open-source components, dependency manifests, Apache-2.0 evidence, or commercial-risk boundaries change.
 15. For registry-management documentation changes, require explicit coverage of publish, verify, mirror handoff, offline behavior, cache reuse, and public/private security boundary before closing docs/audit work.
 16. Maintain GitHub merge gates through Rulesets rather than legacy classic branch protection; audit effective branch rules when required status-check governance changes, and keep `local-ci-gate` as the pafio repository's own CI status-check surface rather than treating it as the shared upstream `styio-ci-gate` ecosystem resource gate.
 17. Keep `local-ci-gate` sibling checkouts on downstream `nightly` branches when the downstream repositories have collapsed their branch set to `nightly`.
 18. Keep `docs/governance/Pafio-Entry-Argument-Index.md`, `docs/governance/Docs-Maintenance-Model.md`, and `docs/operations/Pafio-Verification-Matrix.md` aligned whenever delivery scripts or submit gates change.
 19. Keep `scripts/delivery-gate.sh` as the delivery-facing entrypoint with a
-    safe default. The no-argument command must cover dirty worktree changes
+    safe default. It composes the repository hygiene, docs and checkpoint
+    health checks; the policy and defect-queue surfaces run in the `audit`
+    workflow and in `scripts/docs-audit.py`, which also validates the ignored
+    `docs/audit/defects/` queue from the filesystem: every markdown record
+    must declare exactly one recognized status, open or malformed records
+    block, and closed records require a non-empty `**Closure evidence:**`
+    field, and symlinks anywhere in the queue — including a
+    symlinked queue root — fail closed, a queue root that exists but is
+    not a directory is rejected rather than treated as absent, and special
+    files (FIFOs, sockets) are rejected before any record is read. The no-argument command must cover dirty worktree changes
     and PR push ranges, infer the fork-parent base when possible, and fail
-    when it cannot infer a delivery base.
+    when it cannot infer a delivery base. `docs/plan` workspace documents
+    carry the standard `**Purpose:**` / `**Last updated:**` header pair like
+    every other docs page. `scripts/dependency-policy-check.py` scans every
+    tracked `CMakeLists.txt` and `*.cmake` input against
+    `scripts/dependency-policy.json`, which declares the project SPDX license,
+    per-dependency source prefix, scope, pin hash, and license identifier;
+    `DEPENDENCY-USAGE.md` must carry each dependency name and its SPDX
+    license on the same entry line.
 20. Keep `staged` checks as low-level hook/debugging tools only; do not use an
     empty staged diff as evidence that a PR or local delivery is ready.
 
@@ -72,7 +89,6 @@ without redefining planning, registry, compiler, or service contract semantics.
 
 ```bash
 ./scripts/docs-gate.sh
-./scripts/audit-gate.sh
 python3 scripts/submit-gate.py --profile ci --json
 python3 scripts/perf-gate.py
 python3 scripts/repo-hygiene-check.py --mode tracked

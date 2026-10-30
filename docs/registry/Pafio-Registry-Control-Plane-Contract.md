@@ -66,7 +66,7 @@ That server binds:
 
 It is the current executable reference for the contract package. It does not yet represent the final hosted multi-tenant service shape.
 
-The descriptor response is the platform-owned trust handoff to `styio-pafio`.
+The descriptor response is the platform-owned trust handoff to `pafio`.
 It names the registry read root, the control-plane base URL, and the SHA-256 of
 `trust/root.json`; public clients import that descriptor before remote fetches
 instead of trusting self-advertised registry metadata alone.

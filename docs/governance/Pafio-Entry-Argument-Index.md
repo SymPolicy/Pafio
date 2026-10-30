@@ -1029,7 +1029,7 @@ Arguments:
 
 Behavior summary:
 
-- fetches source from `PAFIO_STYIO_SOURCE_ORIGIN` when set, otherwise from `https://github.com/SymPolicy/styio.git`
+- fetches source from `PAFIO_STYIO_SOURCE_ORIGIN` when set, otherwise from `https://github.com/SymPolicy/Styio.git`
 - uses `PAFIO_STYIO_SOURCE_REF` when set; otherwise `latest` maps to `main`
 - builds the `styio` target through the source-build path
 - validates the resulting compiler through `styio --machine-info=json` and the compatibility matrix
@@ -1340,7 +1340,7 @@ Behavior:
 Canonical form:
 
 ```text
-./scripts/delivery-gate.sh [--mode <auto|checkpoint|staged|push>] [--base <rev>] [--range <rev-range>] [--audit-bin <path>] [--skip-health]
+./scripts/delivery-gate.sh [--mode <auto|checkpoint|staged|push>] [--base <rev>] [--range <rev-range>] [--skip-health]
 ```
 
 Arguments:
@@ -1359,9 +1359,6 @@ Arguments:
   - optional
   - explicit revision range for push-mode repository hygiene validation
   - defaults to `<base>..HEAD` when omitted in push mode
-- `--audit-bin <path>`
-  - optional
-  - released `audit` entrypoint used by the local audit step
 - `--skip-health`
   - optional
   - skips health checks that are already covered by a prior full run
@@ -1547,7 +1544,7 @@ Arguments:
 - `[target-dir]`
   - optional
   - copy destination
-  - defaults to `$HOME/DevSpace/Unka-Malloc/styio-pafio`
+  - defaults to the sibling pre-split repository checkout
 
 ## 6. Public Environment Variables
 

@@ -93,7 +93,7 @@ Objective:
 Commands:
 
 ```text
-./scripts/styio-interface-gate.py --styio-bin <styio-workspace>/build-codex/bin/styio --pafio-bin ./build-codex/bin/pafio --require-compile-plan --json
+./scripts/styio-interface-gate.py --pafio-bin ./build-codex/bin/pafio --styio-bin <styio-workspace>/build-codex/bin/styio --require-compile-plan --json
 ```
 
 Pass conditions:
@@ -517,7 +517,7 @@ Defect:
 
 - blocked on future compiler contract publication
 
-### `styio_pafio_dual_maintenance_gate`
+### `dual_maintenance_gate`
 
 Objective:
 

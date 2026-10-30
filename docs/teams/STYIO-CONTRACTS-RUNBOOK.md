@@ -37,7 +37,7 @@ without letting any path drift into undocumented behavior.
 9. Keep the `pafio` cloud-plan submit target aligned with `styio-platform`'s `submitJob` contract route, currently `POST /api/styio-platform/v1/jobs`.
 10. Keep `contracts/registry-control-plane/v1/` byte-aligned with the platform copy when only README/example governance wording changes; if JSON route shape changes, coordinate both repositories before claiming compatibility.
 11. Keep `registryDescriptor` as the client/server trust handoff operation:
-    `styio-platform` owns descriptor issuance and `styio-pafio` owns descriptor
+    `styio-platform` owns descriptor issuance and `pafio` owns descriptor
     import, pin storage, and remote fetch enforcement.
 
 ## Change Classes
@@ -50,7 +50,7 @@ without letting any path drift into undocumented behavior.
 
 ```bash
 ./scripts/checkpoint-health.sh --styio-bin /absolute/path/to/styio
-python3 scripts/styio-interface-gate.py --styio-bin /absolute/path/to/styio --pafio-bin ./build-codex/bin/pafio --require-compile-plan --json
+python3 scripts/styio-interface-gate.py --pafio-bin ./build-codex/bin/pafio --styio-bin /absolute/path/to/styio --require-compile-plan --json
 python3 tests/interop/registry-control-plane-contract-gate.py
 ```
 

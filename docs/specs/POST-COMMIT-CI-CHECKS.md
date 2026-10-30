@@ -68,7 +68,7 @@ Cross-repository gates must use the same workspace checkout set that will be vis
 
 ## Delivery Ruleset Governance
 
-Required GitHub merge gates are maintained through GitHub Rulesets, not legacy classic branch protection. Protected downstream branches should require `audit` and `local-ci-gate` as the stable repository-local status-check surface, with `audit` kept as the policy workflow check where the upstream ruleset expects it.
+Required GitHub merge gates are maintained through GitHub Rulesets, not legacy classic branch protection. Protected downstream branches should require `audit` and `local-ci-gate` as the stable repository-local status-check surface. `audit` covers the Python policy and defect-queue gates; `local-ci-gate` runs the full delivery composition including pull requests. Both are repository-local; no external audit framework is involved.
 
 Gate audits must inspect effective branch rules, for example:
 

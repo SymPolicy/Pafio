@@ -1,5 +1,8 @@
 # Requirements
 
+**Purpose:** Requirements for consolidating planning into a single docs/plan workspace.
+**Last updated:** 2026-10-31
+
 ## Product Problem
 
 `SymPolicy/Pafio` had planning material split across old planning directories and document names. The current requirement is a single Better Plan workspace under `docs/plan` that captures open work without preserving duplicate planning roots.
