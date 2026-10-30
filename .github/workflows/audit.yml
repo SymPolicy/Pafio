@@ -52,6 +52,7 @@ jobs:
         run: |
           python3 scripts/repo-hygiene-check.py --repo-root . --mode tracked
           python3 scripts/check_no_binaries.py --repo-root . --mode tracked
+          python3 scripts/policy-check.py --repo-root .
           python3 scripts/docs-audit.py
           python3 scripts/ecosystem-cli-doc-gate.py --json
           python3 scripts/dependency-policy-check.py --repo-root .

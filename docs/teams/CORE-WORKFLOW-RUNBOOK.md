@@ -55,6 +55,8 @@ compiler contracts.
 ctest --test-dir build-codex -R pafio_installer_bootstrap_smoke --output-on-failure
 python3 tests/unit/test_registry_v2.py
 python3 tests/unit/test_docs_audit.py  # covers defect queue states, wrong-type roots, symlink rejection
+python3 tests/unit/test_perf_gate.py     # env-scrubbed: CI marker removed for baseline-write coverage
+python3 tests/unit/test_policy_check.py    # CI authority, authZ defaults, transport, container, artifact controls
 python3 tests/unit/test_dependency_policy_check.py  # covers allowlist, keyword allowlist incl. SOURCE_DIR, per-dep license lines
 ./build-codex/bin/pafio_native_tests --gtest_filter='SecurityTests.*'
 ./build-codex/bin/pafio_native_tests --gtest_filter='ToolInstallTests.*'

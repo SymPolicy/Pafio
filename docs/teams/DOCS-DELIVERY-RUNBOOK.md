@@ -70,7 +70,9 @@ without redefining planning, registry, compiler, or service contract semantics.
     and PR push ranges, infer the fork-parent base when possible, and fail
     when it cannot infer a delivery base. `docs/plan` workspace documents
     carry the standard `**Purpose:**` / `**Last updated:**` header pair like
-    every other docs page. `scripts/dependency-policy-check.py` scans every
+    every other docs page. `scripts/policy-check.py` enforces the CI-authority, authorization-defaults,
+    transport, container-runtime, and release-artifact policy domains;
+    `scripts/dependency-policy-check.py` scans every
     tracked `CMakeLists.txt` and `*.cmake` input against
     `scripts/dependency-policy.json`, which declares the project SPDX license,
     per-dependency source prefix, scope, pin hash, and license identifier;

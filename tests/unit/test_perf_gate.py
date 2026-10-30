@@ -55,9 +55,11 @@ class PerfGateTests(unittest.TestCase):
     def test_update_baseline_writes_file(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             baseline = pathlib.Path(tmp_dir) / "baseline.json"
-            with mock.patch.object(perf_gate, "build_benchmarks", return_value=[mock.Mock(name="bench")]):
-                with mock.patch.object(perf_gate, "run_benchmark", return_value=self._sample_result(42.0)):
-                    rc = perf_gate.main(["--baseline", str(baseline), "--update-baseline", "--json"])
+            with mock.patch.dict(os.environ, clear=False) as env:
+                env.pop("CI", None)
+                with mock.patch.object(perf_gate, "build_benchmarks", return_value=[mock.Mock(name="bench")]):
+                    with mock.patch.object(perf_gate, "run_benchmark", return_value=self._sample_result(42.0)):
+                        rc = perf_gate.main(["--baseline", str(baseline), "--update-baseline", "--json"])
             payload = json.loads(baseline.read_text(encoding="utf-8"))
         self.assertEqual(rc, 0)
         self.assertEqual(payload["version"], 1)
