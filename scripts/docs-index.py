@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import os
 import re
+import subprocess
 import sys
 from dataclasses import dataclass
 from datetime import date
@@ -83,9 +84,31 @@ def extract_purpose(path: Path) -> str:
     return compact_plain(match.group(1)) if match else f"Inventory entry for `{path.name}`."
 
 
+def tracked_files(base: Path) -> set[str]:
+    proc = subprocess.run(
+        ["git", "ls-files", "-z", "--", base.relative_to(ROOT).as_posix()],
+        cwd=ROOT, capture_output=True,
+    )
+    if proc.returncode != 0:
+        raise RuntimeError(
+            f"git ls-files failed for {base.relative_to(ROOT).as_posix()}: "
+            "tracked-file boundary unavailable"
+        )
+    return {p for p in proc.stdout.decode().split("\0") if p}
+
+
 def extract_last_updated(path: Path) -> str:
     match = LAST_UPDATED_RE.search(read_text(path))
-    return match.group(1) if match else TODAY
+    if match:
+        return match.group(1)
+    proc = subprocess.run(
+        ["git", "log", "-1", "--format=%cs", "--",
+         path.resolve().relative_to(ROOT).as_posix()],
+        cwd=ROOT, capture_output=True, text=True,
+    )
+    if proc.returncode == 0 and proc.stdout.strip():
+        return proc.stdout.strip()
+    return TODAY
 
 
 def rel_link(from_dir: Path, target: Path) -> str:
@@ -103,13 +126,23 @@ def choose_dir_entry(path: Path) -> Path | None:
 
 def build_entries(base: Path) -> list[Entry]:
     entries: list[Entry] = []
-    children = [child for child in base.iterdir() if child.name not in {"README.md", "INDEX.md"} and not child.name.startswith(".")]
+    tracked = tracked_files(base)
+    children = [
+        child for child in base.iterdir()
+        if child.name not in {"README.md", "INDEX.md"} and not child.name.startswith(".")
+        and (child.is_dir() or child.relative_to(ROOT).as_posix() in tracked)
+    ]
     for child in sorted(children, key=lambda item: (0 if item.is_dir() else 1, item.name.lower())):
         if child.is_dir():
             entry_target = choose_dir_entry(child)
-            if entry_target is None:
+            if entry_target is None or entry_target.relative_to(ROOT).as_posix() not in tracked:
                 continue
-            summary_source = child / "README.md" if (child / "README.md").exists() else entry_target
+            readme = child / "README.md"
+            summary_source = (
+                readme
+                if readme.exists() and readme.relative_to(ROOT).as_posix() in tracked
+                else entry_target
+            )
             entries.append(
                 Entry(
                     rel_path=f"{child.name}/",
@@ -199,7 +232,11 @@ def main() -> int:
     group.add_argument("--write", action="store_true")
     group.add_argument("--check", action="store_true")
     args = parser.parse_args()
-    return sync_indexes(check=args.check)
+    try:
+        return sync_indexes(check=args.check)
+    except RuntimeError as exc:
+        print(f"docs-index: {exc}", file=sys.stderr)
+        return 1
 
 
 if __name__ == "__main__":

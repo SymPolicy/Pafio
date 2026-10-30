@@ -72,8 +72,8 @@ without redefining planning, registry, compiler, or service contract semantics.
     carry the standard `**Purpose:**` / `**Last updated:**` header pair like
     every other docs page. `scripts/policy-check.py` enforces the CI-authority, authorization-defaults,
     transport, container-runtime, and release-artifact policy domains;
-    `scripts/docs-index.py` regenerates collection indexes deterministically from tracked
-    `Last updated` metadata; `scripts/dependency-policy-check.py` scans every
+    `scripts/docs-index.py` regenerates collection indexes deterministically from tracked files
+    and their `Last updated` metadata (unstamped files fall back to their last git commit date); `scripts/dependency-policy-check.py` scans every
     tracked `CMakeLists.txt` and `*.cmake` input against
     `scripts/dependency-policy.json`, which declares the project SPDX license,
     per-dependency source prefix, scope, pin hash, and license identifier;
