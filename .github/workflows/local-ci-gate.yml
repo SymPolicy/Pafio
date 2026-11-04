@@ -29,6 +29,7 @@ jobs:
         with:
           fetch-depth: 0
           path: pafio
+          persist-credentials: false
 
       - name: Resolve sibling checkout ref
         id: sibling-ref
@@ -40,8 +41,8 @@ jobs:
           fi
 
           for ref in "$requested" stable nightly; do
-            if git ls-remote --exit-code --heads https://github.com/Unka-Malloc/styio-nightly.git "$ref" >/dev/null 2>&1 \
-              && git ls-remote --exit-code --heads https://github.com/Unka-Malloc/styio-view.git "$ref" >/dev/null 2>&1; then
+            if git ls-remote --exit-code --heads https://github.com/SymPolicy/Styio.git "$ref" >/dev/null 2>&1 \
+              && git ls-remote --exit-code --heads https://github.com/SymPolicy/Vityo.git "$ref" >/dev/null 2>&1; then
               echo "ref=$ref" >> "$GITHUB_OUTPUT"
               exit 0
             fi
@@ -50,19 +51,21 @@ jobs:
           echo "No common sibling checkout ref found for '$requested' or fallbacks 'stable'/'nightly'." >&2
           exit 1
 
-      - name: Checkout styio-nightly sibling repository
+      - name: Checkout Styio sibling repository
         uses: actions/checkout@v5
         with:
-          repository: Unka-Malloc/styio-nightly
+          repository: SymPolicy/Styio
           ref: ${{ steps.sibling-ref.outputs.ref }}
           path: styio-nightly
+          persist-credentials: false
 
-      - name: Checkout styio-view sibling repository
+      - name: Checkout Vityo sibling repository
         uses: actions/checkout@v5
         with:
-          repository: Unka-Malloc/styio-view
+          repository: SymPolicy/Vityo
           ref: ${{ steps.sibling-ref.outputs.ref }}
           path: styio-view
+          persist-credentials: false
 
       - name: Set up standardized Python
         uses: actions/setup-python@v6
