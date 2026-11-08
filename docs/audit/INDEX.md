@@ -1,6 +1,6 @@
 # Audit Index
 
-**Purpose:** Provide the generated inventory for `docs/audit/`; transient defect records live in ignored `docs/audit/defects/` and are enforced by external audit runs.
+**Purpose:** Provide the generated inventory for `docs/audit/`; defect records live in `docs/audit/defects/` and are enforced by the repository audit gates.
 
 **Last updated:** 2026-04-24
 

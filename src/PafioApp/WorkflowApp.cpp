@@ -1,48 +1,104 @@
 #include "PafioApp/WorkflowApp.hpp"
 
 #include "PafioCLI/Support.hpp"
-#include "PafioCloud/Contract.hpp"
-#include "PafioCloud/Execution.hpp"
-#include "PafioCloud/Job.hpp"
 #include "PafioCompat/Compat.hpp"
+#include "PafioCore/Errors.hpp"
 #include "PafioCore/Process.hpp"
-#include "PafioManifest/Lockfile.hpp"
-#include "PafioManifest/Manifest.hpp"
-#include "PafioResolve/ProjectGraphContract.hpp"
+#include "PafioPlan/CompilePlan.hpp"
+#include "PafioResolve/MetadataContract.hpp"
 #include "PafioResolve/Resolver.hpp"
-#include "PafioTool/Contract.hpp"
-#include "PafioTool/Install.hpp"
-#include "PafioToolchain/SourceBuild.hpp"
-#include "PafioToolchain/State.hpp"
+#include "PafioWorkflow/Dependencies.hpp"
 
 #include <algorithm>
 #include <filesystem>
 #include <iostream>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace fs = std::filesystem;
 using json = nlohmann::json;
 
+namespace
+{
+
+json SyncPayload(
+    const pafio::SyncProjectResult &result,
+    const pafio::WorkflowFlags &flags)
+{
+  return {
+      {"git_packages", result.git_package_count},
+      {"lockfile_mode", result.lockfile_mode},
+      {"lockfile_path", result.graph.lockfile_path.string()},
+      {"locked", flags.locked},
+      {"offline", flags.offline},
+      {"packages", result.package_count},
+      {"registry_packages", result.registry_package_count},
+      {"resolution_path", result.resolution_path.string()},
+      {"status", "succeeded"},
+  };
+}
+
+json TargetPayload(const pafio::BuildPlanResult &plan)
+{
+  return {
+      {"kind", plan.entry_target_kind},
+      {"name", plan.entry_target_name},
+      {"package", plan.entry_package_name},
+      {"package_id", plan.entry_package_id},
+  };
+}
+
+json PlanPayload(const pafio::BuildPlanResult &plan)
+{
+  return {
+      {"artifact_dir", plan.artifact_dir.string()},
+      {"build_root", plan.build_root.string()},
+      {"cache_key", plan.cache_key},
+      {"diag_dir", plan.diag_dir.string()},
+      {"path", plan.plan_path.string()},
+  };
+}
+
+int EmitWorkflowFailure(
+    std::string_view action,
+    const pafio::CommandError &error,
+    bool as_json)
+{
+  return pafio::EmitError(
+      {
+          .category = error.category,
+          .code = error.code,
+          .message = error.message,
+          .command = std::string(action),
+      },
+      as_json);
+}
+
+}  // namespace
+
 namespace pafio
 {
 
-std::optional<std::string> ValidateCompilePlanMaterialization(const BuildPlanResult &plan)
+std::optional<std::string> ValidateCompilePlanMaterialization(
+    const BuildPlanResult &plan)
 {
   std::vector<std::string> missing;
-  const auto require_directory = [&missing](const fs::path &path, const std::string &label) {
-    if (!fs::is_directory(path))
-    {
-      missing.push_back(label + "=" + path.string());
-    }
-  };
-  const auto require_file = [&missing](const fs::path &path, const std::string &label) {
-    if (!fs::is_regular_file(path))
-    {
-      missing.push_back(label + "=" + path.string());
-    }
-  };
+  const auto require_directory =
+      [&missing](const fs::path &path, const std::string &label) {
+        if (!fs::is_directory(path))
+        {
+          missing.push_back(label + "=" + path.string());
+        }
+      };
+  const auto require_file =
+      [&missing](const fs::path &path, const std::string &label) {
+        if (!fs::is_regular_file(path))
+        {
+          missing.push_back(label + "=" + path.string());
+        }
+      };
 
   require_directory(plan.build_root, "outputs.build_root");
   require_directory(plan.artifact_dir, "outputs.artifact_dir");
@@ -62,11 +118,11 @@ std::optional<std::string> ValidateCompilePlanMaterialization(const BuildPlanRes
   return detail;
 }
 
-int HandleProjectGraph(const std::vector<std::string> &args, bool as_json)
+int HandleMetadata(const std::vector<std::string> &args, bool as_json)
 {
   if (args.size() == 1 && args.front() == "--help")
   {
-    return PrintCommandUsage("project-graph");
+    return PrintCommandUsage("metadata");
   }
 
   bool local_json = as_json;
@@ -82,7 +138,10 @@ int HandleProjectGraph(const std::vector<std::string> &args, bool as_json)
     {
       if (++index >= args.size())
       {
-        return EmitError({"UsageError", kExitUsage, "--manifest-path requires a value", "project-graph"}, as_json);
+        return EmitError(
+            {"UsageError", kExitUsage, "--manifest-path requires a value",
+             "metadata"},
+            as_json);
       }
       manifest_path = args[index];
     }
@@ -92,236 +151,75 @@ int HandleProjectGraph(const std::vector<std::string> &args, bool as_json)
     }
     else
     {
-      return EmitError({"UsageError", kExitUsage, "unexpected argument for project-graph: " + args[index], "project-graph"}, as_json);
+      return EmitError(
+          {"UsageError", kExitUsage,
+           "unexpected argument for metadata: " + args[index], "metadata"},
+          as_json);
     }
   }
   if (!local_json)
   {
-    return EmitError({"UsageError", kExitUsage, "project-graph currently requires --json", "project-graph"}, as_json);
+    return EmitError(
+        {"UsageError", kExitUsage, "metadata requires --json", "metadata"},
+        as_json);
+  }
+
+  const ResolveOptions options =
+      BuildResolveOptions(manifest_path, workflow_flags);
+  if (const std::optional<CommandError> lock_error =
+          ValidateLockedPolicy(
+              manifest_path, "metadata", workflow_flags, options);
+      lock_error.has_value())
+  {
+    return EmitError(*lock_error, true);
   }
 
   try
   {
-    (void) LoadManifest(manifest_path);
-    const ProjectToolchainState toolchain_state = LoadProjectToolchainState(manifest_path);
-    const CloudExecutionPolicy cloud_policy = ResolveCloudExecutionPolicy(toolchain_state);
-    const ToolStatusResult tool_status = QueryToolStatus(manifest_path);
-    const ResolveOptions resolve_options = BuildResolveOptions(manifest_path, workflow_flags);
-    if (const auto lock_policy_error = ValidateLockedPolicy(manifest_path, "project-graph", workflow_flags, resolve_options);
-        lock_policy_error.has_value())
-    {
-      return EmitError(*lock_policy_error, as_json);
-    }
-    const ResolvedGraphResult graph = ResolveSingleVersionGraph(manifest_path, resolve_options);
-    return EmitSuccess(
-        BuildProjectGraphPayload(
-            manifest_path,
-            graph,
-            workflow_flags,
-            toolchain_state,
-            cloud_policy,
-            tool_status,
-            resolve_options),
-        true);
+    const ResolvedGraphResult graph =
+        ResolveSingleVersionGraph(manifest_path, options);
+    std::cout
+        << SerializeMetadataV1(
+               BuildMetadataDocument(manifest_path, graph))
+               .dump()
+        << '\n';
+    return kExitSuccess;
   }
   catch (const ValidationError &err)
   {
-    return EmitError({"ManifestError", kExitManifest, err.what(), "project-graph"}, as_json);
+    return EmitError(
+        {"ManifestError", kExitManifest, err.what(), "metadata"}, true);
   }
   catch (const WorkspaceError &err)
   {
-    return EmitError({"WorkspaceError", kExitWorkspace, err.what(), "project-graph"}, as_json);
+    return EmitError(
+        {"WorkspaceError", kExitWorkspace, err.what(), "metadata"}, true);
   }
   catch (const ResolutionError &err)
   {
-    return EmitError({"ResolutionError", kExitResolve, err.what(), "project-graph"}, as_json);
+    return EmitError(
+        {"ResolutionError", kExitResolve, err.what(), "metadata"}, true);
   }
   catch (const FetchError &err)
   {
-    return EmitError({"FetchError", kExitFetch, err.what(), "project-graph"}, as_json);
+    return EmitError(
+        {"FetchError", kExitFetch, err.what(), "metadata"}, true);
   }
   catch (const CacheError &err)
   {
-    return EmitError({"CacheError", kExitCache, err.what(), "project-graph"}, as_json);
+    return EmitError(
+        {"CacheError", kExitCache, err.what(), "metadata"}, true);
   }
-  catch (const ToolError &err)
-  {
-    return EmitError({"ToolError", kExitToolInstall, err.what(), "project-graph"}, as_json);
-  }
-}
-
-int HandleCheck(const std::vector<std::string> &args, bool as_json)
-{
-  if (args.size() == 1 && args.front() == "--help")
-  {
-    return PrintCommandUsage("check");
-  }
-  fs::path manifest_path = "pafio.toml";
-  std::optional<std::string> styio_bin;
-  WorkflowFlags workflow_flags;
-  for (size_t index = 0; index < args.size(); ++index)
-  {
-    if (args[index] == "--manifest-path")
-    {
-      if (++index >= args.size())
-      {
-        return EmitError({"UsageError", kExitUsage, "--manifest-path requires a value", "check"}, as_json);
-      }
-      manifest_path = args[index];
-    }
-    else if (args[index] == "--styio-bin")
-    {
-      if (++index >= args.size())
-      {
-        return EmitError({"UsageError", kExitUsage, "--styio-bin requires a value", "check"}, as_json);
-      }
-      styio_bin = args[index];
-    }
-    else if (ConsumeWorkflowFlag(args[index], workflow_flags))
-    {
-      continue;
-    }
-    else
-    {
-      return EmitError({"UsageError", kExitUsage, "unexpected argument for check: " + args[index], "check"}, as_json);
-    }
-  }
-
-  if (!fs::exists(manifest_path))
-  {
-    return EmitError({"ManifestError", kExitManifest, "manifest not found: " + manifest_path.string(), "check"}, as_json);
-  }
-
-  try
-  {
-    LoadManifest(manifest_path);
-  }
-  catch (const ValidationError &err)
-  {
-    return EmitError({"ManifestError", kExitManifest, err.what(), "check"}, as_json);
-  }
-
-  const ResolveOptions resolve_options = BuildResolveOptions(manifest_path, workflow_flags);
-  if (const auto lock_policy_error = ValidateLockedPolicy(manifest_path, "check", workflow_flags, resolve_options);
-      lock_policy_error.has_value())
-  {
-    return EmitError(*lock_policy_error, as_json);
-  }
-
-  const fs::path lockfile_path = manifest_path.parent_path() / "pafio.lock";
-  LockGenerationResult generated;
-  try
-  {
-    generated = ResolveSingleVersionLockfile(manifest_path, resolve_options);
-  }
-  catch (const ValidationError &err)
-  {
-    return EmitError({"ManifestError", kExitManifest, err.what(), "check"}, as_json);
-  }
-  catch (const WorkspaceError &err)
-  {
-    return EmitError({"WorkspaceError", kExitWorkspace, err.what(), "check"}, as_json);
-  }
-  catch (const ResolutionError &err)
-  {
-    return EmitError({"ResolutionError", kExitResolve, err.what(), "check"}, as_json);
-  }
-  catch (const FetchError &err)
-  {
-    return EmitError({"FetchError", kExitFetch, err.what(), "check"}, as_json);
-  }
-  catch (const CacheError &err)
-  {
-    return EmitError({"CacheError", kExitCache, err.what(), "check"}, as_json);
-  }
-
-  if (fs::exists(lockfile_path))
-  {
-    try
-    {
-      LoadLockfile(lockfile_path);
-      if (ReadFile(lockfile_path) != SerializeLockfileCanonical(generated.lockfile))
-      {
-        return EmitError({"LockfileError", kExitLock, "lockfile is stale: " + lockfile_path.string(), "check"}, as_json);
-      }
-    }
-    catch (const ValidationError &err)
-    {
-      return EmitError({"LockfileError", kExitLock, err.what(), "check"}, as_json);
-    }
-    catch (const std::exception &err)
-    {
-      return EmitError({"LockfileError", kExitLock, err.what(), "check"}, as_json);
-    }
-  }
-
-  json compatibility_payload = nullptr;
-  std::optional<fs::path> compiler;
-  try
-  {
-    compiler = ResolveStyioBinary(styio_bin, manifest_path);
-  }
-  catch (const ToolError &err)
-  {
-    return EmitError({"ToolError", kExitToolInstall, err.what(), "check"}, as_json);
-  }
-  catch (const CacheError &err)
-  {
-    return EmitError({"CacheError", kExitCache, err.what(), "check"}, as_json);
-  }
-
-  if (compiler.has_value())
-  {
-    try
-    {
-      const CompatibilityReport report = CheckCompilerCompatibility(*compiler);
-      compatibility_payload = {
-          {"binary", report.binary.string()},
-          {"compiler_version", report.compiler_version},
-          {"compiler_channel", report.compiler_channel},
-          {"compiler_edition_max", report.compiler_edition_max},
-          {"integration_phase", report.integration_phase},
-          {"supported_compile_plan_versions", report.supported_compile_plan_versions},
-          {"capabilities", report.capabilities},
-      };
-    }
-    catch (const CompilerProbeError &err)
-    {
-      return EmitError({"CompilerSpawnError", kExitCompilerSpawn, err.what(), "check"}, as_json);
-    }
-    catch (const CompatibilityError &err)
-    {
-      return EmitError({"ContractError", kExitContract, err.what(), "check"}, as_json);
-    }
-    catch (const ToolError &err)
-    {
-      return EmitError({"ToolError", kExitToolInstall, err.what(), "check"}, as_json);
-    }
-  }
-
-  return EmitSuccess(
-      {
-          {"command", "check"},
-          {"message", "manifest and lockfile look valid: " + manifest_path.string()},
-          {"manifest_path", fs::absolute(manifest_path).string()},
-          {"lockfile_present", fs::exists(lockfile_path)},
-          {"packages", generated.lockfile.packages.size()},
-          {"compiler_checked", compiler.has_value()},
-          {"locked", workflow_flags.locked},
-          {"offline", workflow_flags.offline},
-          {"styio", compatibility_payload},
-      },
-      as_json);
 }
 
 int HandlePlanCommand(
-    std::string_view command_name,
-    std::string_view intent,
-    bool allow_lib,
-    bool allow_bin,
-    bool allow_test,
+    const std::string_view command_name,
+    const std::string_view intent,
+    const bool allow_lib,
+    const bool allow_bin,
+    const bool allow_test,
     const std::vector<std::string> &args,
-    bool as_json)
+    const bool as_json)
 {
   if (args.size() == 1 && args.front() == "--help")
   {
@@ -330,327 +228,323 @@ int HandlePlanCommand(
 
   ParsedPlanInvocation parsed;
   if (const std::optional<CommandError> parse_error =
-          ParsePlanInvocation(command_name, intent, allow_lib, allow_bin, allow_test, args, parsed);
+          ParsePlanInvocation(
+              command_name, intent, allow_lib, allow_bin, allow_test, args,
+              parsed);
       parse_error.has_value())
   {
     return EmitError(*parse_error, as_json);
   }
 
   BuildPlanRequest &request = parsed.request;
-  std::optional<std::string> &styio_bin = parsed.styio_bin;
-  bool &dry_run = parsed.dry_run;
-  WorkflowFlags &workflow_flags = parsed.workflow_flags;
-  SourceWorkflowFlags &source_flags = parsed.source_flags;
+  request.offline = parsed.workflow_flags.offline;
+  const ResolveOptions resolve_options =
+      BuildResolveOptions(request.manifest_path, parsed.workflow_flags);
+  request.vendor_root = resolve_options.vendor_root;
 
-  ProjectToolchainState toolchain_state;
+  SyncProjectResult sync_result;
   try
   {
-    toolchain_state = LoadProjectToolchainState(request.manifest_path);
-  }
-  catch (const ToolError &err)
-  {
-    return EmitError({"ToolError", kExitToolInstall, err.what(), std::string(command_name)}, as_json);
-  }
-
-  if (request.build_mode.empty())
-  {
-    request.build_mode = toolchain_state.build_mode;
-  }
-  const CloudExecutionPolicy cloud_policy = ResolveCloudExecutionPolicy(toolchain_state);
-  const WorkflowInvocationOptions invocation_options = {
-      .locked = workflow_flags.locked,
-      .offline = workflow_flags.offline,
-      .styio_bin = styio_bin,
-      .allow_fetch = source_flags.allow_fetch,
-      .assume_yes = source_flags.assume_yes,
-      .non_interactive = source_flags.non_interactive,
-      .source_root = source_flags.source_root,
-      .source_revision = source_flags.source_revision,
-  };
-  try
-  {
-    (void) BuildCloudBuildJobRequest(command_name, request, toolchain_state, invocation_options, cloud_policy);
+    sync_result =
+        SyncProjectDependencies(request.manifest_path, resolve_options);
   }
   catch (const ValidationError &err)
   {
-    return EmitError({"UsageError", kExitUsage, std::string(command_name) + " " + std::string(err.what()), std::string(command_name)}, as_json);
+    return EmitWorkflowFailure(
+        command_name,
+        {"ManifestError", kExitManifest, err.what(), std::string(command_name)},
+        as_json);
   }
-
-  const ResolveOptions resolve_options = BuildResolveOptions(request.manifest_path, workflow_flags);
-  if (const auto lock_policy_error = ValidateLockedPolicy(request.manifest_path, command_name, workflow_flags, resolve_options);
-      lock_policy_error.has_value())
+  catch (const WorkspaceError &err)
   {
-    return EmitError(*lock_policy_error, as_json);
+    return EmitWorkflowFailure(
+        command_name,
+        {"WorkspaceError", kExitWorkspace, err.what(),
+         std::string(command_name)},
+        as_json);
   }
-  request.offline = workflow_flags.offline;
-  request.vendor_root = resolve_options.vendor_root;
+  catch (const ResolutionError &err)
+  {
+    return EmitWorkflowFailure(
+        command_name,
+        {"ResolutionError", kExitResolve, err.what(),
+         std::string(command_name)},
+        as_json);
+  }
+  catch (const FetchError &err)
+  {
+    return EmitWorkflowFailure(
+        command_name,
+        {"FetchError", kExitFetch, err.what(), std::string(command_name)},
+        as_json);
+  }
+  catch (const CacheError &err)
+  {
+    return EmitWorkflowFailure(
+        command_name,
+        {"CacheError", kExitCache, err.what(), std::string(command_name)},
+        as_json);
+  }
+  catch (const SyncError &err)
+  {
+    return EmitWorkflowFailure(
+        command_name,
+        {"LockfileError", kExitLock, err.what(), std::string(command_name)},
+        as_json);
+  }
 
   std::optional<fs::path> compiler;
-  json compatibility_payload = nullptr;
-  if (!dry_run)
+  std::optional<CompatibilityReport> compatibility;
+  if (!parsed.dry_run)
   {
-    if (toolchain_state.mode == "binary")
+    compiler = ResolveStyioBinary(parsed.styio_bin);
+    if (!compiler.has_value())
     {
-      try
-      {
-        compiler = ResolveStyioBinary(styio_bin, request.manifest_path);
-      }
-      catch (const ToolError &err)
-      {
-        return EmitError({"ToolError", kExitToolInstall, err.what(), std::string(command_name)}, as_json);
-      }
-      catch (const CacheError &err)
-      {
-        return EmitError({"CacheError", kExitCache, err.what(), std::string(command_name)}, as_json);
-      }
+      return EmitWorkflowFailure(
+          command_name,
+          {"CompilerSpawnError", kExitCompilerSpawn,
+           "Styio was not found; use --styio-bin, PAFIO_STYIO_BIN, or install "
+           "styio on PATH",
+           std::string(command_name)},
+          as_json);
+    }
 
-      if (!compiler.has_value())
+    try
+    {
+      compatibility = CheckCompilerCompatibility(*compiler);
+      if (std::find(
+              compatibility->supported_compile_plan_versions.begin(),
+              compatibility->supported_compile_plan_versions.end(),
+              1) ==
+          compatibility->supported_compile_plan_versions.end())
       {
-        return EmitError(
-            {"UsageError", kExitUsage, std::string(command_name) + " requires --styio-bin <path>, PAFIO_STYIO_BIN, a project toolchain pin, or a managed current compiler unless --dry-run is set", std::string(command_name)},
+        return EmitWorkflowFailure(
+            command_name,
+            {"ContractError", kExitContract,
+             "the discovered Styio does not support compile-plan v1",
+             std::string(command_name)},
             as_json);
       }
-
-      try
-      {
-        const CompatibilityReport report = CheckCompilerCompatibility(*compiler);
-        compatibility_payload = {
-            {"mode", "binary"},
-            {"binary", report.binary.string()},
-            {"compiler_version", report.compiler_version},
-            {"compiler_channel", report.compiler_channel},
-            {"compiler_edition_max", report.compiler_edition_max},
-            {"integration_phase", report.integration_phase},
-            {"supported_compile_plan_versions", report.supported_compile_plan_versions},
-            {"capabilities", report.capabilities},
-        };
-        if (std::find(report.supported_compile_plan_versions.begin(), report.supported_compile_plan_versions.end(), 1) ==
-            report.supported_compile_plan_versions.end())
-        {
-          return EmitError(
-              {"ContractError", kExitContract, "active compatibility matrix does not allow compile-plan v1 " + std::string(command_name) + " for this compiler", std::string(command_name)},
-              as_json);
-        }
-        request.compiler_version = report.compiler_version;
-      }
-      catch (const CompilerProbeError &err)
-      {
-        return EmitError({"CompilerSpawnError", kExitCompilerSpawn, err.what(), std::string(command_name)}, as_json);
-      }
-      catch (const CompatibilityError &err)
-      {
-        return EmitError({"ContractError", kExitContract, err.what(), std::string(command_name)}, as_json);
-      }
-      catch (const ToolError &err)
-      {
-        return EmitError({"ToolError", kExitToolInstall, err.what(), std::string(command_name)}, as_json);
-      }
+      request.compiler_version = compatibility->compiler_version;
+      request.compiler_channel = compatibility->compiler_channel;
     }
-    else
+    catch (const CompilerProbeError &err)
     {
-      try
-      {
-        const SourceBuildResult source_result = EnsureSourceBuiltStyio({
-            .manifest_path = request.manifest_path,
-            .channel = toolchain_state.channel,
-            .build_mode = request.build_mode,
-            .explicit_source_root = source_flags.source_root,
-            .source_revision = source_flags.source_revision.has_value() ? source_flags.source_revision : toolchain_state.source_revision,
-            .allow_fetch = source_flags.allow_fetch,
-            .offline = workflow_flags.offline,
-            .assume_yes = source_flags.assume_yes,
-            .non_interactive = source_flags.non_interactive,
-        });
-        compiler = source_result.compiler_binary;
-        request.compiler_version = source_result.source_revision;
-        compatibility_payload = {
-            {"mode", "build"},
-            {"source_root", source_result.source_root.string()},
-            {"compiler_binary", source_result.compiler_binary.string()},
-            {"source_revision", source_result.source_revision},
-            {"channel", source_result.channel},
-            {"build_mode", source_result.build_mode},
-            {"fetched", source_result.fetched},
-            {"built", source_result.built},
-        };
-        if (toolchain_state.source_revision != source_result.source_revision)
-        {
-          (void) UpdateProjectToolchainState({
-              .manifest_path = request.manifest_path,
-              .source_revision = source_result.source_revision,
-          });
-          toolchain_state.source_revision = source_result.source_revision;
-        }
-      }
-      catch (const ValidationError &err)
-      {
-        return EmitError({"ManifestError", kExitManifest, err.what(), std::string(command_name)}, as_json);
-      }
-      catch (const ToolError &err)
-      {
-        return EmitError({"ToolError", kExitToolInstall, err.what(), std::string(command_name)}, as_json);
-      }
-      catch (const CacheError &err)
-      {
-        return EmitError({"CacheError", kExitCache, err.what(), std::string(command_name)}, as_json);
-      }
+      return EmitWorkflowFailure(
+          command_name,
+          {"CompilerSpawnError", kExitCompilerSpawn, err.what(),
+           std::string(command_name)},
+          as_json);
+    }
+    catch (const CompatibilityError &err)
+    {
+      return EmitWorkflowFailure(
+          command_name,
+          {"ContractError", kExitContract, err.what(),
+           std::string(command_name)},
+          as_json);
     }
   }
 
   BuildPlanResult plan;
   try
   {
-    plan = WriteBuildCompilePlan(request);
+    plan = WriteBuildCompilePlan(request, sync_result.graph);
   }
   catch (const ValidationError &err)
   {
-    return EmitError({"ManifestError", kExitManifest, err.what(), std::string(command_name)}, as_json);
+    return EmitWorkflowFailure(
+        command_name,
+        {"ManifestError", kExitManifest, err.what(), std::string(command_name)},
+        as_json);
   }
   catch (const WorkspaceError &err)
   {
-    return EmitError({"WorkspaceError", kExitWorkspace, err.what(), std::string(command_name)}, as_json);
+    return EmitWorkflowFailure(
+        command_name,
+        {"WorkspaceError", kExitWorkspace, err.what(),
+         std::string(command_name)},
+        as_json);
   }
   catch (const ResolutionError &err)
   {
-    return EmitError({"ResolutionError", kExitResolve, err.what(), std::string(command_name)}, as_json);
+    return EmitWorkflowFailure(
+        command_name,
+        {"ResolutionError", kExitResolve, err.what(),
+         std::string(command_name)},
+        as_json);
   }
   catch (const FetchError &err)
   {
-    return EmitError({"FetchError", kExitFetch, err.what(), std::string(command_name)}, as_json);
+    return EmitWorkflowFailure(
+        command_name,
+        {"FetchError", kExitFetch, err.what(), std::string(command_name)},
+        as_json);
   }
   catch (const CacheError &err)
   {
-    return EmitError({"CacheError", kExitCache, err.what(), std::string(command_name)}, as_json);
+    return EmitWorkflowFailure(
+        command_name,
+        {"CacheError", kExitCache, err.what(), std::string(command_name)},
+        as_json);
   }
   catch (const PlanError &err)
   {
-    return EmitError({"PlanError", kExitPlan, err.what(), std::string(command_name)}, as_json);
+    return EmitWorkflowFailure(
+        command_name,
+        {"PlanError", kExitPlan, err.what(), std::string(command_name)},
+        as_json);
   }
 
-  if (dry_run)
+  const json sync_payload =
+      SyncPayload(sync_result, parsed.workflow_flags);
+  if (parsed.dry_run)
   {
     return EmitSuccess(
         {
+            {"action", std::string(command_name)},
             {"command", std::string(command_name)},
-            {"mode", "dry-run"},
-            {"message", "wrote compile-plan: " + plan.plan_path.string()},
-            {"manifest_path", plan.manifest_path.string()},
-            {"workspace_root", plan.workspace_root.string()},
-            {"toolchain_mode", toolchain_state.mode},
-            {"channel", toolchain_state.channel},
-            {"plan_path", plan.plan_path.string()},
-            {"build_root", plan.build_root.string()},
-            {"artifact_dir", plan.artifact_dir.string()},
-            {"diag_dir", plan.diag_dir.string()},
-            {"cache_key", plan.cache_key},
-            {"packages", plan.package_count},
-            {"entry", {
-                          {"package", plan.entry_package_name},
-                          {"package_id", plan.entry_package_id},
-                          {"target_kind", plan.entry_target_kind},
-                          {"target_name", plan.entry_target_name},
-                      }},
-            {"profile", plan.profile_name},
-            {"build_mode", plan.build_mode},
             {"intent", request.intent},
-            {"locked", workflow_flags.locked},
-            {"offline", workflow_flags.offline},
-            {"cloud", SerializeCloudExecutionPolicy(cloud_policy)},
+            {"message", "wrote compile-plan without executing Styio: " +
+                            plan.plan_path.string()},
+            {"mode", "dry-run"},
+            {"plan", PlanPayload(plan)},
+            {"profile", plan.profile_name},
+            {"status", "planned"},
+            {"styio",
+             {
+                 {"process",
+                  {
+                      {"status", "not_started"},
+                  }},
+                 {"status", "not_run"},
+             }},
+            {"sync", sync_payload},
+            {"target", TargetPayload(plan)},
         },
         as_json);
   }
 
+  ProcessResult process;
   try
   {
-    const ProcessResult result = RunProcess({
-        .program = compiler->string(),
-        .args = {"--compile-plan", plan.plan_path.string()},
+    process = RunProcess({
+        .program = ProcessPathString(*compiler),
+        .args = {"--compile-plan", ProcessPathString(plan.plan_path)},
         .search_path = false,
-        .timeout = kExternalProcessBuildTimeout,
-        .error_context = "compiler compile-plan execution",
+        .timeout = std::nullopt,
+        .error_context = "Styio compile-plan execution",
     });
-    if (result.exit_code == 127)
-    {
-      return EmitError(
-          {"CompilerSpawnError", kExitCompilerSpawn, "compiler failed to execute --compile-plan", std::string(command_name)},
-          as_json);
-    }
-    if (result.exit_code != 0)
-    {
-      const std::string detail = DescribeProcessFailure(result);
-      return EmitError(
-          {"CompilerError", kExitCompiler, "compiler failed for compile-plan " + plan.plan_path.string() + (detail.empty() ? "" : ": " + detail), std::string(command_name)},
-          as_json);
-    }
-    if (!as_json)
-    {
-      if (!result.stdout_text.empty())
-      {
-        std::cout << result.stdout_text;
-      }
-      if (!result.stderr_text.empty())
-      {
-        std::cerr << result.stderr_text;
-      }
-    }
-    if (const std::optional<std::string> materialization_error = ValidateCompilePlanMaterialization(plan);
-        materialization_error.has_value())
-    {
-      return EmitError(
-          {"CompilerError", kExitCompiler, "compiler completed but did not materialize compile-plan outputs: " + *materialization_error, std::string(command_name)},
-          as_json);
-    }
   }
   catch (const std::exception &err)
   {
-    return EmitError({"CompilerSpawnError", kExitCompilerSpawn, err.what(), std::string(command_name)}, as_json);
+    return EmitWorkflowFailure(
+        command_name,
+        {"CompilerSpawnError", kExitCompilerSpawn, err.what(),
+         std::string(command_name)},
+        as_json);
   }
 
+  if (process.exit_code == 127)
+  {
+    return EmitWorkflowFailure(
+        command_name,
+        {"CompilerSpawnError", kExitCompilerSpawn,
+         "Styio failed to execute --compile-plan", std::string(command_name)},
+        as_json);
+  }
+  if (process.exit_code != 0)
+  {
+    const std::string detail = DescribeProcessFailure(process);
+    return EmitWorkflowFailure(
+        command_name,
+        {"CompilerError", kExitCompiler,
+         "Styio failed for compile-plan " + plan.plan_path.string() +
+             (detail.empty() ? "" : ": " + detail),
+         std::string(command_name)},
+        as_json);
+  }
+
+  if (!as_json)
+  {
+    if (!process.stdout_text.empty())
+    {
+      std::cout << process.stdout_text;
+    }
+    if (!process.stderr_text.empty())
+    {
+      std::cerr << process.stderr_text;
+    }
+  }
+  if (const std::optional<std::string> error =
+          ValidateCompilePlanMaterialization(plan);
+      error.has_value())
+  {
+    return EmitWorkflowFailure(
+        command_name,
+        {"CompilerError", kExitCompiler,
+         "Styio completed but did not materialize compile-plan outputs: " +
+             *error,
+         std::string(command_name)},
+        as_json);
+  }
+
+  const json styio_payload = {
+      {"binary", compatibility->binary.string()},
+      {"capabilities", compatibility->capabilities},
+      {"compiler_channel", compatibility->compiler_channel},
+      {"compiler_edition_max", compatibility->compiler_edition_max},
+      {"compiler_version", compatibility->compiler_version},
+      {"integration_phase", compatibility->integration_phase},
+      {"process",
+       {
+           {"exit_code", process.exit_code},
+           {"status", "exited"},
+       }},
+      {"status", "succeeded"},
+      {"supported_compile_plan_versions",
+       compatibility->supported_compile_plan_versions},
+  };
   return EmitSuccess(
       {
+          {"action", std::string(command_name)},
           {"command", std::string(command_name)},
-          {"mode", "execute"},
-          {"message", "completed compiler " + std::string(command_name) + " via compile-plan: " + plan.plan_path.string()},
-          {"manifest_path", plan.manifest_path.string()},
-          {"workspace_root", plan.workspace_root.string()},
-          {"toolchain_mode", toolchain_state.mode},
-          {"channel", toolchain_state.channel},
-          {"plan_path", plan.plan_path.string()},
-          {"build_root", plan.build_root.string()},
-          {"artifact_dir", plan.artifact_dir.string()},
-          {"diag_dir", plan.diag_dir.string()},
-          {"cache_key", plan.cache_key},
-          {"packages", plan.package_count},
-          {"entry", {
-                        {"package", plan.entry_package_name},
-                        {"package_id", plan.entry_package_id},
-                        {"target_kind", plan.entry_target_kind},
-                        {"target_name", plan.entry_target_name},
-                    }},
-          {"profile", plan.profile_name},
-          {"build_mode", plan.build_mode},
           {"intent", request.intent},
-          {"locked", workflow_flags.locked},
-          {"offline", workflow_flags.offline},
-          {"cloud", SerializeCloudExecutionPolicy(cloud_policy)},
-          {"styio", compatibility_payload},
+          {"message", "completed Styio " + std::string(command_name) +
+                          " via compile-plan"},
+          {"mode", "execute"},
+          {"plan", PlanPayload(plan)},
+          {"profile", plan.profile_name},
+          {"status", "succeeded"},
+          {"styio", styio_payload},
+          {"sync", sync_payload},
+          {"target", TargetPayload(plan)},
       },
       as_json);
 }
 
-int HandleBuild(const std::vector<std::string> &args, bool as_json)
+int HandleCheck(const std::vector<std::string> &args, const bool as_json)
 {
-  return HandlePlanCommand("build", "build", true, true, false, args, as_json);
+  return HandlePlanCommand(
+      "check", "check", true, true, true, args, as_json);
 }
 
-int HandleRun(const std::vector<std::string> &args, bool as_json)
+int HandleBuild(const std::vector<std::string> &args, const bool as_json)
 {
-  return HandlePlanCommand("run", "run", false, true, false, args, as_json);
+  return HandlePlanCommand(
+      "build", "build", true, true, false, args, as_json);
 }
 
-int HandleTest(const std::vector<std::string> &args, bool as_json)
+int HandleRun(const std::vector<std::string> &args, const bool as_json)
 {
-  return HandlePlanCommand("test", "test", false, false, true, args, as_json);
+  return HandlePlanCommand(
+      "run", "run", false, true, false, args, as_json);
+}
+
+int HandleTest(const std::vector<std::string> &args, const bool as_json)
+{
+  return HandlePlanCommand(
+      "test", "test", false, false, true, args, as_json);
 }
 
 }  // namespace pafio

@@ -19,12 +19,14 @@ include(FetchContent)
 FetchContent_Declare(
   tomlplusplus
   URL https://github.com/marzer/tomlplusplus/archive/refs/tags/v3.4.0.tar.gz
+  URL_HASH SHA256=8517f65938a4faae9ccf8ebb36631a38c1cadfb5efa85d9a72e15b9e97d25155
   DOWNLOAD_EXTRACT_TIMESTAMP true
 )
 
 FetchContent_Declare(
   nlohmann_json
   URL https://github.com/nlohmann/json/releases/download/v3.11.3/json.tar.xz
+  URL_HASH SHA256=d6c65aca6b1ed68e7a182f4757257b107ae403032760ed6ef121c9d55e81757d
   DOWNLOAD_EXTRACT_TIMESTAMP true
 )
 

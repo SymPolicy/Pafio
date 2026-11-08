@@ -1,26 +1,21 @@
 # Governance Docs
 
-**Purpose:** Hold normative `pafio` rules. These files define stable contracts, policy, and compatibility constraints.
+**Purpose:** Hold the normative product and project-contract rules owned by Pafio.
 
-**Last updated:** 2026-04-24
+**Last updated:** 2026-07-30
 
 ## Scope
 
-- version decoupling rules
-- CLI contract
-- local offline package and import/export contract
-- package-manager compatibility view of cloud execution policy
-- hosted control-plane handoff notes for `pafio`
-- compile-cloud stress handoff notes for `pafio`
-- API engineering standards
-- entrypoint and argument index
-- manifest and lockfile conventions
-- registry repository contract
-- documentation maintenance model
+- terminal command and machine-output contracts
+- manifest v1, lock, resolution, and generated project state
+- deterministic offline and frozen behavior
+- versioned handoff to an external system Styio compiler
+- documentation maintenance rules
 
-Role-specific registry client documents live under `docs/registry/`; server-side control-plane ownership moves to `pafio` and must be linked instead of redefined here.
-Private-boundary rules for auth/account/trust hooks live under `docs/security/` and must not be embedded here as deployment-specific detail.
+Registry client behavior lives under `docs/registry/`. Registry services and
+hosted execution are Styio Platform concerns and are not redefined here.
 
-## Maintenance Rule
+## Precedence
 
-If a governance document and a planning or operational document disagree, the governance document wins.
+When current documents disagree, governance and accepted ADRs take precedence
+over operational summaries and completed plan evidence.

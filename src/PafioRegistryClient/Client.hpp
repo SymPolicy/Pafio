@@ -1,6 +1,7 @@
 #pragma once
 
 #include <filesystem>
+#include <optional>
 #include <string>
 
 namespace pafio
@@ -19,6 +20,7 @@ RegistryMaterializationResult MaterializeRegistryPackage(
     const std::string &registry_root,
     const std::string &package_name,
     const std::string &version,
-    bool offline);
+    bool offline,
+    const std::optional<std::string> &locked_sha256 = std::nullopt);
 
 }  // namespace pafio

@@ -6,9 +6,39 @@
 #include <filesystem>
 #include <optional>
 #include <string>
+#include <vector>
 
 namespace pafio
 {
+
+struct ObservableStaticSnapshotRequest
+{
+  int schema_version = 1;
+  std::vector<std::string> required_capabilities;
+  // Transport input only: names the previous snapshot artifact so Styio can emit
+  // a delta next to the new snapshot. Never part of the cache key.
+  std::optional<std::filesystem::path> parent_snapshot_path;
+};
+
+struct RuntimeObservationSampling
+{
+  int numerator = 1;
+  int denominator = 16;
+  std::optional<long long> seed;
+};
+
+// Styio stage S3 runtime-events request. Pafio only forwards the fields the
+// caller set; Styio applies its own defaults and validates every value.
+struct RuntimeObservationRequest
+{
+  int version = 2;
+  std::optional<std::string> mode;
+  std::vector<std::string> required_capabilities;
+  std::optional<int> lane_capacity;
+  std::optional<int> priority_reserved;
+  std::optional<int> producer_lanes;
+  std::optional<RuntimeObservationSampling> sampling;
+};
 
 struct BuildPlanRequest
 {
@@ -19,10 +49,12 @@ struct BuildPlanRequest
   std::optional<std::string> test_name;
   bool select_lib = false;
   std::string profile = "dev";
-  std::string build_mode = "minimal";
   std::optional<std::string> compiler_version;
+  std::optional<std::string> compiler_channel;
   bool offline = false;
   std::optional<std::filesystem::path> vendor_root;
+  std::optional<ObservableStaticSnapshotRequest> observable_static_snapshot;
+  std::optional<RuntimeObservationRequest> runtime_observation;
 };
 
 struct BuildPlanResult
@@ -40,10 +72,12 @@ struct BuildPlanResult
   std::string entry_target_kind;
   std::string entry_target_name;
   std::string profile_name;
-  std::string build_mode;
   size_t package_count = 0;
 };
 
 BuildPlanResult WriteBuildCompilePlan(const BuildPlanRequest &request);
+BuildPlanResult WriteBuildCompilePlan(
+    const BuildPlanRequest &request,
+    const ResolvedGraphResult &graph);
 
 }  // namespace pafio

@@ -1,12 +1,15 @@
 #include "PafioApp/PackageApp.hpp"
 
 #include "PafioCLI/Support.hpp"
+#include "PafioCore/ContractLexicon.hpp"
 #include "PafioCore/Paths.hpp"
 #include "PafioCore/Process.hpp"
+#include "PafioCore/ToolPaths.hpp"
 #include "PafioManifest/Lockfile.hpp"
 #include "PafioManifest/Manifest.hpp"
 #include "PafioPack/Pack.hpp"
 #include "PafioPublish/Publish.hpp"
+#include "PafioResolve/ResolutionContract.hpp"
 #include "PafioResolve/Resolver.hpp"
 #include "PafioSecurity/RegistrySecurity.hpp"
 #include "PafioSecurity/RegistryTrust.hpp"
@@ -28,15 +31,6 @@ using json = nlohmann::json;
 
 namespace
 {
-
-std::string NormalizeRegistryRootValue(std::string value)
-{
-  while (!value.empty() && value.back() == '/')
-  {
-    value.pop_back();
-  }
-  return value;
-}
 
 bool EndsWith(std::string_view value, std::string_view suffix)
 {
@@ -65,74 +59,10 @@ std::string ProcessFailureText(const pafio::ProcessResult &result)
   return pafio::DescribeProcessFailure(result);
 }
 
-fs::path RegistryV2KeyDirectory()
-{
-  const std::optional<fs::path> pafio_home = pafio::ResolveOptionalPafioHome();
-  if (!pafio_home.has_value())
-  {
-    throw pafio::PublishError("unable to resolve PAFIO_HOME for registry v2 signing keys: set PAFIO_HOME or HOME");
-  }
-  return pafio::RegistryServerRoot(*pafio_home) / "v2" / "keys";
-}
-
-void EnsureRegistryV2KeyDirectory(const fs::path &key_dir)
-{
-  if (fs::exists(key_dir / "keys.json"))
-  {
-    return;
-  }
-
-  const pafio::ProcessResult result = pafio::RunProcess<pafio::PublishError>({
-      .program = "python3",
-      .args = {
-          (pafio::ProjectRoot() / "scripts" / "registry-v2-keygen.py").string(),
-          "--output-dir",
-          key_dir.string(),
-      },
-      .search_path = true,
-      .timeout = pafio::kExternalProcessStepTimeout,
-      .error_context = "registry v2 key generation",
-  });
-  if (result.exit_code != 0)
-  {
-    throw pafio::PublishError("failed to initialize registry v2 signing keys: " + ProcessFailureText(result));
-  }
-}
-
-json RunRegistryV2FilesystemPublish(const fs::path &registry_root, const pafio::PublishResult &candidate)
-{
-  const fs::path key_dir = RegistryV2KeyDirectory();
-  EnsureRegistryV2KeyDirectory(key_dir);
-
-  const pafio::ProcessResult result = pafio::RunProcess<pafio::PublishError>({
-      .program = "python3",
-      .args = {
-          (pafio::ProjectRoot() / "scripts" / "registry-v2-publish.py").string(),
-          "--root",
-          registry_root.string(),
-          "--key-dir",
-          key_dir.string(),
-          "--archive-path",
-          candidate.archive_path.string(),
-          "--publisher-id",
-          "pafio-cli",
-      },
-      .search_path = true,
-      .timeout = pafio::kExternalProcessStepTimeout,
-      .error_context = "registry v2 publish",
-  });
-  if (result.exit_code != 0)
-  {
-    throw pafio::PublishError("registry v2 filesystem publish failed: " + ProcessFailureText(result));
-  }
-
-  return ParseJsonObjectText(result.stdout_text, "registry v2 publish");
-}
-
 std::string RegistryControlPlaneBaseUrl(std::string registry_root)
 {
   constexpr std::string_view kControlPlaneBase = "/api/pafio-registry-control/v1";
-  registry_root = NormalizeRegistryRootValue(std::move(registry_root));
+  registry_root = pafio::NormalizeRegistryRoot(std::move(registry_root));
   if (EndsWith(registry_root, kControlPlaneBase))
   {
     return registry_root;
@@ -146,13 +76,29 @@ json RunRegistryV2ControlPlanePublish(
     const pafio::PublishResult &candidate)
 {
   const std::string control_plane_base = RegistryControlPlaneBaseUrl(registry_root);
-  json request_body = {
-      {"archive_path", candidate.archive_path.string()},
-      {"publisher_id", "pafio-cli"},
-  };
+  const std::string request_body = pafio::BuildRemotePublishRequestJson(candidate);
 
+  // -q must be the first curl argument: it disables the user's curl
+  // configuration, which could otherwise enable redirects and steer the
+  // request body and provider headers to a different host. --max-redirs 0
+  // keeps redirect following off even if another flag re-enables it.
+  // The transfer bound mirrors the external-process step budget, and the
+  // connect bound keeps a dead endpoint from consuming the whole transfer.
+  constexpr std::string_view kPublishConnectTimeoutSeconds{"10"};
+  const std::string publish_max_time_seconds = std::to_string(
+      std::chrono::duration_cast<std::chrono::seconds>(pafio::kExternalProcessStepTimeout).count());
+  const std::string scheme = registry_root.substr(0, registry_root.find("://"));
   std::vector<std::string> args = {
+      "-q",
       "-fsS",
+      "--connect-timeout",
+      std::string(kPublishConnectTimeoutSeconds),
+      "--max-time",
+      publish_max_time_seconds,
+      "--max-redirs",
+      "0",
+      "--proto",
+      "=" + scheme,
       "-X",
       "POST",
       control_plane_base + "/publish",
@@ -164,14 +110,15 @@ json RunRegistryV2ControlPlanePublish(
     args.push_back("-H");
     args.push_back(header);
   }
-  args.push_back("--data");
-  args.push_back(request_body.dump());
+  args.push_back("--data-binary");
+  args.push_back("@-");
 
   const pafio::ProcessResult result = pafio::RunProcess<pafio::PublishError>({
-      .program = "curl",
+      .program = pafio::ResolvedCurlPath(),
       .args = args,
-      .search_path = true,
+      .search_path = false,
       .timeout = pafio::kExternalProcessStepTimeout,
+      .stdin_text = request_body,
       .error_context = "registry control-plane publish request",
   });
   if (result.exit_code != 0)
@@ -205,43 +152,8 @@ json RunRegistryV2ControlPlanePublish(
   return envelope["payload"];
 }
 
-json BuildFilesystemPublishPayload(
-    const pafio::PublishResult &candidate,
-    const fs::path &registry_root,
-    const json &publish_result)
-{
-  return {
-      {"command", "publish"},
-      {"mode", "publish"},
-      {"transport", "filesystem"},
-      {"registry_protocol", "v2"},
-      {"message", "published package into registry v2 static root: " + (registry_root / publish_result.at("index_path").get<std::string>()).string()},
-      {"manifest_path", candidate.manifest_path.string()},
-      {"package_root", candidate.package_root.string()},
-      {"archive_path", candidate.archive_path.string()},
-      {"package", candidate.package_name},
-      {"version", candidate.package_version},
-      {"dependencies", candidate.dependency_count},
-      {"dev_dependencies", candidate.dev_dependency_count},
-      {"registry_root", registry_root.string()},
-      {"registry_config_path", (registry_root / "config.json").string()},
-      {"registry_index_path", (registry_root / publish_result.at("index_path").get<std::string>()).string()},
-      {"registry_artifact_path", (registry_root / publish_result.at("artifact_path").get<std::string>()).string()},
-      {"registry_log_leaf_path", (registry_root / publish_result.at("log_leaf_path").get<std::string>()).string()},
-      {"created_root", publish_result.value("created_root", false)},
-      {"sequence", publish_result.value("sequence", 0)},
-      {"checkpoint_version", publish_result.value("checkpoint_version", 0)},
-      {"snapshot_version", publish_result.value("snapshot_version", 0)},
-      {"timestamp_version", publish_result.value("timestamp_version", 0)},
-      {"sha256", publish_result.at("archive_sha256")},
-      {"size_bytes", publish_result.at("archive_size_bytes")},
-      {"published_at", publish_result.at("published_at")},
-  };
-}
-
 json BuildHttpPublishPayload(
     const pafio::PublishResult &candidate,
-    const std::string &registry_root,
     const pafio::RegistryWriteSecurityDecision &security,
     const json &publish_result)
 {
@@ -249,18 +161,12 @@ json BuildHttpPublishPayload(
       {"command", "publish"},
       {"mode", "publish"},
       {"transport", "http"},
-      {"registry_protocol", "v2"},
-      {"message", "published package through registry v2 control plane: " + RegistryControlPlaneBaseUrl(registry_root) + "/publish"},
-      {"manifest_path", candidate.manifest_path.string()},
-      {"package_root", candidate.package_root.string()},
-      {"archive_path", candidate.archive_path.string()},
+      {"registry_protocol", "pafio-static-registry"},
+      {"message", "published package through the Pafio registry control plane"},
       {"package", candidate.package_name},
       {"version", candidate.package_version},
       {"dependencies", candidate.dependency_count},
       {"dev_dependencies", candidate.dev_dependency_count},
-      {"registry_root", NormalizeRegistryRootValue(registry_root)},
-      {"control_plane_base_url", RegistryControlPlaneBaseUrl(registry_root)},
-      {"publish_endpoint", RegistryControlPlaneBaseUrl(registry_root) + "/publish"},
       {"registry_index_path", publish_result.at("index_path")},
       {"registry_artifact_path", publish_result.at("artifact_path")},
       {"registry_log_leaf_path", publish_result.at("log_leaf_path")},
@@ -276,25 +182,7 @@ json BuildHttpPublishPayload(
       {"size_bytes", publish_result.at("archive_size_bytes")},
       {"published_at", publish_result.at("published_at")},
   };
-  if (security.profile_name.has_value())
-  {
-    payload["registry_profile"] = *security.profile_name;
-  }
   return payload;
-}
-
-void WriteCanonicalLockfile(const fs::path &lockfile_path, const std::string &rendered)
-{
-  std::ofstream out(lockfile_path);
-  if (!out)
-  {
-    throw std::runtime_error("failed to open lockfile for write: " + lockfile_path.string());
-  }
-  out << rendered;
-  if (!out.good())
-  {
-    throw std::runtime_error("failed to write lockfile: " + lockfile_path.string());
-  }
 }
 
 }  // namespace
@@ -613,201 +501,6 @@ int HandleRemove(const std::vector<std::string> &args, bool as_json)
   }
 }
 
-int HandleFetch(const std::vector<std::string> &args, bool as_json)
-{
-  if (args.size() == 1 && args.front() == "--help")
-  {
-    return PrintCommandUsage("fetch");
-  }
-
-  fs::path manifest_path = "pafio.toml";
-  WorkflowFlags workflow_flags;
-  for (size_t index = 0; index < args.size(); ++index)
-  {
-    if (args[index] == "--manifest-path")
-    {
-      if (++index >= args.size())
-      {
-        return EmitError({"UsageError", kExitUsage, "--manifest-path requires a value", "fetch"}, as_json);
-      }
-      manifest_path = args[index];
-    }
-    else if (ConsumeWorkflowFlag(args[index], workflow_flags))
-    {
-      continue;
-    }
-    else
-    {
-      return EmitError({"UsageError", kExitUsage, "unexpected argument for fetch: " + args[index], "fetch"}, as_json);
-    }
-  }
-
-  const ResolveOptions resolve_options = BuildResolveOptions(manifest_path, workflow_flags);
-  if (const auto lock_policy_error = ValidateLockedPolicy(manifest_path, "fetch", workflow_flags, resolve_options);
-      lock_policy_error.has_value())
-  {
-    return EmitError(*lock_policy_error, as_json);
-  }
-
-  try
-  {
-    const FetchCommandResult result = FetchDependencies(manifest_path, resolve_options);
-    return EmitSuccess(
-        {
-            {"command", "fetch"},
-            {"message", "fetched dependency sources for " + std::to_string(result.package_count) + " package(s)"},
-            {"manifest_path", result.manifest_path.string()},
-            {"packages", result.package_count},
-            {"git_packages", result.git_package_count},
-            {"registry_packages", result.registry_package_count},
-            {"locked", workflow_flags.locked},
-            {"offline", workflow_flags.offline},
-        },
-        as_json);
-  }
-  catch (const ValidationError &err)
-  {
-    return EmitError({"ManifestError", kExitManifest, err.what(), "fetch"}, as_json);
-  }
-  catch (const WorkspaceError &err)
-  {
-    return EmitError({"WorkspaceError", kExitWorkspace, err.what(), "fetch"}, as_json);
-  }
-  catch (const ResolutionError &err)
-  {
-    return EmitError({"ResolutionError", kExitResolve, err.what(), "fetch"}, as_json);
-  }
-  catch (const FetchError &err)
-  {
-    return EmitError({"FetchError", kExitFetch, err.what(), "fetch"}, as_json);
-  }
-  catch (const CacheError &err)
-  {
-    return EmitError({"CacheError", kExitCache, err.what(), "fetch"}, as_json);
-  }
-}
-
-int HandleLock(const std::vector<std::string> &args, bool as_json)
-{
-  if (args.size() == 1 && args.front() == "--help")
-  {
-    return PrintCommandUsage("lock");
-  }
-
-  fs::path manifest_path = "pafio.toml";
-  bool check_only = false;
-  WorkflowFlags workflow_flags;
-  for (size_t index = 0; index < args.size(); ++index)
-  {
-    if (args[index] == "--manifest-path")
-    {
-      if (++index >= args.size())
-      {
-        return EmitError({"UsageError", kExitUsage, "--manifest-path requires a value", "lock"}, as_json);
-      }
-      manifest_path = args[index];
-    }
-    else if (args[index] == "--check")
-    {
-      check_only = true;
-    }
-    else if (args[index] == "--offline")
-    {
-      workflow_flags.offline = true;
-    }
-    else
-    {
-      return EmitError({"UsageError", kExitUsage, "unexpected argument for lock: " + args[index], "lock"}, as_json);
-    }
-  }
-
-  if (!fs::exists(manifest_path))
-  {
-    return EmitError({"ManifestError", kExitManifest, "manifest not found: " + manifest_path.string(), "lock"}, as_json);
-  }
-
-  LockGenerationResult generated;
-  const ResolveOptions resolve_options = BuildResolveOptions(manifest_path, workflow_flags);
-  try
-  {
-    generated = ResolveSingleVersionLockfile(manifest_path, resolve_options);
-  }
-  catch (const ValidationError &err)
-  {
-    return EmitError({"ManifestError", kExitManifest, err.what(), "lock"}, as_json);
-  }
-  catch (const WorkspaceError &err)
-  {
-    return EmitError({"WorkspaceError", kExitWorkspace, err.what(), "lock"}, as_json);
-  }
-  catch (const ResolutionError &err)
-  {
-    return EmitError({"ResolutionError", kExitResolve, err.what(), "lock"}, as_json);
-  }
-  catch (const FetchError &err)
-  {
-    return EmitError({"FetchError", kExitFetch, err.what(), "lock"}, as_json);
-  }
-  catch (const CacheError &err)
-  {
-    return EmitError({"CacheError", kExitCache, err.what(), "lock"}, as_json);
-  }
-
-  const std::string rendered = SerializeLockfileCanonical(generated.lockfile);
-  if (check_only)
-  {
-    if (!fs::exists(generated.lockfile_path))
-    {
-      return EmitError({"LockfileError", kExitLock, "lockfile missing: " + generated.lockfile_path.string(), "lock"}, as_json);
-    }
-
-    try
-    {
-      if (ReadFile(generated.lockfile_path) != rendered)
-      {
-        return EmitError({"LockfileError", kExitLock, "lockfile is stale: " + generated.lockfile_path.string(), "lock"}, as_json);
-      }
-    }
-    catch (const std::exception &err)
-    {
-      return EmitError({"LockfileError", kExitLock, err.what(), "lock"}, as_json);
-    }
-
-    return EmitSuccess(
-        {
-            {"command", "lock"},
-            {"message", "lockfile is up to date: " + generated.lockfile_path.string()},
-            {"manifest_path", generated.manifest_path.string()},
-            {"lockfile_path", generated.lockfile_path.string()},
-            {"mode", "check"},
-            {"packages", generated.lockfile.packages.size()},
-            {"offline", workflow_flags.offline},
-        },
-        as_json);
-  }
-
-  try
-  {
-    WriteCanonicalLockfile(generated.lockfile_path, rendered);
-  }
-  catch (const std::exception &err)
-  {
-    return EmitError({"LockfileError", kExitLock, err.what(), "lock"}, as_json);
-  }
-
-  return EmitSuccess(
-      {
-          {"command", "lock"},
-          {"message", "wrote lockfile: " + generated.lockfile_path.string()},
-          {"manifest_path", generated.manifest_path.string()},
-          {"lockfile_path", generated.lockfile_path.string()},
-          {"mode", "write"},
-          {"packages", generated.lockfile.packages.size()},
-          {"offline", workflow_flags.offline},
-      },
-      as_json);
-}
-
 int HandleSync(const std::vector<std::string> &args, bool as_json)
 {
   if (args.size() == 1 && args.front() == "--help")
@@ -837,44 +530,22 @@ int HandleSync(const std::vector<std::string> &args, bool as_json)
     }
   }
 
-  const ResolveOptions resolve_options = BuildResolveOptions(manifest_path, workflow_flags);
-  if (const auto lock_policy_error = ValidateLockedPolicy(manifest_path, "sync", workflow_flags, resolve_options);
-      lock_policy_error.has_value())
-  {
-    return EmitError(*lock_policy_error, as_json);
-  }
-
   try
   {
-    const LockGenerationResult generated = ResolveSingleVersionLockfile(manifest_path, resolve_options);
-    const std::string rendered = SerializeLockfileCanonical(generated.lockfile);
-    std::string lockfile_mode = workflow_flags.locked ? "locked" : "unchanged";
-
-    if (!workflow_flags.locked)
-    {
-      bool write_lockfile = true;
-      if (fs::exists(generated.lockfile_path))
-      {
-        write_lockfile = ReadFile(generated.lockfile_path) != rendered;
-      }
-      if (write_lockfile)
-      {
-        WriteCanonicalLockfile(generated.lockfile_path, rendered);
-        lockfile_mode = "write";
-      }
-    }
-
-    const FetchCommandResult fetched = FetchDependencies(manifest_path, resolve_options);
+    const SyncProjectResult result = SyncProjectDependencies(
+        manifest_path,
+        BuildResolveOptions(manifest_path, workflow_flags));
     return EmitSuccess(
         {
             {"command", "sync"},
-            {"message", "synced project dependencies for " + std::to_string(generated.lockfile.packages.size()) + " package(s)"},
-            {"manifest_path", generated.manifest_path.string()},
-            {"lockfile_path", generated.lockfile_path.string()},
-            {"lockfile_mode", lockfile_mode},
-            {"packages", generated.lockfile.packages.size()},
-            {"git_packages", fetched.git_package_count},
-            {"registry_packages", fetched.registry_package_count},
+            {"message", "synced project dependencies for " + std::to_string(result.package_count) + " package(s)"},
+            {"manifest_path", result.manifest_path.string()},
+            {"lockfile_path", result.graph.lockfile_path.string()},
+            {"resolution_path", result.resolution_path.string()},
+            {"lockfile_mode", result.lockfile_mode},
+            {"packages", result.package_count},
+            {"git_packages", result.git_package_count},
+            {"registry_packages", result.registry_package_count},
             {"locked", workflow_flags.locked},
             {"offline", workflow_flags.offline},
         },
@@ -900,7 +571,7 @@ int HandleSync(const std::vector<std::string> &args, bool as_json)
   {
     return EmitError({"CacheError", kExitCache, err.what(), "sync"}, as_json);
   }
-  catch (const std::exception &err)
+  catch (const SyncError &err)
   {
     return EmitError({"LockfileError", kExitLock, err.what(), "sync"}, as_json);
   }
@@ -1177,10 +848,8 @@ int HandlePublish(const std::vector<std::string> &args, bool as_json)
 
   PublishRequest request;
   std::optional<std::string> registry_root;
-  std::optional<std::string> registry_profile;
-  std::optional<fs::path> registry_policy_file;
-  std::vector<std::string> registry_headers;
   bool dry_run = false;
+  bool allow_plaintext_http = false;
   for (size_t index = 0; index < args.size(); ++index)
   {
     if (args[index] == "--manifest-path")
@@ -1215,40 +884,13 @@ int HandlePublish(const std::vector<std::string> &args, bool as_json)
       }
       registry_root = args[index];
     }
-    else if (args[index] == "--registry-profile")
-    {
-      if (++index >= args.size())
-      {
-        return EmitError({"UsageError", kExitUsage, "--registry-profile requires a value", "publish"}, as_json);
-      }
-      registry_profile = args[index];
-    }
-    else if (args[index] == "--registry-policy-file")
-    {
-      if (++index >= args.size())
-      {
-        return EmitError({"UsageError", kExitUsage, "--registry-policy-file requires a value", "publish"}, as_json);
-      }
-      registry_policy_file = args[index];
-    }
-    else if (args[index] == "--registry-header")
-    {
-      if (++index >= args.size())
-      {
-        return EmitError({"UsageError", kExitUsage, "--registry-header requires a value", "publish"}, as_json);
-      }
-      const std::optional<std::string> normalized = NormalizeRegistryHeader(args[index]);
-      if (!normalized.has_value())
-      {
-        return EmitError(
-            {"UsageError", kExitUsage, "--registry-header must match <name:value> with non-empty name and value", "publish"},
-            as_json);
-      }
-      registry_headers.push_back(*normalized);
-    }
     else if (args[index] == "--dry-run")
     {
       dry_run = true;
+    }
+    else if (args[index] == "--allow-plaintext-http")
+    {
+      allow_plaintext_http = true;
     }
     else
     {
@@ -1256,96 +898,38 @@ int HandlePublish(const std::vector<std::string> &args, bool as_json)
     }
   }
 
-  if (dry_run && !registry_headers.empty())
-  {
-    return EmitError(
-        {"UsageError", kExitUsage, "--registry-header is not valid with --dry-run", "publish"},
-        as_json);
-  }
-  if (dry_run && registry_policy_file.has_value())
-  {
-    return EmitError(
-        {"UsageError", kExitUsage, "--registry-policy-file is not valid with --dry-run", "publish"},
-        as_json);
-  }
-  if (dry_run && registry_profile.has_value())
-  {
-    return EmitError(
-        {"UsageError", kExitUsage, "--registry-profile is not valid with --dry-run", "publish"},
-        as_json);
-  }
-  if (registry_profile.has_value() && registry_policy_file.has_value())
-  {
-    return EmitError(
-        {"UsageError", kExitUsage, "--registry-profile cannot be combined with --registry-policy-file", "publish"},
-        as_json);
-  }
-
   if (!dry_run)
   {
     if (!registry_root.has_value())
     {
       return EmitError(
-          {"UsageError", kExitUsage, "publish requires --registry <path-or-url> unless --dry-run is set", "publish"},
+          {"UsageError", kExitUsage, "publish requires --registry <http(s)-url> unless --dry-run is set", "publish"},
+          as_json);
+    }
+    if (!IsHttpRegistryRoot(*registry_root))
+    {
+      return EmitError(
+          {
+              "UsageError",
+              kExitUsage,
+              "publish --registry must use an http:// or https:// URL",
+              "publish",
+          },
           as_json);
     }
 
     try
     {
       const PublishResult candidate = PreparePublishCandidate(request);
-
-      if (IsHttpRegistryRoot(*registry_root))
-      {
-        const RegistryWriteSecurityDecision security = ResolveRegistryWriteSecurity({
-            .registry_root = *registry_root,
-            .profile_name = registry_profile,
-            .policy_file = registry_policy_file,
-            .explicit_request_headers = registry_headers,
-        });
-        return EmitSuccess(
-            BuildHttpPublishPayload(
-                candidate,
-                security.registry_root,
-                security,
-                RunRegistryV2ControlPlanePublish(security.registry_root, security.request_headers, candidate)),
-            as_json);
-      }
-
-      const fs::path filesystem_registry_root =
-          IsFileRegistryRoot(*registry_root) ? FileRegistryUrlToPath(*registry_root) : fs::path(*registry_root);
-      if (registry_policy_file.has_value())
-      {
-        return EmitError(
-            {
-                "UsageError",
-                kExitUsage,
-                "--registry-policy-file is only valid for http:// or https:// registry roots",
-                "publish",
-            },
-            as_json);
-      }
-      if (registry_profile.has_value())
-      {
-        return EmitError(
-            {
-                "UsageError",
-                kExitUsage,
-                "--registry-profile is only valid for http:// or https:// registry roots",
-                "publish",
-            },
-            as_json);
-      }
-      if (!registry_headers.empty())
-      {
-        return EmitError(
-            {"UsageError", kExitUsage, "--registry-header is only valid for http:// or https:// registry roots", "publish"},
-            as_json);
-      }
+      const RegistryWriteSecurityDecision security = ResolveRegistryWriteSecurity({
+          .registry_root = *registry_root,
+          .allow_plaintext_http = allow_plaintext_http,
+      });
       return EmitSuccess(
-          BuildFilesystemPublishPayload(
+          BuildHttpPublishPayload(
               candidate,
-              fs::absolute(filesystem_registry_root).lexically_normal(),
-              RunRegistryV2FilesystemPublish(filesystem_registry_root, candidate)),
+              security,
+              RunRegistryV2ControlPlanePublish(security.registry_root, security.request_headers, candidate)),
           as_json);
     }
     catch (const ValidationError &err)
@@ -1419,18 +1003,45 @@ int HandleRegistry(const std::vector<std::string> &args, bool as_json)
     const fs::path pafio_home = ResolvePafioHome();
     if (action == "import")
     {
-      if (args.size() != 3)
+      bool allow_dev = false;
+      std::string source;
+      for (size_t index = 2; index < args.size(); ++index)
+      {
+        if (args[index] == "--dev")
+        {
+          allow_dev = true;
+          continue;
+        }
+        if (!source.empty())
+        {
+          return EmitError(
+              {"UsageError",
+               kExitUsage,
+               "registry trust import accepts [--dev] <descriptor-url|descriptor-file>",
+               "registry"},
+              as_json);
+        }
+        source = args[index];
+      }
+      if (source.empty())
       {
         return EmitError(
-            {"UsageError", kExitUsage, "registry trust import requires <descriptor-url|descriptor-file>", "registry"},
+            {"UsageError",
+             kExitUsage,
+             "registry trust import accepts [--dev] <descriptor-url|descriptor-file>",
+             "registry"},
             as_json);
       }
-      const RegistryTrustPin pin = ImportRegistryTrustDescriptor(pafio_home, args[2]);
+      const RegistryTrustPin pin = ImportRegistryTrustDescriptor(
+          pafio_home,
+          source,
+          RegistryTrustImportOptions{.allow_dev_unsigned = allow_dev});
       return EmitSuccess(
           {
               {"command", "registry trust import"},
               {"message", "imported registry trust descriptor for " + pin.registry_root},
               {"pafio_home", pafio_home.string()},
+              {"dev_unsigned", allow_dev},
               {"pin", SerializeRegistryTrustPin(pin)},
           },
           as_json);

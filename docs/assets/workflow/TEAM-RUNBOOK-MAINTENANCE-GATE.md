@@ -52,7 +52,7 @@ All non-coordination runbooks must follow [TEAM-RUNBOOK-TEMPLATE.md](./TEAM-RUNB
 | Team doc | Watched paths |
 |----------|---------------|
 | `CORE-WORKFLOW-RUNBOOK.md` | `src/`, `tests/`, `CMakeLists.txt`, native build/test scripts |
-| `REGISTRY-PUBLISH-RUNBOOK.md` | `docs/registry/`, registry server/promotion scripts |
+| `REGISTRY-PUBLISH-RUNBOOK.md` | `docs/registry/`, registry client, trust, pack, and publish-client code |
 | `STYIO-CONTRACTS-RUNBOOK.md` | `contracts/`, `docs/external/for-styio/`, compiler-facing CLI contract docs and interface scripts |
 | `DOCS-DELIVERY-RUNBOOK.md` | `README.md`, `docs/`, docs scripts, hygiene/docs/delivery gate scripts |
 

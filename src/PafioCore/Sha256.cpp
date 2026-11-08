@@ -217,4 +217,25 @@ std::string Sha256Text(const std::string &text)
   return sha256.FinalHex();
 }
 
+std::string Sha256Raw(std::string_view bytes)
+{
+  Sha256 sha256;
+  sha256.Update(reinterpret_cast<const uint8_t *>(bytes.data()), bytes.size());
+  const std::string hex = sha256.FinalHex();
+  std::string raw;
+  raw.reserve(32);
+  for (size_t index = 0; index + 1 < hex.size(); index += 2)
+  {
+    const auto nibble = [](const char ch) -> int {
+      if (ch >= '0' && ch <= '9')
+      {
+        return ch - '0';
+      }
+      return 10 + (ch - 'a');
+    };
+    raw.push_back(static_cast<char>((nibble(hex[index]) << 4) | nibble(hex[index + 1])));
+  }
+  return raw;
+}
+
 }  // namespace pafio

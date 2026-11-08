@@ -1,64 +1,99 @@
 # Styio / Contracts Runbook
 
-**Purpose:** Provide the daily-work entrypoint for `pafio` maintainers of external compiler contracts, compatibility boundaries, and compiler-facing handoff docs.
+**Purpose:** Route maintenance for Pafio's external Styio and machine-contract handoffs.
 
-**Last updated:** 2026-05-02
+**Last updated:** 2026-10-23
 
 ## Mission
 
-Own `pafio`'s published external compiler contract for `binary` mode,
-controlled source-build handoff rules for `build` mode, local Styio environment
-optimization contracts, and the client side of the `styio-platform` migration
-without letting any path drift into undocumented behavior.
+Keep compiler discovery and compile-plan production aligned with Styio's
+published contracts while leaving compiler lifecycle and output schemas to
+Styio.
 
 ## Owned Surface
 
-1. `contracts/`
+1. `contracts/compile-plan/` and `contracts/compat/`
 2. `docs/external/for-styio/`
 3. `docs/governance/Pafio-CLI-Contract.md`
 4. `scripts/styio-interface-gate.py`
 5. `scripts/preflight-readiness-check.py`
-6. `docs/planning/Pafio-Platform-Migration-Handoff.md`
-7. `docs/governance/Pafio-Local-Offline-Package-Contract.md`
 
 ## Daily Workflow
 
-1. Treat published compiler interaction as a machine contract, not an internal source dependency.
-2. Treat source-build mode as a separate documented contract with explicit source origin, branch-channel mapping, revision, cache rules, installer bootstrap semantics, and platform compatibility semantics, and keep machine-readable sync/graph/tool-status/cloud-plan entrypoints aligned with that contract vocabulary.
-3. Keep handoff docs and interface gates aligned in the same checkpoint.
-4. Use `--styio-bin` health legs when validating the published binary path.
-5. Treat compile-plan v1 as live only when `styio --machine-info=json`, `contracts/compat/styio-support.toml`, and the black-box interop gate all agree.
-6. Keep the source-build doc needles exact for the cross-repo gate: official origin, `stable`/`nightly` branch mapping, `pafio build minimal`, `pafio-toolchain.lock`, and the binary compatibility-matrix bypass statement must all remain visible in `Pafio-CLI-Contract.md`.
-7. Keep hosted workspace, registry server control-plane, compile-platform,
-   mirror synchronization, and cloud-service ownership in `styio-platform`;
-   this repo documents the package-manager client contract, offline package
-   behavior, local compiler environment, and compatibility expectations.
-8. Keep client/server HTTP contracts as native JSON packages only; `pafio` gates must reject generated third-party API-description artifacts and stale route references.
-9. Keep the `pafio` cloud-plan submit target aligned with `styio-platform`'s `submitJob` contract route, currently `POST /api/styio-platform/v1/jobs`.
-10. Keep `contracts/registry-control-plane/v1/` byte-aligned with the platform copy when only README/example governance wording changes; if JSON route shape changes, coordinate both repositories before claiming compatibility.
-11. Keep `registryDescriptor` as the client/server trust handoff operation:
-    `styio-platform` owns descriptor issuance and `styio-pafio` owns descriptor
-    import, pin storage, and remote fetch enforcement.
+1. Validate discovery precedence: flag, environment, then `PATH`.
+2. Probe `styio --machine-info=json` before workflow delegation.
+3. Keep `generated_by.tool = "pafio"` in compile plans.
+4. Treat diagnostics, receipts, and runtime events as Styio-owned payloads.
+5. Keep the global `-h` and `--help` spellings in the published CLI contract
+   aligned with Pafio's executable help surface.
+7. Keep cache identity separate from invocation-owned output paths. Consumers
+   follow the returned plan paths and retain prior artifacts for parent snapshots;
+   production Pafio does not parse compiler receipts.
+8. Run `--task-resource` with an explicitly selected real compiler for the
+   permanent Pafio check/build/test/run, task, isolation and observation cases.
+   Snapshot/delta/runtime assertions are mandatory; scripted executors establish
+   harness behavior only. Report consumer defects to their repository owner.
 
 ## Change Classes
 
-1. Small: compatibility doc wording, source-build needle wording, or fixture updates.
-2. Medium: handshake fields, compile-plan consumer expectations, source-build fetch rules, installer bootstrap JSON fields, platform compatibility JSON fields, native JSON contract package updates, or CLI JSON contract updates.
-3. High: compatibility phase changes, official source origin rules, public machine contract expansion, registry-control-plane route changes, or platform service ownership changes.
+1. Small: handoff documentation or error wording.
+2. Medium: capability, compatibility range, or compile-plan producer change.
+3. High: machine-contract major version or ownership boundary.
 
 ## Required Gates
 
 ```bash
-./scripts/checkpoint-health.sh --styio-bin /absolute/path/to/styio
-python3 scripts/styio-interface-gate.py --styio-bin /absolute/path/to/styio --pafio-bin ./build-codex/bin/pafio --require-compile-plan --json
-python3 tests/interop/registry-control-plane-contract-gate.py
+python3 scripts/styio-interface-gate.py --styio-bin <styio> --pafio-bin <pafio> --require-compile-plan --json
+bash tests/interop/styio-interface-gate-handshake.sh
+bash tests/interop/styio-interface-gate-compile-plan.sh
 ```
 
 ## Cross-Team Dependencies
 
-1. Core / Workflow reviews changes that alter build/check/run/test orchestration, installer bootstrap behavior, or project-local toolchain state behavior.
-2. Docs / Delivery reviews cross-repo doc or gate entrypoint changes.
+Core / Workflow reviews workflow effects. Styio owns the consumer-side contract
+and interoperability fixture. Docs / Delivery reviews public wording.
 
 ## Handoff / Recovery
 
-Record the exact published external compiler binary or source revision, compatibility phase, supported compile-plan versions, failing contract command, and whether the next service-side action belongs in `styio-platform`.
+Record contract versions, required capabilities, stable failure code, and the
+owner repository that must act next.
+
+2026-09-04: Recorded a dormant observable-identity handoff for Styio. Existing
+`compile-plan v1` package names, target selection, and package-relative entry
+paths are the first identity inputs; absolute paths and semantic identifiers
+remain outside Pafio ownership. No schema, capability, fixture, or executable
+change is scheduled unless accepted Styio snapshot fixtures prove a concrete
+ambiguity.
+
+2026-09-05: Added the additive optional `emit.observable_static_snapshot`
+object (`schema_version`, `required_capabilities`) to `compile-plan v1` as a
+pure emission passthrough for Styio PLAN-004. Pafio forwards the request only
+when a caller opts in; Styio validates it and lists the snapshot artifact in
+its receipt. The identity handoff above remains dormant.
+
+2026-09-05: Added the additive optional `parent_snapshot_path` string to that
+object for Styio stage S2 delta emission. It is a transport path, not identity,
+and is excluded from the cache key; Styio decides between writing
+`<output-stem>.observable-delta.json` and recording `full_snapshot_required` in
+its receipt. Pafio never reads the parent or the delta.
+
+2026-09-05: Added the additive optional `emit.runtime_observation` object
+(`version` plus caller-set `mode`, `required_capabilities`, `lane_capacity`,
+`priority_reserved`, `producer_lanes`, `sampling`) to `compile-plan v1` as a
+pure passthrough for Styio stage S3 runtime-events v2. Pafio applies no defaults;
+Styio owns the version, capability, bound, and sampling validation, writes the
+receipt-named runtime-events JSONL artifact, and lists it in its receipt. Pafio
+never reads runtime events.
+
+2026-10-15: Aligned section 6 of the external interface requirement spec with
+the implemented gate: compile-plan execution runs a real build and
+materializes outputs under the invocation's declared roots, and the
+`--task-resource` selection adds real Pafio check/build/test/run workflows
+covering compile-failure/repair transitions, concurrent invocations,
+snapshot/delta, and runtime observation.
+
+2026-10-23: Extended the `compile-plan v1` `absolutePath` definition to accept
+the absolute path forms the toolchain actually emits on every supported
+platform: POSIX root, drive-rooted paths, and UNC shares. Validation remains a
+pattern constraint on the emitted string; no field or producer/consumer
+behavior changed.

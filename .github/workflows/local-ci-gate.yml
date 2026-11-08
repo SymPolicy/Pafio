@@ -1,22 +1,33 @@
-name: platform-adaptation
+name: local-ci-gate
 
 on:
   pull_request:
   push:
     branches:
-      - release
+      - ai-dev
       - nightly
       - stable
+      - main
+      - master
   merge_group:
   workflow_dispatch:
+    inputs:
+      native_process_only:
+        description: Run only the Windows CLI and process-contract checks
+        type: boolean
+        default: false
 
 permissions:
   contents: read
 
 jobs:
-  local-ci-gate:
-    name: platform-adaptation / linux-ci-gate
-    runs-on: ubuntu-24.04
+  linux-debian-trixie:
+    if: github.event_name != 'workflow_dispatch' || !inputs.native_process_only
+    name: Linux / Debian 13 trixie gate
+    # GitHub-hosted Linux runner is only the container host; toolchain commands run in Debian 13.
+    runs-on: ubuntu-latest
+    container:
+      image: debian:trixie
     timeout-minutes: 75
     env:
       STYIO_LLVM_MAJOR: "18"
@@ -24,69 +35,32 @@ jobs:
       STYIO_PYTHON_VERSION: "3.13.5"
 
     steps:
-      - name: Checkout pafio
-        uses: actions/checkout@v5
+      - name: Install Debian checkout prerequisites
+        run: |
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+            bash \
+            ca-certificates \
+            git
+
+      - name: Verify Debian trixie execution baseline
+        run: |
+          . /etc/os-release
+          test "$ID" = debian
+          test "$VERSION_ID" = 13
+
+      - name: Checkout pafio-nightly
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
+          persist-credentials: false
           fetch-depth: 0
-          path: pafio
-          persist-credentials: false
+          path: pafio-nightly
 
-      - name: Resolve sibling checkout ref
-        id: sibling-ref
-        shell: bash
+      - name: Bootstrap Debian trixie toolchain
+        working-directory: pafio-nightly
         run: |
-          requested="${GITHUB_REF_NAME}"
-          if [[ "${GITHUB_EVENT_NAME}" == "pull_request" || "${GITHUB_EVENT_NAME}" == "pull_request_target" ]]; then
-            requested="${{ github.base_ref }}"
-          fi
-
-          for ref in "$requested" stable nightly; do
-            if git ls-remote --exit-code --heads https://github.com/SymPolicy/Styio.git "$ref" >/dev/null 2>&1 \
-              && git ls-remote --exit-code --heads https://github.com/SymPolicy/Vityo.git "$ref" >/dev/null 2>&1; then
-              echo "ref=$ref" >> "$GITHUB_OUTPUT"
-              exit 0
-            fi
-          done
-
-          echo "No common sibling checkout ref found for '$requested' or fallbacks 'stable'/'nightly'." >&2
-          exit 1
-
-      - name: Checkout Styio sibling repository
-        uses: actions/checkout@v5
-        with:
-          repository: SymPolicy/Styio
-          ref: ${{ steps.sibling-ref.outputs.ref }}
-          path: styio-nightly
-          persist-credentials: false
-
-      - name: Checkout Vityo sibling repository
-        uses: actions/checkout@v5
-        with:
-          repository: SymPolicy/Vityo
-          ref: ${{ steps.sibling-ref.outputs.ref }}
-          path: styio-view
-          persist-credentials: false
-
-      - name: Set up standardized Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: ${{ env.STYIO_PYTHON_VERSION }}
-
-      - name: Install standardized CMake / CTest
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install --user "cmake==${STYIO_CMAKE_VERSION}"
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-
-      - name: Install native dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            ninja-build \
-            clang-${STYIO_LLVM_MAJOR} \
-            lld-${STYIO_LLVM_MAJOR} \
-            llvm-${STYIO_LLVM_MAJOR}-dev \
-            llvm-${STYIO_LLVM_MAJOR}-tools
+          ./scripts/bootstrap-dev-env.sh
+          echo "$HOME/.local/venvs/pafio-nightly-tools/bin" >> "$GITHUB_PATH"
 
       - name: Verify standardized toolchain
         run: |
@@ -99,7 +73,7 @@ jobs:
       - name: Resolve CI refs
         id: ci_refs
         shell: bash
-        working-directory: pafio
+        working-directory: pafio-nightly
         run: |
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
             git fetch --no-tags origin "+refs/heads/${{ github.event.pull_request.base.ref }}:refs/remotes/origin/${{ github.event.pull_request.base.ref }}"
@@ -128,76 +102,94 @@ jobs:
           echo "base_ref=${BASE_REF}" >> "$GITHUB_OUTPUT"
           echo "range=${RANGE}" >> "$GITHUB_OUTPUT"
 
-      - name: Run pafio local CI gate
-        working-directory: pafio
+      - name: Run pafio-nightly local CI gate
+        working-directory: pafio-nightly
         run: >
           ./scripts/delivery-gate.sh
           --mode push
           --base "${{ steps.ci_refs.outputs.base_ref }}"
           --range "${{ steps.ci_refs.outputs.range }}"
-          --skip-audit
           --skip-health
 
       - name: Run unified submit gate
-        working-directory: pafio
+        working-directory: pafio-nightly
         run: python3 scripts/submit-gate.py --profile ci --json
 
-  test-smoke:
-    name: test / smoke
-    runs-on: ubuntu-24.04
-    timeout-minutes: 15
-    env:
-      STYIO_PYTHON_VERSION: "3.13.5"
+  macos-native-smoke:
+    if: github.event_name != 'workflow_dispatch' || !inputs.native_process_only
+    name: macOS / latest native smoke
+    runs-on: macos-latest
+    timeout-minutes: 45
 
     steps:
-      - name: Checkout pafio
-        uses: actions/checkout@v5
-
-      - name: Set up standardized Python
-        uses: actions/setup-python@v6
+      - name: Checkout pafio-nightly
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
-          python-version: ${{ env.STYIO_PYTHON_VERSION }}
+          persist-credentials: false
+          path: pafio-nightly
 
-      - name: Run smoke tests
-        run: python3 -m unittest discover -s tests/unit -v
-
-  test-golden-standard:
-    name: test / golden-standard
-    needs: [local-ci-gate, test-smoke]
-    runs-on: ubuntu-24.04
-    timeout-minutes: 75
-    env:
-      STYIO_LLVM_MAJOR: "18"
-      STYIO_CMAKE_VERSION: "3.31.6"
-      STYIO_PYTHON_VERSION: "3.13.5"
-
-    steps:
-      - name: Checkout pafio
-        uses: actions/checkout@v5
-
-      - name: Set up standardized Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: ${{ env.STYIO_PYTHON_VERSION }}
-
-      - name: Install golden-standard dependencies
+      - name: Verify macOS host toolchain
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install --user "cmake==${STYIO_CMAKE_VERSION}"
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-          sudo apt-get update
-          sudo apt-get install -y \
-            ninja-build \
-            rsync \
-            clang-${STYIO_LLVM_MAJOR} \
-            lld-${STYIO_LLVM_MAJOR} \
-            llvm-${STYIO_LLVM_MAJOR}-dev \
-            llvm-${STYIO_LLVM_MAJOR}-tools
+          sw_vers
+          uname -m
+          cmake --version | head -n1
+          python3 --version
 
-      - name: Run unit golden tests
-        run: python3 -m unittest discover -s tests/unit -v
+      - name: Configure native build
+        run: cmake -S pafio-nightly -B pafio-nightly/build-ci-macos -DPAFIO_BUILD_TESTS=ON
 
-      - name: Run unified golden submit gate
-        env:
-          PAFIO_BUILD_DIR: ${{ runner.temp }}/pafio-golden-build
-        run: python3 scripts/submit-gate.py --profile ci --json
+      - name: Build native targets
+        run: cmake --build pafio-nightly/build-ci-macos --parallel 4
+
+      - name: Run native tests
+        run: ctest --test-dir pafio-nightly/build-ci-macos --output-on-failure
+
+  windows-native-smoke:
+    name: Windows / latest native smoke
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: windows-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout pafio-nightly
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+          path: pafio-nightly
+
+      - name: Verify Windows host toolchain
+        shell: pwsh
+        run: |
+          $PSVersionTable.PSVersion
+          cmake --version
+          where.exe cl
+          if ($LASTEXITCODE -ne 0) {
+            "cl.exe is not on PATH; CMake will query the Visual Studio toolchain installation."
+            $global:LASTEXITCODE = 0
+          }
+
+      - name: Configure native build
+        shell: pwsh
+        run: cmake -S pafio-nightly -B pafio-nightly/build-ci-windows -A x64 -DPAFIO_BUILD_TESTS=ON
+
+      - name: Build native CLI
+        shell: pwsh
+        run: cmake --build pafio-nightly/build-ci-windows --config Debug --target pafio pafio_process_tests pafio_windows_process_producer_tests --parallel 4
+
+      - name: Verify native process contracts
+        shell: pwsh
+        run: ctest --test-dir pafio-nightly/build-ci-windows --build-config Debug --tests-regex '^(PortableProcess\.|WindowsProcessProducerTests\.)' --output-on-failure
+
+      - name: Probe native CLI
+        shell: pwsh
+        run: |
+          $pafio = "pafio-nightly/build-ci-windows/bin/Debug/pafio.exe"
+          if (!(Test-Path $pafio)) {
+            $match = Get-ChildItem -Path pafio-nightly/build-ci-windows -Filter pafio.exe -Recurse | Select-Object -First 1
+            if ($null -eq $match) {
+              throw "pafio.exe was not produced"
+            }
+            $pafio = $match.FullName
+          }
+          & $pafio --version
+          & $pafio machine-info --json

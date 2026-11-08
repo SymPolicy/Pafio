@@ -25,9 +25,8 @@ struct Dependency
   std::optional<std::string> version;
 };
 
-struct Toolchain
+struct BuildConfig
 {
-  std::string channel;
   bool implicit_std = true;
 };
 
@@ -61,7 +60,7 @@ struct PackageConfig
   std::string version;
   std::string edition;
   bool publish = false;
-  Toolchain toolchain;
+  BuildConfig build;
   std::optional<LibTarget> lib;
   std::vector<BinTarget> bins;
   std::vector<TestTarget> tests;

@@ -30,8 +30,6 @@ TEAM_RULES: tuple[TeamRule, ...] = (
             "src/",
             "tests/",
             "CMakeLists.txt",
-            "scripts/bootstrap-check.py",
-            "scripts/install-pafio.sh",
             "scripts/native-check.sh",
             "scripts/checkpoint-health.sh",
         ),
@@ -42,8 +40,6 @@ TEAM_RULES: tuple[TeamRule, ...] = (
         Path("docs/teams/REGISTRY-PUBLISH-RUNBOOK.md"),
         (
             "docs/registry/",
-            "scripts/registry-promote.py",
-            "scripts/registry-server-gate.py",
         ),
     ),
     TeamRule(
@@ -69,7 +65,6 @@ TEAM_RULES: tuple[TeamRule, ...] = (
             "DEPENDENCY-USAGE.md",
             ".github/workflows/local-ci-gate.yml",
             "docs/",
-            "scripts/audit-gate.sh",
             "scripts/docs-index.py",
             "scripts/docs-lifecycle.py",
             "scripts/docs-audit.py",

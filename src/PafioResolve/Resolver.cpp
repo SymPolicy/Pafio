@@ -1,11 +1,15 @@
 #include "PafioResolve/Resolver.hpp"
 
+#include "PafioCore/ContractLexicon.hpp"
 #include "PafioCore/Errors.hpp"
+#include "PafioCore/FnvHash.hpp"
 #include "PafioCore/Paths.hpp"
 #include "PafioCore/Process.hpp"
+#include "PafioCore/ToolPaths.hpp"
 #include "PafioCore/Version.hpp"
 #include "PafioManifest/Manifest.hpp"
 #include "PafioRegistryClient/Client.hpp"
+#include "PafioSecurity/PrescanArchive.hpp"
 
 #include <algorithm>
 #include <cstdlib>
@@ -16,6 +20,7 @@
 #include <sstream>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 namespace fs = std::filesystem;
@@ -49,32 +54,9 @@ struct ManifestSelection
   SourceOrigin origin;
 };
 
-fs::path CanonicalAbsolutePath(const fs::path &path)
-{
-  return fs::absolute(path).lexically_normal();
-}
-
 std::string PathKey(const fs::path &path)
 {
-  return CanonicalAbsolutePath(path).generic_string();
-}
-
-uint64_t Fnv1a64(const std::string &value)
-{
-  uint64_t hash = 1469598103934665603ULL;
-  for (const unsigned char ch : value)
-  {
-    hash ^= ch;
-    hash *= 1099511628211ULL;
-  }
-  return hash;
-}
-
-std::string Hex64(uint64_t value)
-{
-  std::ostringstream out;
-  out << std::hex << value;
-  return out.str();
+  return pafio::CanonicalAbsolutePath(path).generic_string();
 }
 
 bool LooksLikeRemoteGitSource(const std::string &source)
@@ -84,7 +66,7 @@ bool LooksLikeRemoteGitSource(const std::string &source)
 
 bool PathIsWithin(const fs::path &candidate, const fs::path &root)
 {
-  const fs::path relative = CanonicalAbsolutePath(candidate).lexically_relative(CanonicalAbsolutePath(root));
+  const fs::path relative = pafio::CanonicalAbsolutePath(candidate).lexically_relative(pafio::CanonicalAbsolutePath(root));
   if (relative.empty())
   {
     return false;
@@ -100,12 +82,13 @@ std::string NormalizeGitSource(const std::string &source, const fs::path &packag
     return source;
   }
 
-  const fs::path source_path(source);
-  if (source_path.is_absolute())
-  {
-    return CanonicalAbsolutePath(source_path).generic_string();
-  }
-  return CanonicalAbsolutePath(package_dir / source_path).generic_string();
+  const fs::path source_path(std::u8string(source.begin(), source.end()));
+  fs::path normalized = pafio::CanonicalAbsolutePath(source_path.is_absolute() ? source_path : package_dir / source_path);
+  std::string value = pafio::ProcessPathString(normalized);
+#if defined(_WIN32)
+  std::replace(value.begin(), value.end(), '\\', '/');
+#endif
+  return value;
 }
 
 std::string SourceKindString(SourceKind kind)
@@ -124,10 +107,18 @@ std::string SourceKindString(SourceKind kind)
   return "path";
 }
 
+std::string RegistryLockHintKey(
+    const std::string &registry_root,
+    const std::string &package_name,
+    const std::string &version)
+{
+  return pafio::NormalizeRegistryRoot(registry_root) + '\n' + package_name + '\n' + version;
+}
+
 std::string SnapshotRelativeKey(const SourceOrigin &origin, const fs::path &package_dir)
 {
-  const fs::path snapshot_root = CanonicalAbsolutePath(origin.snapshot_root.value());
-  const fs::path relative = CanonicalAbsolutePath(package_dir).lexically_relative(snapshot_root);
+  const fs::path snapshot_root = pafio::CanonicalAbsolutePath(origin.snapshot_root.value());
+  const fs::path relative = pafio::CanonicalAbsolutePath(package_dir).lexically_relative(snapshot_root);
   const std::string key = relative.generic_string();
   return key.empty() ? "." : key;
 }
@@ -178,12 +169,12 @@ class GitSourceCache
 {
 public:
   explicit GitSourceCache(const fs::path &pafio_home, const bool offline, std::optional<fs::path> vendor_root)
-      : pafio_home_(CanonicalAbsolutePath(pafio_home)),
+      : pafio_home_(pafio::CanonicalAbsolutePath(pafio_home)),
         offline_(offline)
   {
     if (vendor_root.has_value())
     {
-      vendor_root_ = CanonicalAbsolutePath(*vendor_root);
+      vendor_root_ = pafio::CanonicalAbsolutePath(*vendor_root);
     }
     fs::create_directories(pafio_home_ / "git" / "repos");
     fs::create_directories(pafio_home_ / "git" / "checkouts");
@@ -191,7 +182,8 @@ public:
 
   SourceOrigin Materialize(const std::string &normalized_source, const std::string &rev)
   {
-    const std::string repo_hash = Hex64(Fnv1a64(normalized_source));
+    pafio::RequireGitCommitId(rev, "git dependency '" + normalized_source + "' rev");
+    const std::string repo_hash = pafio::Hex64(pafio::Fnv1a64(normalized_source));
     if (const std::optional<fs::path> vendored_snapshot = FindVendoredSnapshot(repo_hash, rev); vendored_snapshot.has_value())
     {
       return SourceOrigin{
@@ -255,7 +247,7 @@ private:
     const fs::path ready_marker = snapshot_root / ".pafio-snapshot-ready";
     if (fs::exists(ready_marker) || fs::exists(snapshot_root / "pafio.toml"))
     {
-      return CanonicalAbsolutePath(snapshot_root);
+      return pafio::CanonicalAbsolutePath(snapshot_root);
     }
     return std::nullopt;
   }
@@ -269,9 +261,10 @@ private:
 
     fs::create_directories(repo_dir.parent_path());
     const pafio::ProcessResult result = pafio::RunProcess<pafio::CacheError>({
-        .program = "git",
-        .args = {"clone", "--mirror", normalized_source, repo_dir.string()},
-        .timeout = pafio::kExternalProcessStepTimeout,
+        .program = pafio::ResolvedGitPath(),
+        .args = {"clone", "--mirror", normalized_source, pafio::ProcessPathString(repo_dir)},
+        .search_path = false,
+        .timeout = std::nullopt,
         .error_context = "resolver process",
     });
     if (result.exit_code != 0)
@@ -284,9 +277,13 @@ private:
 
   bool HasRevision(const fs::path &repo_dir, const std::string &rev) const
   {
+    // The rev must name a commit object itself, not merely peel to one: an
+    // annotated tag object id would satisfy rev^{commit} while recording a
+    // rev that differs from the materialized code.
     const pafio::ProcessResult result = pafio::RunProcess<pafio::CacheError>({
-        .program = "git",
-        .args = {"--git-dir", repo_dir.string(), "cat-file", "-e", rev + "^{commit}"},
+        .program = pafio::ResolvedGitPath(),
+        .args = {"--git-dir", pafio::ProcessPathString(repo_dir), "cat-file", "-t", rev},
+        .search_path = false,
         .timeout = pafio::kExternalProcessProbeTimeout,
         .error_context = "resolver process",
     });
@@ -294,15 +291,16 @@ private:
     {
       throw pafio::FetchError("failed to check git rev '" + rev + "': " + pafio::DescribeProcessFailure(result));
     }
-    return result.exit_code == 0;
+    return result.exit_code == 0 && result.stdout_text == "commit\n";
   }
 
   void FetchOrigin(const fs::path &repo_dir) const
   {
     const pafio::ProcessResult result = pafio::RunProcess<pafio::CacheError>({
-        .program = "git",
-        .args = {"--git-dir", repo_dir.string(), "fetch", "--prune", "origin"},
-        .timeout = pafio::kExternalProcessStepTimeout,
+        .program = pafio::ResolvedGitPath(),
+        .args = {"--git-dir", pafio::ProcessPathString(repo_dir), "fetch", "--prune", "origin"},
+        .search_path = false,
+        .timeout = std::nullopt,
         .error_context = "resolver process",
     });
     if (result.exit_code != 0)
@@ -323,10 +321,18 @@ private:
 
     fs::remove_all(snapshot_root);
     fs::create_directories(snapshot_root);
-    const fs::path archive_path = snapshot_root.parent_path() / (Hex64(Fnv1a64(rev)) + ".tar");
+    const fs::path archive_path = snapshot_root.parent_path() / (pafio::Hex64(pafio::Fnv1a64(rev)) + ".tar");
     const pafio::ProcessResult archive = pafio::RunProcess<pafio::CacheError>({
-        .program = "git",
-        .args = {"--git-dir", repo_dir.string(), "archive", "--format=tar", "--output", archive_path.string(), rev},
+        .program = pafio::ResolvedGitPath(),
+        .args = {
+            "--git-dir",
+            pafio::ProcessPathString(repo_dir),
+            "archive",
+            "--format=tar",
+            "--output",
+            pafio::ProcessPathString(archive_path),
+            rev},
+        .search_path = false,
         .timeout = pafio::kExternalProcessStepTimeout,
         .error_context = "resolver process",
     });
@@ -339,9 +345,56 @@ private:
           pafio::DescribeProcessFailure(archive));
     }
 
+    const pafio::ProcessResult path_listing = pafio::RunProcess<pafio::CacheError>({
+        .program = pafio::ResolvedTarPath(),
+        .args = {"-tf", pafio::ProcessPathString(archive_path)},
+        .search_path = false,
+        .timeout = pafio::kExternalProcessStepTimeout,
+        .max_stdout_bytes = pafio::kArchiveListingMaxBytes,
+        .error_context = "resolver process",
+    });
+    if (path_listing.exit_code != 0)
+    {
+      std::error_code ignored;
+      fs::remove(archive_path, ignored);
+      throw pafio::CacheError(
+          "failed to list git archive '" + archive_path.string() + "': " +
+          pafio::DescribeProcessFailure(path_listing));
+    }
+    const pafio::ProcessResult verbose_listing = pafio::RunProcess<pafio::CacheError>({
+        .program = pafio::ResolvedTarPath(),
+        .args = {"-tvf", pafio::ProcessPathString(archive_path)},
+        .search_path = false,
+        .timeout = pafio::kExternalProcessStepTimeout,
+        .max_stdout_bytes = pafio::kArchiveListingMaxBytes,
+        .error_context = "resolver process",
+    });
+    if (verbose_listing.exit_code != 0)
+    {
+      std::error_code ignored;
+      fs::remove(archive_path, ignored);
+      throw pafio::CacheError(
+          "failed to inspect git archive '" + archive_path.string() + "': " +
+          pafio::DescribeProcessFailure(verbose_listing));
+    }
+    const pafio::ArchivePrescanResult prescan = pafio::PrescanArchiveListing(
+        path_listing.stdout_text,
+        verbose_listing.stdout_text,
+        path_listing.stdout_truncated || verbose_listing.stdout_truncated,
+        false);
+    if (!prescan.ok)
+    {
+      std::error_code ignored;
+      fs::remove(archive_path, ignored);
+      throw pafio::CacheError(
+          std::string("git archive prescan failed") +
+          (prescan.error_code.empty() ? "" : " (" + prescan.error_code + ")") + ": " + prescan.error);
+    }
+
     const pafio::ProcessResult extract = pafio::RunProcess<pafio::CacheError>({
-        .program = "tar",
-        .args = {"-xf", archive_path.string(), "-C", snapshot_root.string()},
+        .program = pafio::ResolvedTarPath(),
+        .args = {"-xf", pafio::ProcessPathString(archive_path), "-C", pafio::ProcessPathString(snapshot_root)},
+        .search_path = false,
         .timeout = pafio::kExternalProcessStepTimeout,
         .error_context = "resolver process",
     });
@@ -366,11 +419,12 @@ class SingleVersionResolver
 {
 public:
   explicit SingleVersionResolver(const fs::path &manifest_path, const pafio::ResolveOptions &options)
-      : root_manifest_path_(CanonicalAbsolutePath(manifest_path)),
+      : root_manifest_path_(pafio::CanonicalAbsolutePath(manifest_path)),
         root_manifest_(pafio::LoadManifest(root_manifest_path_)),
         options_(NormalizeOptions(root_manifest_path_, options)),
         git_cache_(pafio::ResolvePafioHome(), options_.offline, options_.vendor_root)
   {
+    LoadLockedRegistryHints();
     BuildRootSeeds();
   }
 
@@ -390,7 +444,7 @@ public:
     std::vector<std::string> root_ids;
     for (const ManifestSelection &seed : root_seeds_)
     {
-      const size_t root_index = ResolveNode(seed.manifest_path, seed.origin);
+      const size_t root_index = ResolveNode(seed.manifest_path, seed.origin, {});
       root_ids.push_back(nodes_.at(root_index).id);
     }
     std::sort(root_ids.begin(), root_ids.end());
@@ -465,7 +519,7 @@ private:
     }
     else
     {
-      normalized.vendor_root = CanonicalAbsolutePath(*normalized.vendor_root);
+      normalized.vendor_root = pafio::CanonicalAbsolutePath(*normalized.vendor_root);
     }
     return normalized;
   }
@@ -481,6 +535,53 @@ private:
     std::vector<std::string> dependencies;
     std::vector<pafio::ResolvedDependencyAlias> dependency_aliases;
   };
+
+  void LoadLockedRegistryHints()
+  {
+    const fs::path lockfile_path = root_manifest_path_.parent_path() / "pafio.lock";
+    if (!fs::exists(lockfile_path))
+    {
+      return;
+    }
+
+    pafio::LockfileDocument lockfile;
+    try
+    {
+      lockfile = pafio::LoadLockfile(lockfile_path);
+    }
+    catch (const pafio::ValidationError &)
+    {
+      if (options_.locked)
+      {
+        throw;
+      }
+      return;
+    }
+
+    std::unordered_set<std::string> ambiguous_keys;
+    for (const pafio::LockPackage &package : lockfile.packages)
+    {
+      if (package.source_kind != "registry" ||
+          !package.registry.has_value() ||
+          !package.sha256.has_value())
+      {
+        continue;
+      }
+      const std::string key =
+          RegistryLockHintKey(*package.registry, package.name, package.version);
+      if (ambiguous_keys.contains(key))
+      {
+        continue;
+      }
+      const auto [existing, inserted] =
+          locked_registry_digests_.emplace(key, *package.sha256);
+      if (!inserted && existing->second != *package.sha256)
+      {
+        locked_registry_digests_.erase(existing);
+        ambiguous_keys.insert(key);
+      }
+    }
+  }
 
   void BuildRootSeeds()
   {
@@ -508,7 +609,7 @@ private:
         throw pafio::WorkspaceError("workspace member is also excluded: " + member);
       }
 
-      const fs::path member_manifest = CanonicalAbsolutePath(root_manifest_path_.parent_path() / member / "pafio.toml");
+      const fs::path member_manifest = pafio::CanonicalAbsolutePath(root_manifest_path_.parent_path() / member / "pafio.toml");
       if (!fs::exists(member_manifest))
       {
         throw pafio::WorkspaceError("workspace member manifest not found: " + member_manifest.string());
@@ -573,7 +674,13 @@ private:
           {
             continue;
           }
-          const fs::path member_manifest = CanonicalAbsolutePath(root_manifest_path.parent_path() / member / "pafio.toml");
+          const fs::path member_manifest = pafio::CanonicalAbsolutePath(root_manifest_path.parent_path() / member / "pafio.toml");
+          if (origin_hint.snapshot_root.has_value() &&
+              !PathIsWithin(member_manifest, origin_hint.snapshot_root.value()))
+          {
+            throw pafio::ResolutionError(
+                "workspace member escapes its materialized source snapshot: " + member_manifest.string());
+          }
           if (!fs::exists(member_manifest))
           {
             throw pafio::ResolutionError("dependency workspace member manifest not found: " + member_manifest.string());
@@ -620,19 +727,19 @@ private:
 
   ManifestSelection ResolvePathDependency(const Node &parent, const pafio::Dependency &dependency)
   {
-    const fs::path dependency_root = CanonicalAbsolutePath(parent.package_dir / dependency.source / "pafio.toml");
+    const fs::path dependency_root = pafio::CanonicalAbsolutePath(parent.package_dir / dependency.source / "pafio.toml");
     if (!fs::exists(dependency_root))
     {
       throw pafio::ResolutionError("path dependency manifest not found: " + dependency_root.string());
     }
 
-    if (parent.origin.kind == SourceKind::kGit)
+    if (parent.origin.snapshot_root.has_value())
     {
       if (!PathIsWithin(dependency_root.parent_path(), parent.origin.snapshot_root.value()) &&
-          CanonicalAbsolutePath(dependency_root.parent_path()) != CanonicalAbsolutePath(parent.origin.snapshot_root.value()))
+          pafio::CanonicalAbsolutePath(dependency_root.parent_path()) != pafio::CanonicalAbsolutePath(parent.origin.snapshot_root.value()))
       {
         throw pafio::ResolutionError(
-            "git-sourced path dependency escapes its pinned snapshot: " + dependency_root.string());
+            "path dependency escapes its materialized source snapshot: " + dependency_root.string());
       }
       return SelectPackageManifestFromRoot(dependency_root, parent.origin, dependency.package);
     }
@@ -661,11 +768,43 @@ private:
     }
     if (!dependency.version.has_value())
     {
-      throw pafio::ResolutionError("registry dependency '" + dependency.alias + "' must declare version = \"x.y.z\"");
+      throw pafio::ResolutionError(
+          "registry dependency '" + dependency.alias +
+          "' must declare version = \"x.y.z\" (exact semver only; ranges are not supported in single-version-v1)");
     }
 
+    const std::string hint_key =
+        RegistryLockHintKey(dependency.source, *dependency.package, *dependency.version);
+    std::optional<std::string> locked_sha256;
+    if (const auto hint = locked_registry_digests_.find(hint_key);
+        hint != locked_registry_digests_.end())
+    {
+      locked_sha256 = hint->second;
+    }
+    if (options_.locked && !locked_sha256.has_value())
+    {
+      throw pafio::ResolutionError(
+          "locked registry dependency has no matching package digest in pafio.lock: " +
+          *dependency.package + "@" + *dependency.version);
+    }
+
+    const std::string materialize_key = dependency.source + '\x1f' + *dependency.package + '\x1f' +
+        *dependency.version + '\x1f' + (options_.offline ? "1" : "0") + '\x1f' +
+        locked_sha256.value_or("");
+    const auto memoized = materialized_registry_.find(materialize_key);
     const pafio::RegistryMaterializationResult materialized =
-        pafio::MaterializeRegistryPackage(dependency.source, *dependency.package, *dependency.version, options_.offline);
+        memoized != materialized_registry_.end()
+            ? memoized->second
+            : materialized_registry_
+                  .emplace(
+                      materialize_key,
+                      pafio::MaterializeRegistryPackage(
+                          dependency.source,
+                          *dependency.package,
+                          *dependency.version,
+                          options_.offline,
+                          locked_sha256))
+                  .first->second;
     const SourceOrigin registry_origin{
         .kind = SourceKind::kRegistry,
         .registry_root = materialized.registry_root,
@@ -681,15 +820,88 @@ private:
     return SelectPackageManifestFromRoot(root_manifest, registry_origin, dependency.package);
   }
 
-  size_t ResolveNode(const fs::path &manifest_path, const SourceOrigin &origin)
+  enum class VisitState
   {
-    const fs::path normalized_manifest_path = CanonicalAbsolutePath(manifest_path);
+    kActive,
+    kDone,
+  };
+
+  static std::string JoinRequirementChain(const std::vector<std::string> &chain)
+  {
+    std::ostringstream out;
+    for (size_t i = 0; i < chain.size(); ++i)
+    {
+      if (i != 0)
+      {
+        out << " -> ";
+      }
+      out << chain[i];
+    }
+    return out.str();
+  }
+
+  std::string FormatCyclePath(size_t cycle_index) const
+  {
+    const auto cycle_start = std::find(active_stack_.begin(), active_stack_.end(), cycle_index);
+    std::vector<std::string> cycle_ids;
+    for (auto it = cycle_start; it != active_stack_.end(); ++it)
+    {
+      cycle_ids.push_back(nodes_.at(*it).id);
+    }
+    cycle_ids.push_back(nodes_.at(cycle_index).id);
+    return JoinRequirementChain(cycle_ids);
+  }
+
+  [[noreturn]] void ThrowVersionConflict(
+      const Node &other,
+      const Node &candidate,
+      const std::vector<std::string> &candidate_chain) const
+  {
+    const std::vector<std::string> &other_chain = path_ids_by_index_.at(node_by_package_name_.at(other.package.name));
+    throw pafio::ResolutionError(
+        "single-version-v1 conflict for package '" + candidate.package.name + "': versions '" +
+        other.package.version + "' and '" + candidate.package.version + "'\n"
+        "  required by: " +
+        JoinRequirementChain(other_chain) +
+        "\n"
+        "  required by: " +
+        JoinRequirementChain(candidate_chain));
+  }
+
+  [[noreturn]] void ThrowSourceConflict(
+      const Node &other,
+      const Node &candidate,
+      const std::vector<std::string> &candidate_chain) const
+  {
+    const std::vector<std::string> &other_chain = path_ids_by_index_.at(node_by_package_name_.at(other.package.name));
+    throw pafio::ResolutionError(
+        "single-version-v1 source conflict for package '" + candidate.package.name + "'\n"
+        "  required by: " +
+        JoinRequirementChain(other_chain) +
+        "\n"
+        "  required by: " +
+        JoinRequirementChain(candidate_chain));
+  }
+
+  size_t ResolveNode(
+      const fs::path &manifest_path,
+      const SourceOrigin &origin,
+      const std::vector<std::string> &parent_path)
+  {
+    const fs::path normalized_manifest_path = pafio::CanonicalAbsolutePath(manifest_path);
     const fs::path package_dir = normalized_manifest_path.parent_path();
     const std::string source_fingerprint = BuildSourceFingerprint(origin, package_dir);
 
     if (const auto existing = node_by_source_fingerprint_.find(source_fingerprint); existing != node_by_source_fingerprint_.end())
     {
-      return existing->second;
+      const size_t existing_index = existing->second;
+      if (const auto visit = visit_state_by_index_.find(existing_index);
+          visit != visit_state_by_index_.end() && visit->second == VisitState::kActive)
+      {
+        throw pafio::ResolutionError(
+            "single-version-v1 requires an acyclic dependency graph: " + FormatCyclePath(existing_index));
+      }
+      return existing_index;
     }
 
     const pafio::ManifestDocument manifest =
@@ -714,19 +926,19 @@ private:
         .dependency_aliases = {},
     };
 
+    std::vector<std::string> candidate_chain = parent_path;
+    candidate_chain.push_back(node.id);
+
     if (const auto existing_by_name = node_by_package_name_.find(node.package.name); existing_by_name != node_by_package_name_.end())
     {
       const Node &other = nodes_.at(existing_by_name->second);
       if (other.package.version != node.package.version)
       {
-        throw pafio::ResolutionError(
-            "single-version-v1 conflict for package '" + node.package.name + "': versions '" +
-            other.package.version + "' and '" + node.package.version + "'");
+        ThrowVersionConflict(other, node, candidate_chain);
       }
       if (other.source_fingerprint != node.source_fingerprint)
       {
-        throw pafio::ResolutionError(
-            "single-version-v1 source conflict for package '" + node.package.name + "'");
+        ThrowSourceConflict(other, node, candidate_chain);
       }
       return existing_by_name->second;
     }
@@ -735,42 +947,50 @@ private:
     nodes_.push_back(node);
     node_by_source_fingerprint_[source_fingerprint] = node_index;
     node_by_package_name_[node.package.name] = node_index;
+    path_ids_by_index_[node_index] = candidate_chain;
+    visit_state_by_index_[node_index] = VisitState::kActive;
+    active_stack_.push_back(node_index);
 
     std::vector<std::string> dependencies;
     std::vector<pafio::ResolvedDependencyAlias> dependency_aliases;
-    for (const pafio::Dependency &dependency : CollectDependencies(node.package))
+    try
     {
-      ManifestSelection selected;
-      if (dependency.source_kind == pafio::DependencySourceKind::kPath)
+      for (const pafio::Dependency &dependency : CollectDependencies(nodes_.at(node_index).package))
       {
-        selected = ResolvePathDependency(nodes_.at(node_index), dependency);
-      }
-      else if (dependency.source_kind == pafio::DependencySourceKind::kGit)
-      {
-        selected = ResolveGitDependency(nodes_.at(node_index), dependency);
-      }
-      else
-      {
-        selected = ResolveRegistryDependency(nodes_.at(node_index), dependency);
-      }
+        ManifestSelection selected;
+        if (dependency.source_kind == pafio::DependencySourceKind::kPath)
+        {
+          selected = ResolvePathDependency(nodes_.at(node_index), dependency);
+        }
+        else if (dependency.source_kind == pafio::DependencySourceKind::kGit)
+        {
+          selected = ResolveGitDependency(nodes_.at(node_index), dependency);
+        }
+        else
+        {
+          selected = ResolveRegistryDependency(nodes_.at(node_index), dependency);
+        }
 
-      const size_t dependency_index = ResolveNode(selected.manifest_path, selected.origin);
-      const Node &dependency_node = nodes_.at(dependency_index);
-      if (dependency.package.has_value() && *dependency.package != dependency_node.package.name)
-      {
-        throw pafio::ResolutionError(
-            "dependency '" + dependency.alias + "' expected package '" + *dependency.package +
-            "' but found '" + dependency_node.package.name + "'");
+        const size_t dependency_index = ResolveNode(selected.manifest_path, selected.origin, candidate_chain);
+        const Node &dependency_node = nodes_.at(dependency_index);
+        if (dependency.package.has_value() && *dependency.package != dependency_node.package.name)
+        {
+          throw pafio::ResolutionError(
+              "dependency '" + dependency.alias + "' expected package '" + *dependency.package +
+              "' but found '" + dependency_node.package.name + "'");
+        }
+        dependencies.push_back(dependency_node.id);
+        dependency_aliases.push_back({
+            .alias = dependency.alias,
+            .package_id = dependency_node.id,
+        });
       }
-      if (dependency_node.source_fingerprint == node.source_fingerprint)
-      {
-        throw pafio::ResolutionError("package '" + node.package.name + "' cannot depend on itself");
-      }
-      dependencies.push_back(dependency_node.id);
-      dependency_aliases.push_back({
-          .alias = dependency.alias,
-          .package_id = dependency_node.id,
-      });
+    }
+    catch (...)
+    {
+      active_stack_.pop_back();
+      visit_state_by_index_.erase(node_index);
+      throw;
     }
 
     std::sort(dependencies.begin(), dependencies.end());
@@ -783,6 +1003,8 @@ private:
         });
     nodes_[node_index].dependencies = std::move(dependencies);
     nodes_[node_index].dependency_aliases = std::move(dependency_aliases);
+    active_stack_.pop_back();
+    visit_state_by_index_[node_index] = VisitState::kDone;
     return node_index;
   }
 
@@ -793,7 +1015,12 @@ private:
   std::vector<ManifestSelection> root_seeds_;
   std::set<std::string> top_level_workspace_dirs_;
   std::unordered_map<std::string, size_t> node_by_source_fingerprint_;
+  std::unordered_map<std::string, std::string> locked_registry_digests_;
   std::unordered_map<std::string, size_t> node_by_package_name_;
+  std::unordered_map<std::string, pafio::RegistryMaterializationResult> materialized_registry_;
+  std::unordered_map<size_t, VisitState> visit_state_by_index_;
+  std::unordered_map<size_t, std::vector<std::string>> path_ids_by_index_;
+  std::vector<size_t> active_stack_;
   std::vector<Node> nodes_;
 };
 

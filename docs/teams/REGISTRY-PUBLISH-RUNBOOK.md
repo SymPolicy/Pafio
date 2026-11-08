@@ -1,58 +1,47 @@
 # Registry / Publish Runbook
 
-**Purpose:** Provide the daily-work entrypoint for `pafio` registry and publish maintainers covering registry client docs, offline package expectations, publish/fetch flows, and promotion tooling.
+**Purpose:** Route maintenance for Pafio registry reads, trust, packaging, and publish-client behavior.
 
-**Last updated:** 2026-05-02
+**Last updated:** 2026-10-23
 
 ## Mission
 
-Own registry transport, offline package expectations, and package publish/fetch
-client behavior without redefining core workflow semantics, external compiler
-contracts, or `pafio` server control-plane behavior.
+Maintain safe package consumption and publication clients without implementing
+Platform storage, authorization, promotion, mirror, or deployment services.
 
 ## Owned Surface
 
-1. `docs/registry/`
-2. `scripts/registry-promote.py`
-3. `scripts/registry-server-gate.py`
-4. compatibility references to registry server gates until platform gates replace them
-5. local offline package client expectations that interact with registry sources
-6. public registry trust descriptor import and read-root pin validation from the client side
+1. `src/PafioRegistryClient/` and `src/PafioSecurity/`
+2. `src/PafioPack/` and `src/PafioPublish/`
+3. `docs/registry/`
+4. focused registry, pack, publish, and malicious-archive tests
 
 ## Daily Workflow
 
-1. Keep registry transport, promotion behavior, registry-v2 static protocol, and package-manager client contract docs aligned in `docs/registry/`.
-2. Link server-side control-plane, mirror sync, and global package distribution behavior to `pafio` instead of adding new service implementation rules here.
-3. Keep offline package and local import/export rules client-owned; they must not depend on mirror availability.
-4. Keep acceptance commands discoverable from the verification matrix and checkpoint health docs.
-5. Coordinate with Core / Workflow when publish/fetch behavior changes user-facing workflow outcomes.
-6. Keep `RegistryHttpTransport` as a transport-only strategy boundary. Registry semantics stay in `RemotePublish` / publish domain code, and external process execution stays in `PafioCore::Process`.
-7. Keep registry control-plane references on native JSON contract and example packs; do not reintroduce generated API-description artifacts or lint gates.
-8. Keep the minimum measurable registry-management checklist visible in registry docs: publish, verify, mirror handoff, offline behavior, cache reuse, and security boundary.
-9. For HTTP read-root validation, import the platform descriptor through
-   `pafio registry trust import` or `registry-server-gate.py --fetch-trust-descriptor`
-   before claiming fetch coverage.
+1. Verify trust metadata, immutable identity, size, digest, and archive paths.
+2. Keep cache promotion atomic and offline behavior deterministic.
+3. Keep `.pafio.src.tar` and Platform publish-request contracts aligned.
+4. Send service-side changes to Styio Platform.
 
 ## Change Classes
 
-1. Small: local registry test or runbook cleanup.
-2. Medium: registry layout, publish semantics, native JSON client compatibility contract, or promotion flow updates.
-3. High: split-origin, auth-adjacent, hosted deployment model, publish authorization changes, or service-side control-plane handoff changes.
+1. Small: local validation or documentation fix.
+2. Medium: cache, trust, pack, or publish request behavior.
+3. High: immutable object identity, archive security, or Platform route.
 
 ## Required Gates
 
 ```bash
-./scripts/checkpoint-health.sh
-python3 ./tests/interop/registry-control-plane-contract-gate.py
-python3 ./tests/interop/native-contract-source-gate.py
-./scripts/delivery-gate.sh --skip-audit --skip-health
+ctest --test-dir build-codex -R 'Pack|Publish|Security|Tuf|Sync' --output-on-failure
+python3 tests/interop/native-contract-source-gate.py
 ```
 
 ## Cross-Team Dependencies
 
-1. Core / Workflow reviews changes that alter user-facing publish/fetch commands.
-2. Docs / Delivery reviews changes to gate docs or delivery entrypoints.
+Core / Workflow reviews dependency-visible behavior. Platform reviews service
+contracts. Docs / Delivery reviews registry ownership text.
 
 ## Handoff / Recovery
 
-Record the registry mode affected, the acceptance command that still fails, whether local or remote storage assumptions changed, and whether the next fix belongs in `pafio` client code or `pafio` service code.
+Record the client stage, immutable identity, structured failure category, and
+whether the next action belongs to Pafio or Platform. Never record credentials.

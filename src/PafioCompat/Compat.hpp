@@ -20,8 +20,7 @@ struct CompatibilityReport
 };
 
 std::optional<std::filesystem::path> ResolveStyioBinary(
-    const std::optional<std::string> &explicit_path,
-    const std::optional<std::filesystem::path> &manifest_path = std::nullopt);
+    const std::optional<std::string> &explicit_path);
 CompatibilityReport CheckCompilerCompatibility(const std::filesystem::path &binary);
 
 }  // namespace pafio

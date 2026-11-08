@@ -1,5 +1,6 @@
 #include "PafioVendor/Vendor.hpp"
 
+#include "PafioCore/ContractLexicon.hpp"
 #include "PafioCore/Errors.hpp"
 #include "PafioCore/Paths.hpp"
 #include "PafioCore/Version.hpp"
@@ -117,6 +118,7 @@ VendorResult WriteVendorTree(const VendorRequest &request)
   json records = json::array();
   for (const VendoredSnapshot &snapshot : snapshots)
   {
+    pafio::RequireGitCommitId(snapshot.rev, "vendored git snapshot rev");
     const fs::path destination_root = vendor_root / "git" / snapshot.repo_hash / snapshot.rev;
     CopySnapshotTree(snapshot.snapshot_root, destination_root);
     records.push_back({

@@ -1,0 +1,58 @@
+[
+  {
+    "key": "pafio",
+    "parent": null,
+    "title": "Pafio",
+    "kind": "repository",
+    "basis": "observed",
+    "disclosure": "examined",
+    "touch": "modified",
+    "source_files": [
+      "README.md",
+      "docs/rollups/CURRENT-STATE.md"
+    ],
+    "description": "Observed package-manager and local project-workflow foundation for the Styio ecosystem."
+  },
+  {
+    "key": "pafio/product-workflows",
+    "parent": "pafio",
+    "title": "Product workflows",
+    "kind": "capability",
+    "basis": "observed",
+    "disclosure": "examined",
+    "touch": "modified",
+    "source_files": [
+      "docs/plan/pafio-product-convergence/Requirements.md",
+      "docs/plan/pafio-product-convergence/Architecture.md"
+    ],
+    "description": "Accepted Pafio package lifecycle, project workflow, public identity, and ecosystem ownership boundary."
+  },
+  {
+    "key": "pafio/dependency-kernel",
+    "parent": "pafio",
+    "title": "Trusted dependency kernel",
+    "kind": "component",
+    "basis": "observed",
+    "disclosure": "examined",
+    "touch": "modified",
+    "source_files": [
+      "docs/plan/pafio-thin-core/Requirements.md",
+      "docs/plan/pafio-thin-core/Architecture.md"
+    ],
+    "description": "Accepted deterministic manifest, lock, resolution, verified storage, and offline synchronization core."
+  },
+  {
+    "key": "pafio/platform-releases",
+    "parent": "pafio",
+    "title": "Platform-independent releases",
+    "kind": "capability",
+    "basis": "designed",
+    "disclosure": "examined",
+    "touch": "modified",
+    "source_files": [
+      "docs/governance/Pafio-Version-Decoupling-Constraints.md",
+      ".github/workflows/local-ci-gate.yml"
+    ],
+    "description": "Shared-source nightly promotion and operating-system artifact releases use independent acceptance and publication decisions."
+  }
+]

@@ -58,7 +58,7 @@ pafio::RegistryWriteSecurityDecision DelegatingWriteResolver(const pafio::Regist
 {
   ++g_write_resolver_calls;
   pafio::RegistryWriteSecurityDecision decision = pafio::ResolveDefaultRegistryWriteSecurity(request);
-  decision.provider_name = "private-test";
+  decision.provider_name = "test-delegate";
   decision.mode = "delegated";
   return decision;
 }
@@ -95,30 +95,47 @@ TEST(SecurityTests, DefaultWriteSecurityNormalizesAnonymousHttpsPublish)
   EXPECT_TRUE(decision.request_headers.empty());
   EXPECT_EQ(decision.provider_name, "public-default");
   EXPECT_EQ(decision.mode, "anonymous");
-  EXPECT_FALSE(decision.profile_name.has_value());
 }
 
-TEST(SecurityTests, DefaultWriteSecurityRejectsPrivateHooksInOpenSourceCore)
+TEST(SecurityTests, DefaultWriteSecurityRequiresOptInForPlaintextHttp)
 {
   EXPECT_THROW(
-      pafio::ResolveDefaultRegistryWriteSecurity({
-          .registry_root = "https://upload.example.test",
-          .profile_name = std::string("write-dev"),
-      }),
+      pafio::ResolveDefaultRegistryWriteSecurity({.registry_root = "http://upload.example.test"}),
       pafio::PublishError);
 
+  const pafio::RegistryWriteSecurityDecision decision = pafio::ResolveDefaultRegistryWriteSecurity(
+      {.registry_root = "http://localhost:8080", .allow_plaintext_http = true});
+  EXPECT_EQ(decision.registry_root, "http://localhost:8080");
+
+  const pafio::RegistryWriteSecurityDecision loopback_ip = pafio::ResolveDefaultRegistryWriteSecurity(
+      {.registry_root = "http://127.0.0.1:8080", .allow_plaintext_http = true});
+  EXPECT_EQ(loopback_ip.registry_root, "http://127.0.0.1:8080");
+
+  // The plaintext opt-in is a loopback escape hatch, not a general
+  // insecure-transport override for remote registries.
   EXPECT_THROW(
-      pafio::ResolveDefaultRegistryWriteSecurity({
-          .registry_root = "https://upload.example.test",
-          .policy_file = fs::path("/tmp/policy.toml"),
-      }),
+      pafio::ResolveDefaultRegistryWriteSecurity(
+          {.registry_root = "http://upload.example.test", .allow_plaintext_http = true}),
       pafio::PublishError);
 
+  // A registered name that only shares the 127. prefix resolves remotely.
   EXPECT_THROW(
-      pafio::ResolveDefaultRegistryWriteSecurity({
-          .registry_root = "https://upload.example.test",
-          .explicit_request_headers = {"X-Pafio-Write-Token: dev-token"},
-      }),
+      pafio::ResolveDefaultRegistryWriteSecurity(
+          {.registry_root = "http://127.attacker.example", .allow_plaintext_http = true}),
+      pafio::PublishError);
+  EXPECT_THROW(
+      pafio::ResolveDefaultRegistryWriteSecurity(
+          {.registry_root = "http://127.0.0.1.evil.test", .allow_plaintext_http = true}),
+      pafio::PublishError);
+}
+
+TEST(SecurityTests, DefaultSecurityRejectsUrlUserinfo)
+{
+  EXPECT_THROW(
+      pafio::ResolveDefaultRegistryReadSecurity({.registry_root = "https://user:token@packages.example.test"}),
+      pafio::FetchError);
+  EXPECT_THROW(
+      pafio::ResolveDefaultRegistryWriteSecurity({.registry_root = "https://user:token@upload.example.test"}),
       pafio::PublishError);
 }
 
@@ -134,7 +151,7 @@ TEST(SecurityTests, RegisteredWriteResolverCanDelegateToDefaultChain)
     EXPECT_EQ(g_write_resolver_calls, 1);
     EXPECT_EQ(decision.registry_root, "https://upload.example.test");
     EXPECT_TRUE(decision.request_headers.empty());
-    EXPECT_EQ(decision.provider_name, "private-test");
+    EXPECT_EQ(decision.provider_name, "test-delegate");
     EXPECT_EQ(decision.mode, "delegated");
   }
 
@@ -199,11 +216,17 @@ TEST(SecurityTests, ImportsAndResolvesRegistryTrustDescriptor)
       "  \"root_sha256\": \"" + root_digest + "\",\n"
       "  \"control_plane_base_url\": \"https://packages.example.test/api/pafio-registry-control/v1\",\n"
       "  \"issued_at\": \"2026-05-02T00:00:00Z\",\n"
-      "  \"expires\": \"2026-06-02T00:00:00Z\"\n"
+      "  \"expires\": \"2099-06-02T00:00:00Z\"\n"
       "}\n");
 
-  const pafio::RegistryTrustPin imported =
-      pafio::ImportRegistryTrustDescriptor(root / ".pafio-home", descriptor_path.string());
+  EXPECT_THROW(
+      pafio::ImportRegistryTrustDescriptor(root / ".pafio-home", descriptor_path.string()),
+      pafio::FetchError);
+
+  const pafio::RegistryTrustPin imported = pafio::ImportRegistryTrustDescriptor(
+      root / ".pafio-home",
+      descriptor_path.string(),
+      pafio::RegistryTrustImportOptions{.allow_dev_unsigned = true});
   EXPECT_EQ(imported.registry_root, "https://packages.example.test/pafio");
   EXPECT_EQ(imported.root_sha256, root_digest);
   EXPECT_EQ(imported.registry_name, "unit-registry");
@@ -214,4 +237,127 @@ TEST(SecurityTests, ImportsAndResolvesRegistryTrustDescriptor)
   ASSERT_TRUE(resolved.has_value());
   EXPECT_EQ(resolved->root_sha256, root_digest);
   EXPECT_TRUE(fs::exists(root / ".pafio-home" / "registry" / "trust" / "registry-trust.json"));
+}
+
+TEST(SecurityTests, RejectsExpiredAndUnknownSignerDescriptors)
+{
+  const fs::path root = MakeTempDir("registry-trust-negative");
+  const ScopedEnvVar pafio_home("PAFIO_HOME", (root / ".pafio-home").string());
+  const fs::path expired_path = root / "expired.json";
+  WriteFile(
+      expired_path,
+      "{\n"
+      "  \"schema_version\": 1,\n"
+      "  \"registry_root\": \"https://packages.example.test/pafio/\",\n"
+      "  \"registry_name\": \"unit-registry\",\n"
+      "  \"root_sha256\": \"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\",\n"
+      "  \"issued_at\": \"2020-01-01T00:00:00Z\",\n"
+      "  \"expires\": \"2020-02-01T00:00:00Z\"\n"
+      "}\n");
+  EXPECT_THROW(
+      pafio::ImportRegistryTrustDescriptor(
+          root / ".pafio-home",
+          expired_path.string(),
+          pafio::RegistryTrustImportOptions{.allow_dev_unsigned = true}),
+      pafio::FetchError);
+
+  const fs::path unknown_signer = root / "unknown-signer.json";
+  WriteFile(
+      unknown_signer,
+      "{\n"
+      "  \"signed\": {\n"
+      "    \"schema_version\": 1,\n"
+      "    \"registry_root\": \"https://packages.example.test/pafio/\",\n"
+      "    \"registry_name\": \"unit-registry\",\n"
+      "    \"root_sha256\": \"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\",\n"
+      "    \"issued_at\": \"2026-05-02T00:00:00Z\",\n"
+      "    \"expires\": \"2099-06-02T00:00:00Z\"\n"
+      "  },\n"
+      "  \"signatures\": [{\"keyid\": \"unknown\", \"sig\": \"YWJjZA==\"}]\n"
+      "}\n");
+  EXPECT_THROW(
+      pafio::ImportRegistryTrustDescriptor(root / ".pafio-home", unknown_signer.string()),
+      pafio::FetchError);
+}
+
+TEST(SecurityTests, RejectsTrustDescriptorUrlsWithUserinfo)
+{
+  const fs::path root = MakeTempDir("registry-trust-userinfo");
+  const ScopedEnvVar pafio_home("PAFIO_HOME", (root / ".pafio-home").string());
+  const std::string root_digest = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+
+  const fs::path userinfo_root = root / "userinfo-root.json";
+  WriteFile(
+      userinfo_root,
+      "{\n"
+      "  \"schema_version\": 1,\n"
+      "  \"registry_root\": \"https://user:token@packages.example.test/pafio/\",\n"
+      "  \"registry_name\": \"unit-registry\",\n"
+      "  \"root_sha256\": \"" + root_digest + "\",\n"
+      "  \"issued_at\": \"2026-05-02T00:00:00Z\",\n"
+      "  \"expires\": \"2099-06-02T00:00:00Z\"\n"
+      "}\n");
+  EXPECT_THROW(
+      pafio::ImportRegistryTrustDescriptor(
+          root / ".pafio-home",
+          userinfo_root.string(),
+          pafio::RegistryTrustImportOptions{.allow_dev_unsigned = true}),
+      pafio::FetchError);
+
+  const fs::path userinfo_plane = root / "userinfo-plane.json";
+  WriteFile(
+      userinfo_plane,
+      "{\n"
+      "  \"schema_version\": 1,\n"
+      "  \"registry_root\": \"https://packages.example.test/pafio/\",\n"
+      "  \"registry_name\": \"unit-registry\",\n"
+      "  \"root_sha256\": \"" + root_digest + "\",\n"
+      "  \"control_plane_base_url\": \"https://user:token@packages.example.test/api/pafio-registry-control/v1\",\n"
+      "  \"issued_at\": \"2026-05-02T00:00:00Z\",\n"
+      "  \"expires\": \"2099-06-02T00:00:00Z\"\n"
+      "}\n");
+  EXPECT_THROW(
+      pafio::ImportRegistryTrustDescriptor(
+          root / ".pafio-home",
+          userinfo_plane.string(),
+          pafio::RegistryTrustImportOptions{.allow_dev_unsigned = true}),
+      pafio::FetchError);
+}
+
+TEST(SecurityTests, PersistedReplayFloorsOnlyIncrease)
+{
+  const fs::path root = MakeTempDir("registry-trust-floors");
+  const ScopedEnvVar pafio_home("PAFIO_HOME", (root / ".pafio-home").string());
+  const fs::path descriptor_path = root / "descriptor.json";
+  const std::string root_digest = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+  WriteFile(
+      descriptor_path,
+      "{\n"
+      "  \"schema_version\": 1,\n"
+      "  \"registry_root\": \"https://packages.example.test/pafio/\",\n"
+      "  \"registry_name\": \"unit-registry\",\n"
+      "  \"root_sha256\": \"" + root_digest + "\",\n"
+      "  \"issued_at\": \"2026-05-02T00:00:00Z\",\n"
+      "  \"expires\": \"2099-06-02T00:00:00Z\"\n"
+      "}\n");
+  const pafio::RegistryTrustPin imported = pafio::ImportRegistryTrustDescriptor(
+      root / ".pafio-home",
+      descriptor_path.string(),
+      pafio::RegistryTrustImportOptions{.allow_dev_unsigned = true});
+  EXPECT_EQ(imported.timestamp_floor, 0);
+  EXPECT_EQ(imported.snapshot_floor, 0);
+
+  pafio::RaiseRegistryTrustFloors(root / ".pafio-home", "https://packages.example.test/pafio", 7, 9);
+  std::optional<pafio::RegistryTrustPin> pin =
+      pafio::ResolveRegistryTrustPin(root / ".pafio-home", "https://packages.example.test/pafio");
+  ASSERT_TRUE(pin.has_value());
+  EXPECT_EQ(pin->timestamp_floor, 7);
+  EXPECT_EQ(pin->snapshot_floor, 9);
+
+  // A lower or equal observation never regresses the persisted floors.
+  pafio::RaiseRegistryTrustFloors(root / ".pafio-home", "https://packages.example.test/pafio", 3, 9);
+  pin = pafio::ResolveRegistryTrustPin(root / ".pafio-home", "https://packages.example.test/pafio");
+  ASSERT_TRUE(pin.has_value());
+  EXPECT_EQ(pin->timestamp_floor, 7);
+  EXPECT_EQ(pin->snapshot_floor, 9);
 }

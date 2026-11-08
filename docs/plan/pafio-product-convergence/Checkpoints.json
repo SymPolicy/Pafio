@@ -1,0 +1,730 @@
+[
+  {
+    "id": "898798aa-c766-41ff-a0e5-f0f609af4e6c",
+    "status": "completed",
+    "role": "group_design",
+    "verification_profile": "code",
+    "prerequisites": [],
+    "platform": "any",
+    "difficulty": "critical",
+    "goal": "Freeze one coherent design for the completed Pafio product and ecosystem convergence group.",
+    "description": "Scope: the complete convergence group, its requirements, architecture, validation contract, evidence record, and implementation handoffs. Context: the delivery established a clean product boundary, then migrated product workflows, ecosystem owners, and public identity before fixed-revision acceptance. Target: preserve that source-grounded design spine in the current grouped-delivery model. Design Considerations: keep governance normative, retain deterministic dependency behavior, and express real handoffs only through prerequisites. Design Value: one design owner keeps the historical product cutover readable without changing its accepted outcome. Constraints & Risks: this migration records completed work only; it must not create new product scope, compatibility behavior, private paths, or backend runtime evidence.",
+    "acceptance_criteria": [
+      {
+        "checked": true,
+        "text": "Requirements, architecture, validation, and evidence describe one consistent Pafio product boundary and ordered cutover."
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "docs(plan): migrate Pafio convergence design state",
+      "target": "a task-specific temporary branch in Pafio"
+    },
+    "next": [
+      "799b8636-9571-4a8d-8afe-f6773b295444"
+    ]
+  },
+  {
+    "id": "799b8636-9571-4a8d-8afe-f6773b295444",
+    "status": "completed",
+    "role": "implementation",
+    "verification_profile": "code",
+    "prerequisites": [
+      "898798aa-c766-41ff-a0e5-f0f609af4e6c"
+    ],
+    "platform": "any",
+    "difficulty": "standard",
+    "goal": "Make one validated product contract the sole Pafio planning and documentation source of truth.",
+    "description": "Scope: Closure: capability - one authoritative product and ownership contract across Better Plan, README, governance, and ADRs. Context: the dependency kernel was presented as the product while invalid roadmaps and obsolete service/toolchain contracts remained. Target: retain the kernel internally, retire stale plans and Pafio-owned server/console contracts, and validate one product model. Design Considerations: governance is normative, ADRs explain rationale, and Better Plan tracks execution. Design Value: implementation and ecosystem owners share one boundary. Constraints & Risks: preserve accepted security decisions and do not advertise unimplemented behavior.",
+    "requirements": [
+      "REQ-CONV-001"
+    ],
+    "design": {
+      "artifact": "docs/plan/pafio-product-convergence/Architecture.md",
+      "owned_paths": [
+        "README.md",
+        "docs/adr/ADR-0008-pafio-product-and-ecosystem-boundary.md",
+        "docs/governance/Pafio-CLI-Contract.md",
+        "docs/governance/Pafio-Manifest-and-Lock-Conventions.md",
+        "docs/plan/README.md",
+        "docs/plan/pafio-thin-core/Architecture.md",
+        "docs/plan/pafio-thin-core/Requirements.md"
+      ],
+      "scaffold_paths": [
+        "docs/adr/ADR-0008-pafio-product-and-ecosystem-boundary.md"
+      ],
+      "acceptance_paths": [
+        "docs/plan/pafio-product-convergence/Validation.md",
+        "scripts/docs-audit.py"
+      ],
+      "symbols": [
+        {
+          "path": "docs/adr/ADR-0008-pafio-product-and-ecosystem-boundary.md",
+          "kind": "module",
+          "name": "Pafio product boundary",
+          "operation": "add",
+          "signature": "package/project workflow ownership decision"
+        }
+      ],
+      "interfaces": [
+        {
+          "name": "Pafio product contract",
+          "producer": "docs/governance/Pafio-CLI-Contract.md",
+          "consumers": [
+            "README.md",
+            "docs/plan/pafio-product-convergence/Requirements.md"
+          ],
+          "inputs": "accepted decisions",
+          "outputs": "one command and ownership model",
+          "errors": [
+            "stale owner",
+            "stale command",
+            "invalid plan"
+          ]
+        }
+      ],
+      "dependencies": [],
+      "decisions": {
+        "composition": "governance, ADR, and plan have separate roles",
+        "algorithms": "linear validation",
+        "data_structures": "one manifest graph",
+        "state": "one active plan",
+        "isolation": "retired plans are deleted",
+        "concurrency": "plan writes are serialized"
+      },
+      "test_seams": [
+        "manifest validation",
+        "docs audit"
+      ]
+    },
+    "acceptance_criteria": [
+      {
+        "checked": true,
+        "text": "Better Plan validation reports zero issues with one active convergence plan and the dependency kernel described as internal.",
+        "evidence_refs": [
+          {
+            "type": "command",
+            "command_sha256": "d4bbb0945c1a1c73a6fe594c02a42560899a8c3df3752518b8f44d9dc767245d",
+            "exit_code": 0,
+            "recorded_at": "2026-07-30T10:54:30Z"
+          },
+          {
+            "type": "command",
+            "command_sha256": "4f9cc27bc72718b087c25ac27966dc2508259ede9e8bf0a3cc382e90134755bf",
+            "exit_code": 0,
+            "recorded_at": "2026-07-30T10:54:30Z"
+          }
+        ]
+      },
+      {
+        "checked": true,
+        "text": "README, ADR, CLI, and manifest contracts agree on the accepted boundary and exclude managed compiler, cloud, hosted server, and console ownership.",
+        "evidence_refs": [
+          {
+            "type": "command",
+            "command_sha256": "d4bbb0945c1a1c73a6fe594c02a42560899a8c3df3752518b8f44d9dc767245d",
+            "exit_code": 0,
+            "recorded_at": "2026-07-30T10:54:30Z"
+          },
+          {
+            "type": "command",
+            "command_sha256": "4f9cc27bc72718b087c25ac27966dc2508259ede9e8bf0a3cc382e90134755bf",
+            "exit_code": 0,
+            "recorded_at": "2026-07-30T10:54:30Z"
+          }
+        ]
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "docs(product): freeze Pafio ownership boundary",
+      "target": "temporary Pafio convergence branch"
+    },
+    "regression": {
+      "scope": "focused",
+      "commands": [
+        "python3 scripts/docs-audit.py"
+      ],
+      "criteria": [
+        0,
+        1
+      ],
+      "paths": [
+        "README.md",
+        "docs/adr/ADR-0004-project-workflows-and-external-styio.md",
+        "docs/adr/ADR-0005-packaging-publish-and-registry-transport.md",
+        "docs/adr/ADR-0008-pafio-product-and-ecosystem-boundary.md",
+        "docs/governance/Pafio-CLI-Contract.md",
+        "docs/governance/Pafio-Manifest-and-Lock-Conventions.md",
+        "docs/plan/README.md",
+        "docs/plan/pafio-thin-core/Architecture.md",
+        "docs/plan/pafio-thin-core/Requirements.md",
+        "scripts/docs-audit.py"
+      ]
+    },
+    "next": [
+      "504a94c8-ed86-4dbd-aa8b-bbbcf0c42f36"
+    ]
+  },
+  {
+    "id": "504a94c8-ed86-4dbd-aa8b-bbbcf0c42f36",
+    "status": "completed",
+    "role": "implementation",
+    "verification_profile": "code",
+    "prerequisites": [
+      "898798aa-c766-41ff-a0e5-f0f609af4e6c",
+      "799b8636-9571-4a8d-8afe-f6773b295444"
+    ],
+    "platform": "any",
+    "difficulty": "critical",
+    "goal": "Deliver Pafio's package lifecycle and local project workflows through one external Styio handoff.",
+    "description": "Scope: Closure: capability - new/init, dependency sync, metadata, check/build/run/test, vendor, pack, and publish. Context: the trusted kernel exists but the CLI mixes managed compiler, cloud, server, and graph commands. Target: crop the surface, add metadata v1, auto-sync workflows, discover external Styio, narrow doctor, and remove non-owned implementation. Design Considerations: reuse one sync result and keep workflow JSON narrow. Design Value: one Cargo/CMake-style terminal entry. Constraints & Risks: preserve deterministic security behavior and run focused tests only.",
+    "requirements": [
+      "REQ-CONV-002",
+      "REQ-CONV-003",
+      "REQ-CONV-004",
+      "REQ-CONV-005",
+      "REQ-CONV-006",
+      "REQ-CONV-007"
+    ],
+    "design": {
+      "artifact": "docs/plan/pafio-product-convergence/Architecture.md",
+      "owned_paths": [
+        "src/PafioApp",
+        "src/PafioCLI",
+        "src/PafioManifest",
+        "src/PafioPlan",
+        "src/PafioWorkflow",
+        "src/PafioResolve/MetadataContract.cpp",
+        "src/PafioResolve/MetadataContract.hpp",
+        "contracts/metadata-v1/metadata.schema.json"
+      ],
+      "scaffold_paths": [
+        "src/PafioResolve/MetadataContract.cpp",
+        "src/PafioResolve/MetadataContract.hpp",
+        "contracts/metadata-v1/metadata.schema.json"
+      ],
+      "acceptance_paths": [
+        "tests/native/MetadataTests.cpp",
+        "tests/native/BuildWorkflowCliTests.cpp",
+        "tests/native/DoctorTests.cpp"
+      ],
+      "symbols": [
+        {
+          "path": "src/PafioResolve/MetadataContract.hpp",
+          "kind": "type",
+          "name": "MetadataDocument",
+          "operation": "add",
+          "signature": "metadata v1 project snapshot"
+        },
+        {
+          "path": "src/PafioApp",
+          "kind": "function",
+          "name": "HandleWorkflow",
+          "operation": "modify",
+          "signature": "sync then external Styio workflow"
+        }
+      ],
+      "interfaces": [
+        {
+          "name": "metadata-v1",
+          "producer": "src/PafioResolve/MetadataContract.cpp",
+          "consumers": [
+            "tests/native/MetadataTests.cpp"
+          ],
+          "inputs": "project state",
+          "outputs": "canonical metadata JSON",
+          "errors": [
+            "invalid manifest",
+            "stale state"
+          ]
+        }
+      ],
+      "dependencies": [
+        {
+          "from": "src/PafioApp",
+          "to": "src/PafioWorkflow",
+          "reason": "All compiler workflows reuse the same sync transaction."
+        }
+      ],
+      "decisions": {
+        "composition": "sync then compiler handshake and invocation",
+        "algorithms": "O(V + E) resolution and linear discovery",
+        "data_structures": "sorted metadata and workflow envelope",
+        "state": "project state only",
+        "isolation": "no managed compiler/cloud/server",
+        "concurrency": "existing CAS single-flight"
+      },
+      "test_seams": [
+        "fake Styio",
+        "network-denying frozen fixture",
+        "metadata serializer"
+      ]
+    },
+    "acceptance_criteria": [
+      {
+        "checked": true,
+        "text": "The parser exposes exactly the retained commands and removed commands are unknown.",
+        "evidence_refs": [
+          {
+            "type": "command",
+            "command_sha256": "a8e6b0a65060f336fdb61fc9a52b43b4e0893f22a368f2003892df4a1f75511f",
+            "exit_code": 0,
+            "recorded_at": "2026-07-30T11:58:51Z"
+          },
+          {
+            "type": "command",
+            "command_sha256": "bcaeb907ee0c4236f837e95604ee8e97aaad79208d7c64092cb753535a1729c4",
+            "exit_code": 0,
+            "recorded_at": "2026-07-30T11:58:51Z"
+          },
+          {
+            "type": "command",
+            "command_sha256": "1e17053201b8e335f62caff15bf26ed00b167d4b4b8646c5bf1e9e914d0908e2",
+            "exit_code": 0,
+            "recorded_at": "2026-07-30T11:58:51Z"
+          }
+        ]
+      },
+      {
+        "checked": true,
+        "text": "Cold workflows sync before Styio and warm frozen workflows are byte-stable and network-free.",
+        "evidence_refs": [
+          {
+            "type": "command",
+            "command_sha256": "a8e6b0a65060f336fdb61fc9a52b43b4e0893f22a368f2003892df4a1f75511f",
+            "exit_code": 0,
+            "recorded_at": "2026-07-30T11:58:51Z"
+          },
+          {
+            "type": "command",
+            "command_sha256": "bcaeb907ee0c4236f837e95604ee8e97aaad79208d7c64092cb753535a1729c4",
+            "exit_code": 0,
+            "recorded_at": "2026-07-30T11:58:51Z"
+          },
+          {
+            "type": "command",
+            "command_sha256": "1e17053201b8e335f62caff15bf26ed00b167d4b4b8646c5bf1e9e914d0908e2",
+            "exit_code": 0,
+            "recorded_at": "2026-07-30T11:58:51Z"
+          }
+        ]
+      },
+      {
+        "checked": true,
+        "text": "Discovery precedence, metadata allowlist, doctor, vendor, pack, and publish focused tests pass.",
+        "evidence_refs": [
+          {
+            "type": "command",
+            "command_sha256": "a8e6b0a65060f336fdb61fc9a52b43b4e0893f22a368f2003892df4a1f75511f",
+            "exit_code": 0,
+            "recorded_at": "2026-07-30T11:58:51Z"
+          },
+          {
+            "type": "command",
+            "command_sha256": "bcaeb907ee0c4236f837e95604ee8e97aaad79208d7c64092cb753535a1729c4",
+            "exit_code": 0,
+            "recorded_at": "2026-07-30T11:58:51Z"
+          },
+          {
+            "type": "command",
+            "command_sha256": "1e17053201b8e335f62caff15bf26ed00b167d4b4b8646c5bf1e9e914d0908e2",
+            "exit_code": 0,
+            "recorded_at": "2026-07-30T11:58:51Z"
+          }
+        ]
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "feat(product): converge Pafio project workflows",
+      "target": "temporary Pafio convergence branch"
+    },
+    "regression": {
+      "scope": "focused",
+      "commands": [
+        "cmake -S . -B build-convergence -DPAFIO_BUILD_TESTS=ON",
+        "cmake --build build-convergence -j4",
+        "ctest --test-dir build-convergence -R 'Manifest|Lock|Sync|Metadata|Doctor|Build|Run|Test|Vendor|Pack|Publish|Security|Tuf' --output-on-failure"
+      ],
+      "criteria": [
+        0,
+        1,
+        2
+      ],
+      "paths": [
+        "src",
+        "contracts",
+        "tests/native"
+      ]
+    },
+    "next": [
+      "d906ef44-89fa-4bb4-a70a-119e9c94f1bc"
+    ]
+  },
+  {
+    "id": "d906ef44-89fa-4bb4-a70a-119e9c94f1bc",
+    "status": "completed",
+    "role": "implementation",
+    "verification_profile": "code",
+    "prerequisites": [
+      "898798aa-c766-41ff-a0e5-f0f609af4e6c",
+      "504a94c8-ed86-4dbd-aa8b-bbbcf0c42f36"
+    ],
+    "platform": "any",
+    "difficulty": "complex",
+    "goal": "Cut ecosystem consumers and services over to their owner-specific Pafio, Styio, and Platform contracts.",
+    "description": "Scope: Closure: scenario - one local, hosted, registry, worker, and editor integration path. Context: owner repositories encode the retired producer identity and Pafio-owned toolchain/hosted assumptions, while Pafio still emits a schema-invalid legacy build_mode profile and bootstrap capability. Target: remove those producer-side leftovers, make Styio accept Pafio plans, make Platform the sole registry/control-plane and worker owner, make Vityo compose Pafio metadata, Styio machine contracts, and Platform hosted APIs, and align site/audit entry points. Design Considerations: keep contracts at producers, keep Pafio registry behavior client-only, validate immutable revisions without reading original dirty worktrees, and never record machine paths or live service data. Design Value: makes ownership executable. Constraints & Risks: isolated worktrees only, no compatibility adapters, no PAFIO_HOME reads, and focused tests only.",
+    "requirements": [
+      "REQ-CONV-009"
+    ],
+    "design": {
+      "artifact": "docs/plan/pafio-product-convergence/Architecture.md",
+      "owned_paths": [
+        "contracts/ecosystem/owner-matrix.json",
+        "scripts/verify-ecosystem-contracts.py"
+      ],
+      "scaffold_paths": [
+        "contracts/ecosystem/owner-matrix.json"
+      ],
+      "acceptance_paths": [
+        "tests/interop/ecosystem-owner-contract.py"
+      ],
+      "symbols": [
+        {
+          "path": "contracts/ecosystem/owner-matrix.json",
+          "kind": "interface",
+          "name": "owner matrix",
+          "operation": "add",
+          "signature": "fixed repository revisions and contract versions"
+        }
+      ],
+      "interfaces": [
+        {
+          "name": "owner matrix",
+          "producer": "contracts/ecosystem/owner-matrix.json",
+          "consumers": [
+            "tests/interop/ecosystem-owner-contract.py"
+          ],
+          "inputs": "owner revisions",
+          "outputs": "reproducible ecosystem contract",
+          "errors": [
+            "schema mismatch",
+            "worker failure"
+          ]
+        }
+      ],
+      "dependencies": [],
+      "decisions": {
+        "composition": "three owner adapters",
+        "algorithms": "schema validation",
+        "data_structures": "versioned JSON",
+        "state": "producer-owned",
+        "isolation": "no private home reads",
+        "concurrency": "Platform-owned workers"
+      },
+      "test_seams": [
+        "contract fixtures",
+        "fake worker"
+      ]
+    },
+    "acceptance_criteria": [
+      {
+        "checked": true,
+        "text": "Styio, Platform, Vityo, site, and audit use the accepted owner contracts and worker command.",
+        "evidence_refs": [
+          {
+            "type": "command",
+            "command_sha256": "31bffb8eb6c060fafaa94a7ec3c33854f3f2ef7dac019495a98bc9b2a2f3cf57",
+            "exit_code": 0,
+            "recorded_at": "2026-07-30T18:19:06Z"
+          }
+        ]
+      },
+      {
+        "checked": true,
+        "text": "Vityo consumes metadata, compiler, and hosted APIs without reading PAFIO_HOME.",
+        "evidence_refs": [
+          {
+            "type": "command",
+            "command_sha256": "31bffb8eb6c060fafaa94a7ec3c33854f3f2ef7dac019495a98bc9b2a2f3cf57",
+            "exit_code": 0,
+            "recorded_at": "2026-07-30T18:19:06Z"
+          }
+        ]
+      },
+      {
+        "checked": true,
+        "text": "Focused interoperability tests pass in isolated worktrees.",
+        "evidence_refs": [
+          {
+            "type": "command",
+            "command_sha256": "31bffb8eb6c060fafaa94a7ec3c33854f3f2ef7dac019495a98bc9b2a2f3cf57",
+            "exit_code": 0,
+            "recorded_at": "2026-07-30T18:19:06Z"
+          }
+        ]
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "feat(ecosystem): accept Pafio-owned workflows",
+      "target": "isolated temporary branches plus owner matrix"
+    },
+    "regression": {
+      "scope": "focused",
+      "commands": [
+        "python3 scripts/verify-ecosystem-contracts.py --focused"
+      ],
+      "criteria": [
+        0,
+        1,
+        2
+      ],
+      "paths": [
+        "contracts/ecosystem",
+        "scripts/verify-ecosystem-contracts.py"
+      ]
+    },
+    "next": [
+      "767563ec-2ace-4dc6-82b3-40f96d8cb743"
+    ]
+  },
+  {
+    "id": "767563ec-2ace-4dc6-82b3-40f96d8cb743",
+    "status": "completed",
+    "role": "implementation",
+    "verification_profile": "code",
+    "prerequisites": [
+      "898798aa-c766-41ff-a0e5-f0f609af4e6c",
+      "d906ef44-89fa-4bb4-a70a-119e9c94f1bc"
+    ],
+    "platform": "any",
+    "difficulty": "critical",
+    "goal": "Perform one atomic Pafio identity migration across every affected active source tree.",
+    "description": "Scope: Closure: module - namespaces, targets, paths, variables, archives, schemas, routes, tests, scripts, and docs. Context: capability cropping leaves a clean tree ready for rename. Target: every active tracked file uses Pafio identity and no legacy alias or fixture remains. Design Considerations: one bounded transform followed by semantic review. Design Value: removes dual identity. Constraints & Risks: old data intentionally stops working and the temporary transform is deleted.",
+    "requirements": [
+      "REQ-CONV-008"
+    ],
+    "design": {
+      "artifact": "docs/plan/pafio-product-convergence/Architecture.md",
+      "owned_paths": [
+        "CMakeLists.txt",
+        "src",
+        "src/PafioApp",
+        "contracts",
+        "docs"
+      ],
+      "scaffold_paths": [
+        "src/PafioApp"
+      ],
+      "acceptance_paths": [
+        "tests"
+      ],
+      "symbols": [
+        {
+          "path": "src",
+          "kind": "module",
+          "name": "Pafio namespace and paths",
+          "operation": "modify",
+          "signature": "Pafio-only source tree"
+        }
+      ],
+      "interfaces": [
+        {
+          "name": "Pafio identity",
+          "producer": "src",
+          "consumers": [
+            "CMakeLists.txt",
+            "contracts",
+            "tests"
+          ],
+          "inputs": "cropped tree",
+          "outputs": "Pafio-only surface",
+          "errors": [
+            "legacy identifier",
+            "link failure"
+          ]
+        }
+      ],
+      "dependencies": [],
+      "decisions": {
+        "composition": "mechanical rename then semantic review",
+        "algorithms": "tracked-file mapping",
+        "data_structures": "explicit identifier map",
+        "state": "new names only",
+        "isolation": "exclude build/private data",
+        "concurrency": "serialized per repo"
+      },
+      "test_seams": [
+        "clean build",
+        "one-time tracked-file search"
+      ]
+    },
+    "acceptance_criteria": [
+      {
+        "checked": true,
+        "text": "Pafio builds under renamed namespaces, targets, files, variables, schemas, archive suffix, registry identifier, and route.",
+        "evidence_refs": [
+          {
+            "type": "command",
+            "command_sha256": "bf076048718fd770bf1131bff63c57825f3c0666e8bd507b84c5389f42f27e0d",
+            "exit_code": 0,
+            "recorded_at": "2026-07-30T18:19:06Z"
+          }
+        ]
+      },
+      {
+        "checked": true,
+        "text": "One-time tracked-file inventory finds no retired identity or compatibility artifact.",
+        "evidence_refs": [
+          {
+            "type": "command",
+            "command_sha256": "bf076048718fd770bf1131bff63c57825f3c0666e8bd507b84c5389f42f27e0d",
+            "exit_code": 0,
+            "recorded_at": "2026-07-30T18:19:06Z"
+          }
+        ]
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "refactor(brand): complete Pafio identity cutover",
+      "target": "temporary convergence branches"
+    },
+    "regression": {
+      "scope": "focused",
+      "commands": [
+        "one-time tracked-file content and filename inventory at fixed revisions"
+      ],
+      "criteria": [
+        0,
+        1
+      ],
+      "paths": [
+        "CMakeLists.txt",
+        "src",
+        "tests",
+        "contracts",
+        "docs"
+      ]
+    },
+    "next": [
+      "d992212f-73d7-4878-9990-c5f18b3d088f"
+    ]
+  },
+  {
+    "id": "d992212f-73d7-4878-9990-c5f18b3d088f",
+    "status": "completed",
+    "role": "final_validation",
+    "verification_profile": "code",
+    "prerequisites": [
+      "799b8636-9571-4a8d-8afe-f6773b295444",
+      "504a94c8-ed86-4dbd-aa8b-bbbcf0c42f36",
+      "d906ef44-89fa-4bb4-a70a-119e9c94f1bc",
+      "767563ec-2ace-4dc6-82b3-40f96d8cb743"
+    ],
+    "platform": "any",
+    "difficulty": "critical",
+    "goal": "Validate one fixed-revision Pafio ecosystem release candidate and record the coordinated handoff.",
+    "description": "Context: implementation, owner cutover, and identity migration are complete and audited. Target: run each full suite once and one fixed-revision product matrix, then record revisions and digests. Constraints: validation is read-only; failures create bounded repair work; no credentials or live runtime data.",
+    "requirements": [
+      "REQ-CONV-001",
+      "REQ-CONV-002",
+      "REQ-CONV-003",
+      "REQ-CONV-004",
+      "REQ-CONV-005",
+      "REQ-CONV-006",
+      "REQ-CONV-007",
+      "REQ-CONV-008",
+      "REQ-CONV-009",
+      "REQ-CONV-010"
+    ],
+    "design": {
+      "artifact": "docs/plan/pafio-product-convergence/Validation.md",
+      "owned_paths": [
+        "docs/plan/pafio-product-convergence/Evidence.md"
+      ],
+      "scaffold_paths": [
+        "docs/plan/pafio-product-convergence/Evidence.md"
+      ],
+      "acceptance_paths": [
+        "docs/plan/pafio-product-convergence/Validation.md"
+      ],
+      "symbols": [],
+      "interfaces": [
+        {
+          "name": "release matrix",
+          "producer": "docs/plan/pafio-product-convergence/Evidence.md",
+          "consumers": [
+            "docs/plan/pafio-product-convergence/Validation.md"
+          ],
+          "inputs": "fixed revisions",
+          "outputs": "release evidence",
+          "errors": [
+            "regression failure",
+            "contract mismatch"
+          ]
+        }
+      ],
+      "dependencies": [],
+      "decisions": {
+        "composition": "one full suite per repo then one matrix",
+        "algorithms": "fail-fast matrix",
+        "data_structures": "revision table",
+        "state": "read-only candidate",
+        "isolation": "no private data",
+        "concurrency": "repo suites may run concurrently"
+      },
+      "test_seams": [
+        "full suites",
+        "black-box product workflow"
+      ]
+    },
+    "acceptance_criteria": [
+      {
+        "checked": true,
+        "text": "Every affected repository's maintained full regression passes once at the recorded revision.",
+        "evidence_refs": [
+          {
+            "type": "command",
+            "command_sha256": "08a8c4d32972bd5ecfaed81f17f3a2ac41992f72f6d761e2695506e6291d84b5",
+            "exit_code": 0,
+            "recorded_at": "2026-07-30T18:19:06Z"
+          }
+        ]
+      },
+      {
+        "checked": true,
+        "text": "The fixed-revision product matrix passes and evidence contains no private runtime information.",
+        "evidence_refs": [
+          {
+            "type": "command",
+            "command_sha256": "0380f364f2eb028cdd85f46d4700b8df807a6fa4cdd20f3cd147f242501441bb",
+            "exit_code": 0,
+            "recorded_at": "2026-07-30T18:19:06Z"
+          }
+        ]
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "test(release): record Pafio convergence matrix",
+      "target": "temporary convergence branches"
+    },
+    "regression": {
+      "scope": "full",
+      "commands": [
+        "python3 scripts/verify-ecosystem-contracts.py --full --pafio-bin <pafio> --styio-bin <styio> --vityo-root <vityo>"
+      ],
+      "criteria": [
+        0,
+        1
+      ],
+      "paths": [
+        "docs/plan/pafio-product-convergence/Evidence.md"
+      ]
+    },
+    "next": []
+  }
+]

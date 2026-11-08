@@ -55,8 +55,16 @@ def build_benchmarks(project: pathlib.Path) -> list[Benchmark]:
     return [
         Benchmark("machine_info_json", [str(PAFIO), "machine-info", "--json"], ROOT),
         Benchmark("help", [str(PAFIO), "--help"], ROOT),
-        Benchmark("check_single_package", [str(PAFIO), "check", "--manifest-path", str(manifest)], project),
-        Benchmark("lock_check_single_package", [str(PAFIO), "lock", "--manifest-path", str(manifest), "--check"], project),
+        Benchmark(
+            "metadata_locked_offline",
+            [str(PAFIO), "metadata", "--json", "--manifest-path", str(manifest), "--locked", "--offline"],
+            project,
+        ),
+        Benchmark(
+            "sync_locked_offline",
+            [str(PAFIO), "sync", "--manifest-path", str(manifest), "--locked", "--offline"],
+            project,
+        ),
         Benchmark("tree_single_package", [str(PAFIO), "tree", "--manifest-path", str(manifest)], project),
         Benchmark(
             "build_dry_run_single_package",
@@ -78,6 +86,16 @@ def run_benchmark(benchmark: Benchmark, runs: int, warmup_runs: int) -> dict:
     durations: list[float] = []
     for index in range(warmup_runs + runs):
         returncode, stdout, stderr, duration_ms = run_command(benchmark.command, benchmark.cwd)
+        if log_root := os.environ.get("PAFIO_GATE_LOG_DIR"):
+            log_dir = pathlib.Path(log_root) / benchmark.name / str(index)
+            log_dir.mkdir(parents=True, exist_ok=True)
+            (log_dir / "stdout.log").write_text(stdout)
+            (log_dir / "stderr.log").write_text(stderr)
+            (log_dir / "process.json").write_text(json.dumps({
+                "command": benchmark.command, "cwd": str(benchmark.cwd),
+                "returncode": returncode, "duration_ms": duration_ms,
+                "warmup": index < warmup_runs,
+            }) + "\n")
         if returncode != 0:
             failures.append(
                 {
@@ -225,6 +243,8 @@ def main(argv: list[str] | None = None) -> int:
         "benchmarks": results,
         "errors": errors,
     }
+    if log_root := os.environ.get("PAFIO_GATE_LOG_DIR"):
+        (pathlib.Path(log_root) / "report.json").write_text(json.dumps(payload) + "\n")
 
     if args.json:
         sys.stdout.write(json.dumps(payload, sort_keys=True) + "\n")

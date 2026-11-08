@@ -1,0 +1,12 @@
+#!/bin/sh
+set -eu
+
+repo_root="$(git rev-parse --show-toplevel)"
+
+python3 "$repo_root/scripts/secret-scan.py" --staged
+
+git_common_dir="$(git rev-parse --git-common-dir)"
+legacy_hook="$git_common_dir/hooks/pre-commit"
+if [ -x "$legacy_hook" ]; then
+  "$legacy_hook" "$@"
+fi

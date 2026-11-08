@@ -2,93 +2,20 @@
 #include "PafioCore/Errors.hpp"
 #include "PafioPublish/Publish.hpp"
 
+#include <cstdlib>
 #include <filesystem>
 #include <fstream>
-#include <sstream>
 #include <string>
-#include <cstdlib>
 
 #include <gtest/gtest.h>
 #include <nlohmann/json.hpp>
 
+#include "BuildTestSupport.hpp"
+
 namespace fs = std::filesystem;
 using json = nlohmann::json;
-
-namespace
-{
-
-class ScopedEnvVar
-{
-public:
-  ScopedEnvVar(const std::string &name, const std::string &value)
-      : name_(name)
-  {
-    if (const char *existing = std::getenv(name.c_str()); existing != nullptr)
-    {
-      had_previous_ = true;
-      previous_value_ = existing;
-    }
-    setenv(name.c_str(), value.c_str(), 1);
-  }
-
-  ~ScopedEnvVar()
-  {
-    if (had_previous_)
-    {
-      setenv(name_.c_str(), previous_value_.c_str(), 1);
-    }
-    else
-    {
-      unsetenv(name_.c_str());
-    }
-  }
-
-private:
-  std::string name_;
-  bool had_previous_ = false;
-  std::string previous_value_;
-};
-
-fs::path MakeTempDir(const std::string &label)
-{
-  const fs::path root = fs::temp_directory_path() / "pafio-native-publish-tests" / label;
-  fs::remove_all(root);
-  fs::create_directories(root);
-  return root;
-}
-
-void WriteFile(const fs::path &path, const std::string &content)
-{
-  fs::create_directories(path.parent_path());
-  std::ofstream out(path);
-  ASSERT_TRUE(out.good());
-  out << content;
-  ASSERT_TRUE(out.good());
-}
-
-std::string ReadFile(const fs::path &path)
-{
-  std::ifstream in(path);
-  std::ostringstream buffer;
-  buffer << in.rdbuf();
-  return buffer.str();
-}
-
-json ReadSingleJsonLineFile(const fs::path &path)
-{
-  std::istringstream in(ReadFile(path));
-  std::string line;
-  while (std::getline(in, line))
-  {
-    if (!line.empty())
-    {
-      return json::parse(line);
-    }
-  }
-  throw std::runtime_error("jsonl file did not contain a record: " + path.string());
-}
-
-}  // namespace
+using pafio::testsupport::MakeTempDir;
+using pafio::testsupport::WriteFile;
 
 TEST(PublishTests, DryRunPreparesArchiveForPublishablePackage)
 {
@@ -102,8 +29,7 @@ TEST(PublishTests, DryRunPreparesArchiveForPublishablePackage)
       "version = \"0.1.0\"\n"
       "edition = \"2026\"\n"
       "publish = true\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
+      "[build]\n"
       "implicit-std = true\n\n"
       "[[bin]]\n"
       "name = \"app\"\n"
@@ -142,8 +68,7 @@ TEST(PublishTests, RejectsPublishFalsePackage)
       "version = \"0.1.0\"\n"
       "edition = \"2026\"\n"
       "publish = false\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
+      "[build]\n"
       "implicit-std = true\n\n"
       "[[bin]]\n"
       "name = \"app\"\n"
@@ -169,8 +94,7 @@ TEST(PublishTests, RejectsNonRegistryDependenciesForPublish)
       "version = \"0.1.0\"\n"
       "edition = \"2026\"\n"
       "publish = true\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
+      "[build]\n"
       "implicit-std = true\n\n"
       "[[bin]]\n"
       "name = \"app\"\n"
@@ -198,8 +122,7 @@ TEST(PublishTests, AllowsRegistryDependenciesForPublish)
       "version = \"0.1.0\"\n"
       "edition = \"2026\"\n"
       "publish = true\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
+      "[build]\n"
       "implicit-std = true\n\n"
       "[[bin]]\n"
       "name = \"app\"\n"
@@ -217,6 +140,119 @@ TEST(PublishTests, AllowsRegistryDependenciesForPublish)
   EXPECT_EQ(result.dependencies.size(), 1U);
   EXPECT_EQ(result.dev_dependencies.size(), 1U);
   EXPECT_TRUE(fs::exists(result.archive_path));
+}
+
+TEST(PublishTests, RemoteRequestCarriesBoundedArchiveContentWithoutLocalPaths)
+{
+  const fs::path root = MakeTempDir("remote-request");
+  const fs::path archive_path = root / "acme-app-0.1.0.pafio.src.tar";
+  WriteFile(archive_path, "archive");
+
+  const json request = json::parse(pafio::BuildRemotePublishRequestJson({
+      .archive_path = archive_path,
+      .package_name = "acme/app",
+      .package_version = "0.1.0",
+  }));
+
+  EXPECT_EQ(request.size(), 9U);
+  EXPECT_EQ(request.at("package").get<std::string>(), "acme/app");
+  EXPECT_EQ(request.at("version").get<std::string>(), "0.1.0");
+  EXPECT_EQ(request.at("archive_name").get<std::string>(), "acme-app-0.1.0.pafio.src.tar");
+  EXPECT_EQ(request.at("archive_base64").get<std::string>(), "YXJjaGl2ZQ==");
+  EXPECT_EQ(
+      request.at("archive_sha256").get<std::string>(),
+      "0eb3e36bfb24dcd9bb1d1bece1531216b59539a8fde17ee80224af0653c92aa3");
+  EXPECT_EQ(request.at("archive_size_bytes").get<std::uintmax_t>(), 7U);
+  EXPECT_EQ(request.at("publisher_id").get<std::string>(), "pafio-cli");
+  EXPECT_TRUE(request.at("dependencies").empty());
+  EXPECT_TRUE(request.at("dev_dependencies").empty());
+  EXPECT_FALSE(request.contains("archive_path"));
+  EXPECT_FALSE(request.contains("manifest_path"));
+  EXPECT_FALSE(request.contains("package_root"));
+}
+
+TEST(PublishTests, RemoteRequestRejectsArchiveAboveExplicitLimit)
+{
+  const fs::path root = MakeTempDir("remote-request-limit");
+  const fs::path archive_path = root / "package.pafio.src.tar";
+  WriteFile(archive_path, "1234");
+
+  EXPECT_THROW(
+      pafio::BuildRemotePublishRequestJson(
+          {
+              .archive_path = archive_path,
+              .package_name = "acme/app",
+              .package_version = "0.1.0",
+          },
+          3U),
+      pafio::PublishError);
+}
+
+TEST(PublishTests, RemoteRequestSerializesCanonicalDependencyMetadata)
+{
+  const fs::path root = MakeTempDir("remote-request-dependencies");
+  const fs::path archive_path = root / "package.pafio.src.tar";
+  WriteFile(archive_path, "archive");
+
+  const json request = json::parse(pafio::BuildRemotePublishRequestJson({
+      .archive_path = archive_path,
+      .package_name = "acme/app",
+      .package_version = "0.1.0",
+      .dependencies = {
+          {
+              .alias = "zeta",
+              .package = "acme/zeta",
+              .source_kind = pafio::DependencySourceKind::kRegistry,
+              .source = "https://packages.example.test",
+              .version = "2.0.0",
+          },
+          {
+              .alias = "alpha",
+              .package = "acme/alpha",
+              .source_kind = pafio::DependencySourceKind::kRegistry,
+              .source = "https://packages.example.test",
+              .version = "1.0.0",
+          },
+      },
+      .dev_dependencies = {
+          {
+              .alias = "fixture",
+              .package = "acme/fixture",
+              .source_kind = pafio::DependencySourceKind::kRegistry,
+              .source = "https://packages.example.test",
+              .version = "3.0.0",
+          },
+      },
+  }));
+
+  ASSERT_EQ(request.at("dependencies").size(), 2U);
+  EXPECT_EQ(
+      request.at("dependencies")[0],
+      json({
+          {"alias", "alpha"},
+          {"package", "acme/alpha"},
+          {"version_req", "1.0.0"},
+          {"registry", "https://packages.example.test"},
+      }));
+  EXPECT_EQ(request.at("dependencies")[1].at("alias").get<std::string>(), "zeta");
+  ASSERT_EQ(request.at("dev_dependencies").size(), 1U);
+  EXPECT_EQ(request.at("dev_dependencies")[0].at("alias").get<std::string>(), "fixture");
+}
+
+TEST(PublishTests, RemoteRequestRejectsUnboundedDependencyTables)
+{
+  const fs::path root = MakeTempDir("remote-request-dependency-limit");
+  const fs::path archive_path = root / "package.pafio.src.tar";
+  WriteFile(archive_path, "archive");
+
+  pafio::PublishResult candidate{
+      .archive_path = archive_path,
+      .package_name = "acme/app",
+      .package_version = "0.1.0",
+  };
+  candidate.dependencies.resize(257U);
+
+  EXPECT_THROW(pafio::BuildRemotePublishRequestJson(candidate), pafio::PublishError);
 }
 
 TEST(PublishTests, WorkspacePublishRequiresExplicitPackageSelectionWhenAmbiguous)
@@ -238,8 +274,7 @@ TEST(PublishTests, WorkspacePublishRequiresExplicitPackageSelectionWhenAmbiguous
       "version = \"0.1.0\"\n"
       "edition = \"2026\"\n"
       "publish = true\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
+      "[build]\n"
       "implicit-std = true\n\n"
       "[[bin]]\n"
       "name = \"app\"\n"
@@ -254,8 +289,7 @@ TEST(PublishTests, WorkspacePublishRequiresExplicitPackageSelectionWhenAmbiguous
       "version = \"0.2.0\"\n"
       "edition = \"2026\"\n"
       "publish = true\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
+      "[build]\n"
       "implicit-std = true\n\n"
       "[[bin]]\n"
       "name = \"tool\"\n"
@@ -288,8 +322,7 @@ TEST(PublishCliTests, NonDryRunPublishRequiresExplicitRegistryRoot)
       "version = \"0.1.0\"\n"
       "edition = \"2026\"\n"
       "publish = true\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
+      "[build]\n"
       "implicit-std = true\n\n"
       "[[bin]]\n"
       "name = \"app\"\n"
@@ -304,10 +337,22 @@ TEST(PublishCliTests, NonDryRunPublishRequiresExplicitRegistryRoot)
             pafio::kExitUsage);
 }
 
-TEST(PublishCliTests, PublishesToFilesystemRegistry)
+TEST(PublishCliTests, RejectsFilesystemRegistryBeforePreparingArchive)
+{
+  const fs::path root = MakeTempDir("publish-filesystem-before-pack");
+  EXPECT_EQ(
+      pafio::RunCli({
+          "publish",
+          "--manifest-path",
+          (root / "missing.toml").string(),
+          "--registry",
+          (root / "registry").string(),
+      }),
+      pafio::kExitUsage);
+}
+TEST(PublishCliTests, RejectsFilesystemRegistryPath)
 {
   const fs::path root = MakeTempDir("publish-filesystem-registry");
-  const ScopedEnvVar pafio_home("PAFIO_HOME", (root / ".pafio-home").string());
   const fs::path registry_root = root / "registry";
   WriteFile(
       root / "pafio.toml",
@@ -318,49 +363,57 @@ TEST(PublishCliTests, PublishesToFilesystemRegistry)
       "version = \"0.1.0\"\n"
       "edition = \"2026\"\n"
       "publish = true\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
+      "[build]\n"
       "implicit-std = true\n\n"
       "[[bin]]\n"
       "name = \"app\"\n"
       "path = \"src/main.styio\"\n");
   WriteFile(root / "src/main.styio", ">_(\"hello\")\n");
 
-  testing::internal::CaptureStdout();
-  const int exit_code = pafio::RunCli({
-      "--json",
-      "publish",
-      "--manifest-path",
-      (root / "pafio.toml").string(),
-      "--registry",
-      registry_root.string(),
-  });
-  const std::string stdout_text = testing::internal::GetCapturedStdout();
-
-  EXPECT_EQ(exit_code, pafio::kExitSuccess);
-  const json payload = json::parse(stdout_text);
-  EXPECT_EQ(payload.at("command").get<std::string>(), "publish");
-  EXPECT_EQ(payload.at("mode").get<std::string>(), "publish");
-  EXPECT_EQ(payload.at("registry_protocol").get<std::string>(), "v2");
-  EXPECT_EQ(payload.at("package").get<std::string>(), "acme/app");
-  EXPECT_TRUE(fs::exists(payload.at("registry_config_path").get<std::string>()));
-  EXPECT_TRUE(fs::exists(payload.at("registry_index_path").get<std::string>()));
-  EXPECT_TRUE(fs::exists(payload.at("registry_artifact_path").get<std::string>()));
-  EXPECT_TRUE(fs::exists(payload.at("registry_log_leaf_path").get<std::string>()));
-
-  const json entry = ReadSingleJsonLineFile(payload.at("registry_index_path").get<std::string>());
-  EXPECT_EQ(entry.at("schema_version").get<int>(), 1);
-  EXPECT_EQ(entry.at("package").get<std::string>(), "acme/app");
-  EXPECT_EQ(entry.at("version").get<std::string>(), "0.1.0");
-  EXPECT_EQ(entry.at("source_artifact").at("sha256").get<std::string>(), payload.at("sha256").get<std::string>());
-  EXPECT_EQ(entry.at("dependencies").size(), 0U);
-  EXPECT_EQ(entry.at("dev_dependencies").size(), 0U);
+  EXPECT_EQ(
+      pafio::RunCli({
+          "publish",
+          "--manifest-path",
+          (root / "pafio.toml").string(),
+          "--registry",
+          registry_root.string(),
+      }),
+      pafio::kExitUsage);
 }
 
-TEST(PublishCliTests, PublishesToFilesystemRegistryViaFileUrl)
+TEST(PublishCliTests, RejectsPlaintextHttpRegistryWithoutOptIn)
+{
+  const fs::path root = MakeTempDir("publish-plaintext-http");
+  WriteFile(
+      root / "pafio.toml",
+      "[pafio]\n"
+      "manifest-version = 1\n\n"
+      "[package]\n"
+      "name = \"acme/app\"\n"
+      "version = \"0.1.0\"\n"
+      "edition = \"2026\"\n"
+      "publish = true\n\n"
+      "[build]\n"
+      "implicit-std = true\n\n"
+      "[[bin]]\n"
+      "name = \"app\"\n"
+      "path = \"src/main.styio\"\n");
+  WriteFile(root / "src/main.styio", ">_(\"hello\")\n");
+
+  EXPECT_EQ(
+      pafio::RunCli({
+          "publish",
+          "--manifest-path",
+          (root / "pafio.toml").string(),
+          "--registry",
+          "http://upload.example.test",
+      }),
+      pafio::kExitPublish);
+}
+
+TEST(PublishCliTests, RejectsFilesystemRegistryFileUrl)
 {
   const fs::path root = MakeTempDir("publish-filesystem-registry-file-url");
-  const ScopedEnvVar pafio_home("PAFIO_HOME", (root / ".pafio-home").string());
   const fs::path registry_root = root / "registry";
   const std::string registry_url = std::string("file://") + registry_root.string();
   WriteFile(
@@ -372,532 +425,20 @@ TEST(PublishCliTests, PublishesToFilesystemRegistryViaFileUrl)
       "version = \"0.1.0\"\n"
       "edition = \"2026\"\n"
       "publish = true\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
+      "[build]\n"
       "implicit-std = true\n\n"
       "[[bin]]\n"
       "name = \"app\"\n"
       "path = \"src/main.styio\"\n");
   WriteFile(root / "src/main.styio", ">_(\"hello\")\n");
 
-  testing::internal::CaptureStdout();
-  const int exit_code = pafio::RunCli({
-      "--json",
-      "publish",
-      "--manifest-path",
-      (root / "pafio.toml").string(),
-      "--registry",
-      registry_url,
-  });
-  const std::string stdout_text = testing::internal::GetCapturedStdout();
-
-  EXPECT_EQ(exit_code, pafio::kExitSuccess);
-  const json payload = json::parse(stdout_text);
-  EXPECT_EQ(payload.at("transport").get<std::string>(), "filesystem");
-  EXPECT_EQ(payload.at("registry_protocol").get<std::string>(), "v2");
-  EXPECT_TRUE(fs::exists(payload.at("registry_index_path").get<std::string>()));
-}
-
-TEST(PublishCliTests, PublishesRegistryDependencyMetadataToFilesystemRegistry)
-{
-  const fs::path root = MakeTempDir("publish-registry-dependency-metadata");
-  const ScopedEnvVar pafio_home("PAFIO_HOME", (root / ".pafio-home").string());
-  const fs::path registry_root = root / "registry";
-  const std::string registry_url = std::string("file://") + registry_root.string();
-  WriteFile(
-      root / "pafio.toml",
-      std::string(
-          "[pafio]\n"
-          "manifest-version = 1\n\n"
-          "[package]\n"
-          "name = \"acme/app\"\n"
-          "version = \"0.1.0\"\n"
-          "edition = \"2026\"\n"
-          "publish = true\n\n"
-          "[toolchain]\n"
-          "channel = \"nightly\"\n"
-          "implicit-std = true\n\n"
-          "[[bin]]\n"
-          "name = \"app\"\n"
-          "path = \"src/main.styio\"\n\n"
-          "[dependencies]\n"
-          "util = { package = \"acme/util\", version = \"0.2.0\", registry = \"") +
-          registry_url +
-          "\" }\n\n"
-          "[dev-dependencies]\n"
-          "fixture = { package = \"acme/fixture\", version = \"1.0.0\", registry = \"" +
-          registry_url +
-          "\" }\n");
-  WriteFile(root / "src/main.styio", ">_(\"hello\")\n");
-
-  testing::internal::CaptureStdout();
-  const int exit_code = pafio::RunCli({
-      "--json",
-      "publish",
-      "--manifest-path",
-      (root / "pafio.toml").string(),
-      "--registry",
-      registry_root.string(),
-  });
-  const std::string stdout_text = testing::internal::GetCapturedStdout();
-
-  EXPECT_EQ(exit_code, pafio::kExitSuccess);
-  const json payload = json::parse(stdout_text);
-  const json entry = ReadSingleJsonLineFile(payload.at("registry_index_path").get<std::string>());
-  ASSERT_EQ(entry.at("dependencies").size(), 1U);
-  EXPECT_EQ(entry.at("dependencies")[0].at("alias").get<std::string>(), "util");
-  EXPECT_EQ(entry.at("dependencies")[0].at("package").get<std::string>(), "acme/util");
-  EXPECT_EQ(entry.at("dependencies")[0].at("version_req").get<std::string>(), "0.2.0");
-  EXPECT_EQ(entry.at("dependencies")[0].at("registry").get<std::string>(), registry_url);
-  ASSERT_EQ(entry.at("dev_dependencies").size(), 1U);
-  EXPECT_EQ(entry.at("dev_dependencies")[0].at("alias").get<std::string>(), "fixture");
-  EXPECT_EQ(entry.at("dev_dependencies")[0].at("package").get<std::string>(), "acme/fixture");
-}
-
-TEST(PublishCliTests, RejectsRepublishingExistingFilesystemRegistryVersion)
-{
-  const fs::path root = MakeTempDir("publish-duplicate-version");
-  const ScopedEnvVar pafio_home("PAFIO_HOME", (root / ".pafio-home").string());
-  const fs::path registry_root = root / "registry";
-  WriteFile(
-      root / "pafio.toml",
-      "[pafio]\n"
-      "manifest-version = 1\n\n"
-      "[package]\n"
-      "name = \"acme/app\"\n"
-      "version = \"0.1.0\"\n"
-      "edition = \"2026\"\n"
-      "publish = true\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
-      "implicit-std = true\n\n"
-      "[[bin]]\n"
-      "name = \"app\"\n"
-      "path = \"src/main.styio\"\n");
-  WriteFile(root / "src/main.styio", ">_(\"hello\")\n");
-
-  EXPECT_EQ(pafio::RunCli({
-                "publish",
-                "--manifest-path",
-                (root / "pafio.toml").string(),
-                "--registry",
-                registry_root.string(),
-            }),
-            pafio::kExitSuccess);
-
-  EXPECT_EQ(pafio::RunCli({
-                "publish",
-                "--manifest-path",
-                (root / "pafio.toml").string(),
-                "--registry",
-                registry_root.string(),
-            }),
-            pafio::kExitPublish);
-}
-
-TEST(PublishCliTests, RejectsRegistryHeaderForFilesystemRegistry)
-{
-  const fs::path root = MakeTempDir("publish-filesystem-registry-header");
-  const fs::path registry_root = root / "registry";
-  WriteFile(
-      root / "pafio.toml",
-      "[pafio]\n"
-      "manifest-version = 1\n\n"
-      "[package]\n"
-      "name = \"acme/app\"\n"
-      "version = \"0.1.0\"\n"
-      "edition = \"2026\"\n"
-      "publish = true\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
-      "implicit-std = true\n\n"
-      "[[bin]]\n"
-      "name = \"app\"\n"
-      "path = \"src/main.styio\"\n");
-  WriteFile(root / "src/main.styio", ">_(\"hello\")\n");
-
-  EXPECT_EQ(pafio::RunCli({
-                "publish",
-                "--manifest-path",
-                (root / "pafio.toml").string(),
-                "--registry",
-                registry_root.string(),
-                "--registry-header",
-                "X-Pafio-Write-Token: example-write-token",
-            }),
-            pafio::kExitUsage);
-}
-
-TEST(PublishCliTests, RejectsRegistryHeaderInDryRun)
-{
-  const fs::path root = MakeTempDir("publish-dry-run-header");
-  WriteFile(
-      root / "pafio.toml",
-      "[pafio]\n"
-      "manifest-version = 1\n\n"
-      "[package]\n"
-      "name = \"acme/app\"\n"
-      "version = \"0.1.0\"\n"
-      "edition = \"2026\"\n"
-      "publish = true\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
-      "implicit-std = true\n\n"
-      "[[bin]]\n"
-      "name = \"app\"\n"
-      "path = \"src/main.styio\"\n");
-  WriteFile(root / "src/main.styio", ">_(\"hello\")\n");
-
-  EXPECT_EQ(pafio::RunCli({
-                "publish",
-                "--manifest-path",
-                (root / "pafio.toml").string(),
-                "--dry-run",
-                "--registry-header",
-                "X-Pafio-Write-Token: example-write-token",
-            }),
-            pafio::kExitUsage);
-}
-
-TEST(PublishCliTests, RejectsMalformedRegistryHeader)
-{
-  const fs::path root = MakeTempDir("publish-malformed-header");
-  const std::string registry_url = "https://packages.example.test";
-  WriteFile(
-      root / "pafio.toml",
-      "[pafio]\n"
-      "manifest-version = 1\n\n"
-      "[package]\n"
-      "name = \"acme/app\"\n"
-      "version = \"0.1.0\"\n"
-      "edition = \"2026\"\n"
-      "publish = true\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
-      "implicit-std = true\n\n"
-      "[[bin]]\n"
-      "name = \"app\"\n"
-      "path = \"src/main.styio\"\n");
-  WriteFile(root / "src/main.styio", ">_(\"hello\")\n");
-
-  EXPECT_EQ(pafio::RunCli({
-                "publish",
-                "--manifest-path",
-                (root / "pafio.toml").string(),
-                "--registry",
-                registry_url,
-                "--registry-header",
-                "X-Pafio-Write-Token",
-            }),
-            pafio::kExitUsage);
-}
-
-TEST(PublishCliTests, RejectsRegistryHeaderForRemoteRegistryWithoutPrivateSecurityModule)
-{
-  const fs::path root = MakeTempDir("publish-remote-header-requires-private");
-  const std::string registry_url = "https://packages.example.test";
-  WriteFile(
-      root / "pafio.toml",
-      "[pafio]\n"
-      "manifest-version = 1\n\n"
-      "[package]\n"
-      "name = \"acme/app\"\n"
-      "version = \"0.1.0\"\n"
-      "edition = \"2026\"\n"
-      "publish = true\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
-      "implicit-std = true\n\n"
-      "[[bin]]\n"
-      "name = \"app\"\n"
-      "path = \"src/main.styio\"\n");
-  WriteFile(root / "src/main.styio", ">_(\"hello\")\n");
-
-  EXPECT_EQ(pafio::RunCli({
-                "publish",
-                "--manifest-path",
-                (root / "pafio.toml").string(),
-                "--registry",
-                registry_url,
-                "--registry-header",
-                "X-Pafio-Write-Token: example-write-token",
-            }),
-            pafio::kExitPublish);
-}
-
-TEST(PublishCliTests, RejectsRegistryPolicyFileForFilesystemRegistry)
-{
-  const fs::path root = MakeTempDir("publish-filesystem-policy");
-  const fs::path registry_root = root / "registry";
-  const fs::path policy_path = root / "publish-policy.toml";
-  WriteFile(
-      root / "pafio.toml",
-      "[pafio]\n"
-      "manifest-version = 1\n\n"
-      "[package]\n"
-      "name = \"acme/app\"\n"
-      "version = \"0.1.0\"\n"
-      "edition = \"2026\"\n"
-      "publish = true\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
-      "implicit-std = true\n\n"
-      "[[bin]]\n"
-      "name = \"app\"\n"
-      "path = \"src/main.styio\"\n");
-  WriteFile(root / "src/main.styio", ">_(\"hello\")\n");
-  WriteFile(
-      policy_path,
-      "schema-version = 1\n\n"
-      "[[registry]]\n"
-      "root = \"https://packages.example.test\"\n"
-      "headers = [\"X-Pafio-Write-Token: example-write-token\"]\n");
-
-  EXPECT_EQ(pafio::RunCli({
-                "publish",
-                "--manifest-path",
-                (root / "pafio.toml").string(),
-                "--registry",
-                registry_root.string(),
-                "--registry-policy-file",
-                policy_path.string(),
-            }),
-            pafio::kExitUsage);
-}
-
-TEST(PublishCliTests, RejectsRegistryPolicyFileInDryRun)
-{
-  const fs::path root = MakeTempDir("publish-dry-run-policy");
-  const fs::path policy_path = root / "publish-policy.toml";
-  WriteFile(
-      root / "pafio.toml",
-      "[pafio]\n"
-      "manifest-version = 1\n\n"
-      "[package]\n"
-      "name = \"acme/app\"\n"
-      "version = \"0.1.0\"\n"
-      "edition = \"2026\"\n"
-      "publish = true\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
-      "implicit-std = true\n\n"
-      "[[bin]]\n"
-      "name = \"app\"\n"
-      "path = \"src/main.styio\"\n");
-  WriteFile(root / "src/main.styio", ">_(\"hello\")\n");
-  WriteFile(
-      policy_path,
-      "schema-version = 1\n\n"
-      "[[registry]]\n"
-      "root = \"https://packages.example.test\"\n"
-      "headers = [\"X-Pafio-Write-Token: example-write-token\"]\n");
-
-  EXPECT_EQ(pafio::RunCli({
-                "publish",
-                "--manifest-path",
-                (root / "pafio.toml").string(),
-                "--dry-run",
-                "--registry-policy-file",
-                policy_path.string(),
-            }),
-            pafio::kExitUsage);
-}
-
-TEST(PublishCliTests, RejectsRegistryPolicyFileForRemoteRegistryWithoutPrivateSecurityModule)
-{
-  const fs::path root = MakeTempDir("publish-remote-policy-requires-private");
-  const std::string registry_url = "https://packages.example.test";
-  const fs::path policy_path = root / "publish-policy.toml";
-  WriteFile(
-      root / "pafio.toml",
-      "[pafio]\n"
-      "manifest-version = 1\n\n"
-      "[package]\n"
-      "name = \"acme/app\"\n"
-      "version = \"0.1.0\"\n"
-      "edition = \"2026\"\n"
-      "publish = true\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
-      "implicit-std = true\n\n"
-      "[[bin]]\n"
-      "name = \"app\"\n"
-      "path = \"src/main.styio\"\n");
-  WriteFile(root / "src/main.styio", ">_(\"hello\")\n");
-  WriteFile(
-      policy_path,
-      "schema-version = 2\n\n"
-      "[[registry]]\n"
-      "root = \"https://packages.example.test\"\n"
-      "headers = [\"X-Pafio-Write-Token: example-write-token\"]\n");
-
-  EXPECT_EQ(pafio::RunCli({
-                "publish",
-                "--manifest-path",
-                (root / "pafio.toml").string(),
-                "--registry",
-                registry_url,
-                "--registry-policy-file",
-                policy_path.string(),
-            }),
-            pafio::kExitPublish);
-}
-
-TEST(PublishCliTests, RejectsRegistryProfileForFilesystemRegistry)
-{
-  const fs::path root = MakeTempDir("publish-filesystem-profile");
-  const fs::path registry_root = root / "registry";
-  WriteFile(
-      root / "pafio.toml",
-      "[pafio]\n"
-      "manifest-version = 1\n\n"
-      "[package]\n"
-      "name = \"acme/app\"\n"
-      "version = \"0.1.0\"\n"
-      "edition = \"2026\"\n"
-      "publish = true\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
-      "implicit-std = true\n\n"
-      "[[bin]]\n"
-      "name = \"app\"\n"
-      "path = \"src/main.styio\"\n");
-  WriteFile(root / "src/main.styio", ">_(\"hello\")\n");
-
-  EXPECT_EQ(pafio::RunCli({
-                "publish",
-                "--manifest-path",
-                (root / "pafio.toml").string(),
-                "--registry",
-                registry_root.string(),
-                "--registry-profile",
-                "dev",
-            }),
-            pafio::kExitUsage);
-}
-
-TEST(PublishCliTests, RejectsRegistryProfileInDryRun)
-{
-  const fs::path root = MakeTempDir("publish-dry-run-profile");
-  WriteFile(
-      root / "pafio.toml",
-      "[pafio]\n"
-      "manifest-version = 1\n\n"
-      "[package]\n"
-      "name = \"acme/app\"\n"
-      "version = \"0.1.0\"\n"
-      "edition = \"2026\"\n"
-      "publish = true\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
-      "implicit-std = true\n\n"
-      "[[bin]]\n"
-      "name = \"app\"\n"
-      "path = \"src/main.styio\"\n");
-  WriteFile(root / "src/main.styio", ">_(\"hello\")\n");
-
-  EXPECT_EQ(pafio::RunCli({
-                "publish",
-                "--manifest-path",
-                (root / "pafio.toml").string(),
-                "--dry-run",
-                "--registry-profile",
-                "dev",
-            }),
-            pafio::kExitUsage);
-}
-
-TEST(PublishCliTests, RejectsRegistryProfileForRemoteRegistryWithoutPrivateSecurityModule)
-{
-  const fs::path root = MakeTempDir("publish-remote-profile-requires-private");
-  const fs::path pafio_home = root / ".pafio-home";
-  const fs::path profile_path = pafio_home / "server/registry/publish-profiles/dev.toml";
-  const char *previous_pafio_home = std::getenv("PAFIO_HOME");
-  const std::string previous_pafio_home_value = previous_pafio_home != nullptr ? previous_pafio_home : "";
-  setenv("PAFIO_HOME", pafio_home.string().c_str(), 1);
-
-  WriteFile(
-      root / "pafio.toml",
-      "[pafio]\n"
-      "manifest-version = 1\n\n"
-      "[package]\n"
-      "name = \"acme/app\"\n"
-      "version = \"0.1.0\"\n"
-      "edition = \"2026\"\n"
-      "publish = true\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
-      "implicit-std = true\n\n"
-      "[[bin]]\n"
-      "name = \"app\"\n"
-      "path = \"src/main.styio\"\n");
-  WriteFile(root / "src/main.styio", ">_(\"hello\")\n");
-  WriteFile(
-      profile_path,
-      "schema-version = 1\n\n"
-      "[[registry]]\n"
-      "root = \"https://packages.example.test\"\n"
-      "headers = [\"X-Pafio-Write-Token: example-write-token\"]\n");
-
-  EXPECT_EQ(pafio::RunCli({
-                "publish",
-                "--manifest-path",
-                (root / "pafio.toml").string(),
-                "--registry",
-                "https://packages.example.test",
-                "--registry-profile",
-                "dev",
-            }),
-            pafio::kExitPublish);
-
-  if (previous_pafio_home != nullptr)
-  {
-    setenv("PAFIO_HOME", previous_pafio_home_value.c_str(), 1);
-  }
-  else
-  {
-    unsetenv("PAFIO_HOME");
-  }
-}
-
-TEST(PublishCliTests, RejectsRegistryProfileWhenPolicyFileAlsoProvided)
-{
-  const fs::path root = MakeTempDir("publish-profile-policy-conflict");
-  const std::string registry_url = "https://packages.example.test";
-  const fs::path policy_path = root / "publish-policy.toml";
-  WriteFile(
-      root / "pafio.toml",
-      "[pafio]\n"
-      "manifest-version = 1\n\n"
-      "[package]\n"
-      "name = \"acme/app\"\n"
-      "version = \"0.1.0\"\n"
-      "edition = \"2026\"\n"
-      "publish = true\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
-      "implicit-std = true\n\n"
-      "[[bin]]\n"
-      "name = \"app\"\n"
-      "path = \"src/main.styio\"\n");
-  WriteFile(root / "src/main.styio", ">_(\"hello\")\n");
-  WriteFile(
-      policy_path,
-      "schema-version = 1\n\n"
-      "[[registry]]\n"
-      "root = \"https://packages.example.test\"\n"
-      "headers = [\"X-Pafio-Write-Token: example-write-token\"]\n");
-
-  EXPECT_EQ(pafio::RunCli({
-                "publish",
-                "--manifest-path",
-                (root / "pafio.toml").string(),
-                "--registry",
-                registry_url,
-                "--registry-profile",
-                "dev",
-                "--registry-policy-file",
-                policy_path.string(),
-            }),
-            pafio::kExitUsage);
+  EXPECT_EQ(
+      pafio::RunCli({
+          "publish",
+          "--manifest-path",
+          (root / "pafio.toml").string(),
+          "--registry",
+          registry_url,
+      }),
+      pafio::kExitUsage);
 }

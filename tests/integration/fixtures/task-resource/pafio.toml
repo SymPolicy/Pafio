@@ -1,0 +1,19 @@
+[pafio]
+manifest-version = 1
+
+[package]
+name = "acme/task-resource"
+version = "0.1.0"
+edition = "2026"
+publish = false
+
+[build]
+implicit-std = true
+
+[[bin]]
+name = "scenario"
+path = "src/main.styio"
+
+[[test]]
+name = "scenario"
+path = "src/main.styio"

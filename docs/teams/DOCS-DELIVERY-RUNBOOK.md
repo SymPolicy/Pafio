@@ -1,93 +1,158 @@
 # Docs / Delivery Runbook
 
-**Purpose:** Provide the daily-work entrypoint for `pafio` docs tree, repo hygiene, docs gate, and delivery-facing workflow documentation.
+**Purpose:** Keep Pafio product contracts, generated indexes, planning state, and delivery evidence aligned.
 
-**Last updated:** 2026-05-02
+**Last updated:** 2026-10-23
 
 ## Mission
 
-Own docs topology, generated indexes, gate wiring, delivery-facing entrypoints,
-offline package docs, local import/export docs, and platform handoff docs
-without redefining planning, registry, compiler, or service contract semantics.
+Maintain one current product model across repository entry docs, governance, ADRs,
+the Better Plan workspace, and release evidence.
 
 ## Owned Surface
 
-1. `README.md`
-2. `LICENSE`
-3. `LICENSE-POLICY.md`
-4. `DEPENDENCY-USAGE.md`
-5. `.github/workflows/local-ci-gate.yml`
-6. `docs/`
-7. `docs/external/`
-8. `docs/audit/`
-9. `scripts/audit-gate.sh`
-10. `scripts/docs-index.py`
-11. `scripts/docs-lifecycle.py`
-12. `scripts/docs-audit.py`
-13. `scripts/repo-hygiene-gate.py`
-14. `scripts/team-docs-gate.py`
-15. `scripts/docs-gate.sh`
-16. `scripts/delivery-gate.sh`
-17. `scripts/ecosystem-cli-doc-gate.py`
-18. `scripts/install-pafio.sh`
-19. `scripts/repo-hygiene-check.py`
-20. `scripts/submit-gate.py`
-21. `scripts/perf-gate.py`
-22. `scripts/delivery-gate.py`
+1. Repository README and policy documents.
+2. `docs/` collections and generated indexes.
+3. Documentation, lifecycle, audit, hygiene, and delivery gates.
+4. Public handoff documentation after executable owner contracts pass.
 
 ## Daily Workflow
 
-1. Keep repository-level build, docs, and delivery entrypoints consistent.
-2. Regenerate `INDEX.md` files after docs-tree changes.
-3. Keep workflow docs in `docs/assets/workflow/` aligned with the actual scripts.
-4. Keep the shared `styio-pafio` / `styio-nightly` toolchain baseline explicit in docs and CI: Debian 13, LLVM 18.1.x, CMake/CTest 3.31.6, and Python 3.13.5.
-5. Keep the official command grammar consistent across docs: `pafio use <mode>`, `pafio set <subject> as <value>`, `pafio sync`, `pafio project-graph --json`, `pafio install styio@latest`, `pafio cloud status --json`, `pafio cloud plan --json`, and `pafio tool status --json`.
-6. Keep repo entry docs and closure docs aligned: `README.md`, `docs/BUILD-AND-DEV-ENV.md`, `docs/planning/Pafio-Master-Plan.md`, `docs/planning/Pafio-Stage-Review-and-Future-Features.md`, `docs/planning/Pafio-Workstreams-and-TODOs.md`, `docs/operations/Pafio-Verification-Matrix.md`, `docs/operations/Pafio-Cloud-Compile-Stress-Runbook.md`, and `docs/operations/Pafio-Repo-Split-Runbook.md` must agree on wrapper-vs-binary entrypoints, current implementation status, and root-relative command paths.
-7. When `docs/governance/Pafio-CLI-Contract.md` changes source-build wording, run the cross-repo ecosystem CLI doc gate from `styio-nightly` and keep its fixed source-build needles exact.
-8. Keep [../specs/POST-COMMIT-CI-CHECKS.md](../specs/POST-COMMIT-CI-CHECKS.md) aligned with actual GitHub Actions monitoring practice whenever commit, push, or CI handoff rules change.
-9. Keep sibling-repository handoff docs under `docs/external/for-*` or explicit planning handoff docs; do not recreate root-level external handoff collections.
-10. Keep `docs/planning/Pafio-Platform-Migration-Handoff.md` aligned with downstream `styio-platform` docs when server/platform ownership moves.
-11. Keep `docs/governance/Pafio-Local-Offline-Package-Contract.md` aligned with README and registry docs when offline package or local import/export wording changes.
-12. Keep top-level Apache-2.0 license, source-distribution policy, and dependency usage-boundary evidence aligned with `audit`.
-13. Treat regenerated `docs/audit/` reports as evidence snapshots: update ownership metadata and indexes when they move, but leave defect status changes to code/test gate evidence.
-14. Keep [../specs/TECHNOLOGY-COMPONENT-INVENTORY.md](../specs/TECHNOLOGY-COMPONENT-INVENTORY.md) aligned with `audit` whenever the technology stack, internal components, open-source components, dependency manifests, Apache-2.0 evidence, or commercial-risk boundaries change.
-15. For registry-management documentation changes, require explicit coverage of publish, verify, mirror handoff, offline behavior, cache reuse, and public/private security boundary before closing docs/audit work.
-16. Maintain GitHub merge gates through Rulesets rather than legacy classic branch protection; audit effective branch rules when required status-check governance changes, and keep `local-ci-gate` as the pafio repository's own CI status-check surface rather than treating it as the shared upstream `styio-ci-gate` ecosystem resource gate.
-17. Keep `local-ci-gate` sibling checkouts on downstream `nightly` branches when the downstream repositories have collapsed their branch set to `nightly`.
-18. Keep `docs/governance/Pafio-Entry-Argument-Index.md`, `docs/governance/Docs-Maintenance-Model.md`, and `docs/operations/Pafio-Verification-Matrix.md` aligned whenever delivery scripts or submit gates change.
-19. Keep `scripts/delivery-gate.sh` as the delivery-facing entrypoint with a
-    safe default. The no-argument command must cover dirty worktree changes
-    and PR push ranges, infer the fork-parent base when possible, and fail
-    when it cannot infer a delivery base.
-20. Keep `staged` checks as low-level hook/debugging tools only; do not use an
-    empty staged diff as evidence that a PR or local delivery is ready.
+1. Change the normative governance contract before its summaries.
+2. Record durable ownership changes in an ADR.
+3. When the authorized work uses Better Plan, follow the active installed skill's
+   current schema and tools. Keep observed repository facts separate from delivery
+   authority, and preserve completed state and evidence as history.
+4. Do not duplicate planning lifecycle commands, role counts, or state topology in
+   this runbook. Routine authorized maintenance does not require creating a Plan.
+5. Regenerate indexes after the docs tree changes.
+6. Keep the public Pafio command inventory aligned with executable help.
+7. Publish no site or release wording before the fixed-revision product matrix passes.
+8. Remove superseded owner documents during a clean break; do not retain legacy
+   names, compatibility notes, or permanent migration gates as active policy.
+9. Keep post-commit instructions on public executable gates and repository-
+   relative placeholders; never publish private machine paths or removed
+   sibling-repository script entrypoints.
+10. When the fixed-revision product matrix passes, close the Better Plan and gap
+   ledger together. Keep branch promotion as an explicit maintainer handoff
+   unless repository promotion is separately authorized.
+11. Name the exact platform and source revision in release wording. Treat Linux,
+    macOS, and Windows artifacts as independent publications; never infer one
+    platform's readiness from another platform's gate or from shared `nightly`
+    branch promotion.
+12. Keep the fresh-host bootstrap aligned with every delivery tool used by CI,
+    including `rsync` for extractability and exported-tree checks.
+13. Keep documented global help aliases aligned with executable CLI output and
+    its short-form regression test.
+14. Route current programme requirements and acceptance through `docs/plans/`;
+    retain independent historical workspaces in `docs/plan/`. Handoffs distinguish
+    commands actually run, valid reused evidence and host check results. An
+    upstream observation failure cannot be waived by ordinary workflow passes.
 
 ## Change Classes
 
-1. Small: link fixes, README cleanup, or index refreshes.
-2. Medium: docs tree, `docs/audit/` evidence snapshots, `docs/external/` handoff routing, gate wiring, workflow entrypoint changes, curl installer wording, source-build contract wording, offline package wording, local import/export wording, registry-management audit coverage, post-push CI checking rules, technology/component inventory updates, or platform handoff updates.
-3. High: ownership boundary or delivery-floor policy changes.
+1. Small: link, wording, or generated-index refresh.
+2. Medium: contract, plan topology, gate, or handoff update.
+3. High: product ownership, public command, schema, or release-boundary change.
 
 ## Required Gates
 
 ```bash
-./scripts/docs-gate.sh
-./scripts/audit-gate.sh
-python3 scripts/submit-gate.py --profile ci --json
-python3 scripts/perf-gate.py
-python3 scripts/repo-hygiene-check.py --mode tracked
+python3 scripts/docs-audit.py
 python3 scripts/repo-hygiene-gate.py --mode tracked
-python3 scripts/delivery-gate.py --json
-./scripts/delivery-gate.sh --skip-health
+git diff --check
 ```
+
+Select product-focused and final release gates for the authorized scope through
+the owning workflow. Follow [Post-Commit CI Checks](../specs/POST-COMMIT-CI-CHECKS.md)
+for one final complete regression after source review, repairs, and focused
+verification. When a gate fails, diagnose its stage, repair ordinary in-scope
+defects, and run the necessary follow-up checks. Request a developer decision
+only when the repair would change the objective, a published contract, or the
+risk boundary. Do not repeat a gate simply because another workflow cites the
+same evidence.
+
+`PAFIO_GATE_LOG_DIR` enables complete ignored submit/delivery child records and
+performance samples, including output omitted from short console summaries.
+The milestone final entrypoint records the dirty candidate and explicit command
+before yielding execution to the host. Use the full retained logs and child exits
+for acceptance; a console tail is only a reference. Keep the CI profile, ordered
+checks, first-failure stop and performance thresholds unchanged. Recovery selects
+only diagnosed affected/remaining checks in the milestone entrypoint.
+
+The export policy excludes root-level `build-*` directories before copying.
+Keep that pattern rooted so similarly named documentation and test assets remain
+in the delivery. Source build directories are preserved; exported trees still
+must pass the existing structural, binary and hygiene checks.
 
 ## Cross-Team Dependencies
 
-1. Core / Workflow reviews workflow entrypoint changes.
-2. Styio / Contracts reviews ecosystem doc or machine-contract wording changes.
-3. Registry / Publish reviews registry runbook or gate changes.
-4. Styio / Contracts reviews `styio-platform` handoff wording.
+1. Core / Workflow reviews terminal and local workflow behavior.
+2. Registry / Publish reviews client-versus-Platform ownership.
+3. Styio / Contracts reviews compiler and machine-contract handoffs.
+4. Platform and Vityo owners review their own adapters before public documentation.
 
 ## Handoff / Recovery
 
-Record the affected owner docs, generated indexes still pending, and which gate or workflow entrypoint still needs follow-up.
+Record the affected owner contract, last passing focused gate, generated indexes
+still pending, and the exact revision that needs repair. Never include credentials,
+private machine paths, user information, or backend runtime payloads.
+
+2026-09-04: Added a single-purpose conditional handoff plan under
+`docs/external/for-styio/` and refreshed the generated indexes. The document
+records why no Pafio implementation is currently needed and defines the fixture
+evidence required before a separate delivery could be authorized.
+
+2026-09-05: Documented the opt-in observable static snapshot emission
+passthrough in the CLI contract, the compile-plan v1 contract README, and the
+Styio handoff docs, and refreshed the generated indexes. The consumer locates the
+Styio receipt and snapshot artifact through the existing `plan` envelope fields.
+
+2026-09-05: Documented the `--observable-parent-snapshot <path>` passthrough and
+the optional `parent_snapshot_path` field in the same contract and handoff docs,
+including that Styio emits `<output-stem>.observable-delta.json` or records a
+`full_snapshot_required` receipt reason, both found through `receipt.json`.
+
+2026-09-05: Documented the `--emit-runtime-observation[=<version>]` passthrough,
+its four dependent flags, and the optional `emit.runtime_observation` field in
+the same contract and handoff docs, including that Styio owns every default and
+validation and lists the receipt-named runtime-events v2 JSONL artifact in
+`receipt.json`.
+
+2026-09-06: Stopped empty generated indexes from stamping today's date, which
+made `docs/plan/INDEX.md` and `docs/security/INDEX.md` fail CI across timezones.
+Empty collections now inherit `README.md`'s last-updated date, and Better Plan
+group directories are indexed through `Architecture.md` when they have no
+`README.md` or `INDEX.md`.
+
+2026-09-08: Documented the native Windows process implementation and its
+portable process-contract test target. The manual `native_process_only` CI
+input validates the Windows CLI and process contracts before the final complete
+regression within existing adaptation authorization; it does not establish
+Linux, macOS, or release readiness. Preserve
+the request's existing timeout and process-group semantics across platforms.
+
+2026-10-15: Recorded the plan-workspace split from the task-resource delivery
+milestone. ADR-0009 owns the decision: `docs/plans/` is the internal
+coordination workspace holding the active programme, requirements, and
+per-milestone state — it is kept out of the published tree — while
+`docs/plan/` retains completed delivery evidence. ADR-0001's decision text,
+the ADR index conventions, the Docs-Maintenance-Model owner map, and the
+README developer entry now name the new layout.
+
+2026-10-15: Recorded the coordinator join and delivery closure for the
+task-resource milestone. The joined evidence is the expanded integration gate
+on the current candidate (bounded per-invocation retention), the same-candidate
+cross-repo E2E run, and the bounded-retention probe record kept in the ignored
+evidence tree; the milestone delivery state carries the join result and its
+boundaries. The registered close-out review executed as host, and the review
+items invalidated by baseline and repair result changes were resolved against
+the joined evidence.
+
+2026-10-23: Completed the `docs/plans/` internal-workspace split in the gate
+surface: `docs-audit.py` no longer requires the internal collection, the
+delivery export excludes `docs/plans/` via artifact policy, and the delivery
+gate now runs the exported copies of `docs-audit.py` and `native-check.sh`
+from `export_root` so each step validates the published tree rather than the
+source checkout. The public README reading order now links the published
+`docs/plan/` collection instead of the internal workspace path.

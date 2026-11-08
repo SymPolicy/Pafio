@@ -1,7 +1,6 @@
 #pragma once
 
 #include <filesystem>
-#include <optional>
 #include <string>
 #include <vector>
 
@@ -24,9 +23,9 @@ struct RegistryReadSecurityDecision
 struct RegistryWriteSecurityRequest
 {
   std::string registry_root;
-  std::optional<std::string> profile_name;
-  std::optional<std::filesystem::path> policy_file;
-  std::vector<std::string> explicit_request_headers;
+  // Explicit local-development opt-in: remote publish requires https://
+  // unless the caller deliberately allows plaintext http://.
+  bool allow_plaintext_http = false;
 };
 
 struct RegistryWriteSecurityDecision
@@ -35,7 +34,6 @@ struct RegistryWriteSecurityDecision
   std::vector<std::string> request_headers;
   std::string provider_name = "public-default";
   std::string mode = "anonymous";
-  std::optional<std::string> profile_name;
 };
 
 struct RegistryPackageNameParts

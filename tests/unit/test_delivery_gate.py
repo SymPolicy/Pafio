@@ -4,6 +4,8 @@ import contextlib
 import importlib.util
 import io
 import pathlib
+import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -43,6 +45,42 @@ class DeliveryGateTests(unittest.TestCase):
 
         self.assertTrue(any("forbidden delivery path" in error for error in errors))
         self.assertTrue(any("foo.log" in error for error in errors))
+
+    def test_copy_excludes_root_build_variants_and_preserves_nested_assets(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            source = pathlib.Path(tmp_dir) / "source"
+            export = pathlib.Path(tmp_dir) / "export"
+            self._create_required_layout(source)
+            for name in (
+                "copy-to-external-repo.sh", "artifact-policy-rsync-excludes.py",
+                "artifact_policy.py", "artifact-policy.json",
+            ):
+                shutil.copy2(ROOT / "scripts" / name, source / "scripts" / name)
+            artifacts = (
+                "build-convergence/CMakeFiles/CompilerIdC/tmp/cache.txt",
+                "build-release-alpha/_deps/library-build/generated.txt",
+            )
+            assets = (
+                "docs/examples/build-guide/source.md",
+                "tests/fixtures/build-task/input.txt",
+                "src/source.cpp",
+            )
+            for relative in (*artifacts, *assets):
+                path = source / relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(relative, encoding="utf-8")
+
+            subprocess.run(
+                ["bash", str(source / "scripts/copy-to-external-repo.sh"), str(export)],
+                check=True, capture_output=True, text=True,
+            )
+
+            self.assertEqual(delivery_gate.validate_export_tree(export), [])
+            self.assertEqual(list(export.glob("build-*")), [])
+            for relative in artifacts:
+                self.assertEqual((source / relative).read_text(), relative)
+            for relative in assets:
+                self.assertEqual((export / relative).read_text(), relative)
 
     def test_main_fails_when_step_fails(self) -> None:
         fake_copy_result = mock.Mock(returncode=0, stdout="", stderr="")

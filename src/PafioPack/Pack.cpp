@@ -1,14 +1,22 @@
 #include "PafioPack/Pack.hpp"
 
+#include "PafioCore/AtomicFile.hpp"
+#include "PafioCore/ContractLexicon.hpp"
 #include "PafioCore/Errors.hpp"
+#include "PafioCore/Paths.hpp"
 #include "PafioManifest/Manifest.hpp"
+#include "PafioPack/PackageSelection.hpp"
 
 #include <algorithm>
 #include <array>
+#include <atomic>
+#include <cctype>
+#include <chrono>
 #include <cstdint>
 #include <cstring>
 #include <fstream>
 #include <optional>
+#include <regex>
 #include <set>
 #include <sstream>
 #include <string>
@@ -21,34 +29,12 @@ namespace fs = std::filesystem;
 namespace
 {
 
-struct PackageSelection
-{
-  fs::path manifest_path;
-  fs::path package_root;
-  pafio::ManifestDocument manifest;
-};
-
 struct PackEntry
 {
   std::string archive_path;
   std::optional<fs::path> source_path;
   std::optional<std::string> inline_contents;
 };
-
-fs::path CanonicalAbsolutePath(const fs::path &path)
-{
-  return fs::absolute(path).lexically_normal();
-}
-
-std::string PackageShortName(const std::string &package_name)
-{
-  const size_t slash = package_name.find('/');
-  if (slash == std::string::npos || slash + 1U >= package_name.size())
-  {
-    throw pafio::ValidationError("package.name must match namespace/name");
-  }
-  return package_name.substr(slash + 1U);
-}
 
 bool IsRelativePathPrefix(const fs::path &candidate, const fs::path &prefix)
 {
@@ -63,7 +49,7 @@ bool IsRelativePathPrefix(const fs::path &candidate, const fs::path &prefix)
 
 bool IsUnderRoot(const fs::path &candidate, const fs::path &root)
 {
-  return IsRelativePathPrefix(CanonicalAbsolutePath(candidate), CanonicalAbsolutePath(root));
+  return IsRelativePathPrefix(pafio::CanonicalAbsolutePath(candidate), pafio::CanonicalAbsolutePath(root));
 }
 
 bool IsExcludedGeneratedTopLevel(const fs::path &relative_path)
@@ -88,6 +74,79 @@ bool IsExcludedWorkspaceSubtree(const fs::path &relative_path, const std::vector
   return false;
 }
 
+// Hidden entries are local state (tooling config, editor files, credentials
+// stores); they are never package payload.
+bool IsHiddenEntry(const fs::path &relative_path)
+{
+  for (const fs::path &component : relative_path)
+  {
+    const std::string name = component.string();
+    if (!name.empty() && name.front() == '.')
+    {
+      return true;
+    }
+  }
+  return false;
+}
+
+// Names that conventionally carry credentials or local state. A non-hidden
+// file matching one of these fails the pack outright so a secret can never
+// ride inside a published archive.
+bool IsSecretNamedFile(const fs::path &relative_path)
+{
+  const std::string name = relative_path.filename().string();
+  std::string lower = name;
+  std::transform(lower.begin(), lower.end(), lower.begin(), [](unsigned char c) {
+    return static_cast<char>(std::tolower(c));
+  });
+  if (lower == ".env" || lower.starts_with(".env.") || lower == ".netrc" || lower == ".npmrc")
+  {
+    return true;
+  }
+  if (lower == "id_rsa" || lower.starts_with("id_rsa.") || lower == "id_ed25519" || lower.starts_with("id_ed25519."))
+  {
+    return true;
+  }
+  static const std::array<std::string_view, 8> kSecretExtensions = {
+      ".pem", ".key", ".p12", ".pfx", ".kdbx", ".tfstate", ".tfvars", ".htpasswd"};
+  for (const std::string_view ext : kSecretExtensions)
+  {
+    if (lower.size() > ext.size() && lower.ends_with(ext))
+    {
+      return true;
+    }
+  }
+  static const std::array<std::string_view, 5> kSecretWords = {
+      "secret", "credential", "password", "passwd", "token"};
+  for (const std::string_view word : kSecretWords)
+  {
+    if (lower.find(word) != std::string::npos)
+    {
+      return true;
+    }
+  }
+  return false;
+}
+
+// Credential shapes scanned over packaged file contents: a private-key block,
+// a provider API token, or a structured JWT must never leave the machine
+// inside a published archive.
+const std::vector<std::pair<std::string_view, std::regex>> &SecretContentPatterns()
+{
+  static const std::vector<std::pair<std::string_view, std::regex>> patterns = {
+      {"private-key-block", std::regex(R"(-----BEGIN [A-Z0-9]+ ?PRIVATE KEY-----)")},
+      {"aws-access-key", std::regex(R"((AKIA|ASIA)[A-Z0-9]{16})")},
+      {"github-token", std::regex(R"(gh[pousr]_[A-Za-z0-9]{36,}|github_pat_[A-Za-z0-9_]{22,})")},
+      {"anthropic-key", std::regex(R"(sk-ant-[A-Za-z0-9_-]{20,})")},
+      {"google-api-key", std::regex(R"(AIza[A-Za-z0-9_-]{35})")},
+      {"openai-key", std::regex(R"(sk-[A-Za-z0-9_-]{20,})")},
+      {"slack-token", std::regex(R"(xox[baprs]-[A-Za-z0-9-]{10,})")},
+      {"stripe-key", std::regex(R"((sk|rk)_(live|test)_[A-Za-z0-9]{20,})")},
+      {"json-web-token", std::regex(R"(eyJ[A-Za-z0-9_-]{10,}[.][A-Za-z0-9_-]{10,}[.][A-Za-z0-9_-]{10,})")},
+  };
+  return patterns;
+}
+
 std::string ReadBinaryFile(const fs::path &path)
 {
   std::ifstream in(path, std::ios::binary);
@@ -101,90 +160,21 @@ std::string ReadBinaryFile(const fs::path &path)
   return buffer.str();
 }
 
-std::vector<PackageSelection> CollectPackageCandidates(const fs::path &root_manifest_path)
+void RejectSecretContents(const PackEntry &entry)
 {
-  const fs::path normalized_root_manifest = CanonicalAbsolutePath(root_manifest_path);
-  const fs::path root_dir = normalized_root_manifest.parent_path();
-  const pafio::ManifestDocument root_manifest = pafio::LoadManifest(normalized_root_manifest);
-
-  std::vector<PackageSelection> candidates;
-  if (root_manifest.package.has_value())
+  const std::string contents =
+      entry.inline_contents.has_value() ? *entry.inline_contents : ReadBinaryFile(*entry.source_path);
+  for (const auto &[rule, pattern] : SecretContentPatterns())
   {
-    candidates.push_back({
-        .manifest_path = normalized_root_manifest,
-        .package_root = root_dir,
-        .manifest = root_manifest,
-    });
-  }
-
-  if (root_manifest.workspace.has_value())
-  {
-    for (const std::string &member : root_manifest.workspace->members)
+    if (std::regex_search(contents, pattern))
     {
-      const fs::path member_manifest_path = CanonicalAbsolutePath(root_dir / member / "pafio.toml");
-      const pafio::ManifestDocument member_manifest = pafio::LoadManifest(member_manifest_path);
-      if (!member_manifest.package.has_value())
-      {
-        throw pafio::WorkspaceError("workspace member manifest must define [package]: " + member_manifest_path.string());
-      }
-      candidates.push_back({
-          .manifest_path = member_manifest_path,
-          .package_root = member_manifest_path.parent_path(),
-          .manifest = member_manifest,
-      });
+      throw pafio::PackError(
+          "pack refuses to archive credential-shaped content (" + std::string(rule) + ") in " + entry.archive_path);
     }
   }
-
-  return candidates;
 }
 
-PackageSelection SelectPackageForPack(const pafio::PackRequest &request)
-{
-  const fs::path root_manifest_path = CanonicalAbsolutePath(request.manifest_path);
-  const std::vector<PackageSelection> candidates = CollectPackageCandidates(root_manifest_path);
-  if (candidates.empty())
-  {
-    throw pafio::PackError("pack requires a manifest with a local [package] target");
-  }
-
-  if (request.package_name.has_value())
-  {
-    std::vector<const PackageSelection *> matches;
-    for (const PackageSelection &candidate : candidates)
-    {
-      if (candidate.manifest.package->name == *request.package_name)
-      {
-        matches.push_back(&candidate);
-      }
-    }
-    if (matches.empty())
-    {
-      throw pafio::PackError("selected package was not found under the active manifest: " + *request.package_name);
-    }
-    if (matches.size() > 1U)
-    {
-      throw pafio::PackError("selected package is ambiguous under the active manifest: " + *request.package_name);
-    }
-    return *matches.front();
-  }
-
-  for (const PackageSelection &candidate : candidates)
-  {
-    if (candidate.manifest_path == root_manifest_path && candidate.manifest.package.has_value())
-    {
-      return candidate;
-    }
-  }
-
-  if (candidates.size() == 1U)
-  {
-    return candidates.front();
-  }
-
-  throw pafio::PackError("workspace pack is ambiguous; select a root package with --package <namespace/name>");
-}
-
-std::vector<fs::path> CollectExcludedWorkspaceRoots(const PackageSelection &selection)
+std::vector<fs::path> CollectExcludedWorkspaceRoots(const pafio::PackageSelection &selection)
 {
   std::vector<fs::path> excluded_roots;
   if (!selection.manifest.workspace.has_value())
@@ -227,12 +217,12 @@ std::vector<fs::path> CollectExcludedWorkspaceRoots(const PackageSelection &sele
   return excluded_roots;
 }
 
-std::vector<PackEntry> CollectPackEntries(const PackageSelection &selection, const fs::path &archive_path)
+std::vector<PackEntry> CollectPackEntries(const pafio::PackageSelection &selection, const fs::path &archive_path)
 {
-  const fs::path package_root = CanonicalAbsolutePath(selection.package_root);
-  const fs::path manifest_path = CanonicalAbsolutePath(selection.manifest_path);
+  const fs::path package_root = pafio::CanonicalAbsolutePath(selection.package_root);
+  const fs::path manifest_path = pafio::CanonicalAbsolutePath(selection.manifest_path);
   const fs::path lockfile_path = package_root / "pafio.lock";
-  const fs::path normalized_archive_path = CanonicalAbsolutePath(archive_path);
+  const fs::path normalized_archive_path = pafio::CanonicalAbsolutePath(archive_path);
   if (IsUnderRoot(normalized_archive_path, package_root))
   {
     const fs::path relative_output = normalized_archive_path.lexically_relative(package_root);
@@ -255,7 +245,7 @@ std::vector<PackEntry> CollectPackEntries(const PackageSelection &selection, con
   for (fs::recursive_directory_iterator it(package_root), end; it != end; ++it)
   {
     const fs::directory_entry &entry = *it;
-    const fs::path absolute_entry = CanonicalAbsolutePath(entry.path());
+    const fs::path absolute_entry = pafio::CanonicalAbsolutePath(entry.path());
     const fs::path relative_entry = absolute_entry.lexically_relative(package_root);
     if (relative_entry.empty() || relative_entry == ".")
     {
@@ -266,13 +256,19 @@ std::vector<PackEntry> CollectPackEntries(const PackageSelection &selection, con
     {
       continue;
     }
-    if (IsExcludedGeneratedTopLevel(relative_entry) || IsExcludedWorkspaceSubtree(relative_entry, excluded_workspace_roots))
+    if (IsExcludedGeneratedTopLevel(relative_entry) || IsExcludedWorkspaceSubtree(relative_entry, excluded_workspace_roots)
+        || IsHiddenEntry(relative_entry))
     {
       if (entry.is_directory())
       {
         it.disable_recursion_pending();
       }
       continue;
+    }
+    if (IsSecretNamedFile(relative_entry))
+    {
+      throw pafio::PackError(
+          "pack refuses to archive a credential or local-state file: " + relative_entry.generic_string());
     }
 
     const fs::file_status status = entry.symlink_status();
@@ -302,6 +298,10 @@ std::vector<PackEntry> CollectPackEntries(const PackageSelection &selection, con
       [](const PackEntry &left, const PackEntry &right) {
         return left.archive_path < right.archive_path;
       });
+  for (const PackEntry &entry : entries)
+  {
+    RejectSecretContents(entry);
+  }
   return entries;
 }
 
@@ -375,7 +375,11 @@ void SplitArchivePathForUstar(const std::string &path, std::string &name, std::s
   throw pafio::PackError("archive entry exceeds ustar path limits: " + path);
 }
 
-void WriteTarEntry(std::ostream &out, const std::string &archive_path, const std::string &contents)
+// `write` receives (data, size) and must consume all bytes or throw; header,
+// payload, and padding go straight to it so peak memory stays at one entry's
+// contents instead of a second serialized copy per entry.
+template <typename Write>
+void WriteTarEntry(Write &&write, const std::string &archive_path, const std::string &contents)
 {
   std::array<char, 512> header{};
   std::string name;
@@ -407,52 +411,71 @@ void WriteTarEntry(std::ostream &out, const std::string &archive_path, const std
   }
   WriteChecksumField(header, checksum);
 
-  out.write(header.data(), static_cast<std::streamsize>(header.size()));
-  out.write(contents.data(), static_cast<std::streamsize>(contents.size()));
+  write(header.data(), header.size());
+  write(contents.data(), contents.size());
   const size_t remainder = contents.size() % 512U;
   if (remainder != 0U)
   {
     const std::array<char, 512> padding{};
-    out.write(padding.data(), static_cast<std::streamsize>(512U - remainder));
+    write(padding.data(), 512U - remainder);
   }
 }
 
+// The temporary archive is created exclusively in the destination directory so
+// a pre-planted file or symlink at a predictable name cannot redirect the
+// write into an unrelated file, then atomically renamed over the final path.
 void WriteTarArchive(const std::vector<PackEntry> &entries, const fs::path &archive_path, std::string_view archive_prefix)
 {
-  const fs::path temp_path = archive_path.string() + ".tmp";
   fs::create_directories(archive_path.parent_path());
+  pafio::ExclusiveTempFile temp;
+  try
+  {
+    temp = pafio::OpenExclusiveTemporaryFile(archive_path);
+  }
+  catch (const std::system_error &error)
+  {
+    throw pafio::PackError("failed to create temporary package archive: " + std::string(error.what()));
+  }
+  const fs::path temp_path = temp.path;
 
   try
   {
-    std::ofstream out(temp_path, std::ios::binary | std::ios::trunc);
-    if (!out)
-    {
-      throw pafio::PackError("failed to create package archive: " + temp_path.string());
-    }
-
     for (const PackEntry &entry : entries)
     {
       const std::string archive_member = std::string(archive_prefix) + "/" + entry.archive_path;
       const std::string contents = entry.inline_contents.has_value() ? *entry.inline_contents : ReadBinaryFile(*entry.source_path);
-      WriteTarEntry(out, archive_member, contents);
+      try
+      {
+        WriteTarEntry(
+            [&temp](const char *data, size_t size) { pafio::WriteTemporaryFileFully(temp, data, size); },
+            archive_member,
+            contents);
+      }
+      catch (const std::system_error &error)
+      {
+        throw pafio::PackError(
+            "failed to write temporary package archive: " + temp_path.string() + ": " + error.what());
+      }
     }
 
     const std::array<char, 1024> trailer{};
-    out.write(trailer.data(), static_cast<std::streamsize>(trailer.size()));
-    if (!out.good())
+    try
     {
-      throw pafio::PackError("failed to finish package archive: " + temp_path.string());
+      pafio::WriteTemporaryFileFully(temp, trailer.data(), trailer.size());
+      pafio::FlushTemporaryFile(temp);
+      pafio::CloseTemporaryFile(temp);
     }
-    out.close();
-    if (!out)
+    catch (const std::system_error &error)
     {
-      throw pafio::PackError("failed to flush package archive: " + temp_path.string());
+      throw pafio::PackError(
+          "failed to finish package archive: " + temp_path.string() + ": " + error.what());
     }
 
     fs::rename(temp_path, archive_path);
   }
   catch (...)
   {
+    pafio::DiscardTemporaryFile(temp);
     std::error_code ignored;
     fs::remove(temp_path, ignored);
     throw;
@@ -466,20 +489,21 @@ namespace pafio
 
 PackResult WriteSourcePackage(const PackRequest &request)
 {
-  const PackageSelection selection = SelectPackageForPack(request);
+  const pafio::PackageSelection selection =
+      pafio::SelectWorkspacePackage<pafio::PackError>(request.manifest_path, request.package_name, "pack");
   const PackageConfig &package = *selection.manifest.package;
-  const std::string short_name = PackageShortName(package.name);
+  const std::string short_name = pafio::PackageShortName(package.name);
   const std::string archive_prefix = short_name + "-" + package.version;
-  const fs::path package_root = CanonicalAbsolutePath(selection.package_root);
+  const fs::path package_root = pafio::CanonicalAbsolutePath(selection.package_root);
   const fs::path archive_path = request.output_path.has_value()
-                                    ? CanonicalAbsolutePath(*request.output_path)
-                                    : CanonicalAbsolutePath(package_root / "dist" / (archive_prefix + ".tar"));
+                                    ? pafio::CanonicalAbsolutePath(*request.output_path)
+                                    : pafio::CanonicalAbsolutePath(package_root / "dist" / (archive_prefix + ".tar"));
 
   const std::vector<PackEntry> entries = CollectPackEntries(selection, archive_path);
   WriteTarArchive(entries, archive_path, archive_prefix);
 
   return {
-      .manifest_path = CanonicalAbsolutePath(selection.manifest_path),
+      .manifest_path = pafio::CanonicalAbsolutePath(selection.manifest_path),
       .package_root = package_root,
       .archive_path = archive_path,
       .package_name = package.name,

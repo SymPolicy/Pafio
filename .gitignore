@@ -76,7 +76,8 @@ CMakeFiles/
 Testing/
 __pycache__/
 .pytest_cache/
-docs/audit/defects/
+docs/audit/defects/*
+!docs/audit/defects/*.md
 !docs/**/build/
 !docs/**/build/**
 !docs/**/build-*/
@@ -94,8 +95,6 @@ docs/audit/defects/
 !tests/**/*.tmp
 !tests/**/*.log
 
-# Private security/auth extensions that must not ship in the open-source tree.
-src-private/
-tests-private/
-docs-private/
-scripts-private/
+# Better Plan runtime lock state is host-local; never commit it.
+**/.better-plan.lock
+**/.better-plan-checks/

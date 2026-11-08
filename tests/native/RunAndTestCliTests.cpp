@@ -27,8 +27,7 @@ TEST(RunCliTests, DryRunEmitsRunIntentForUniqueBinaryTarget)
       "version = \"0.1.0\"\n"
       "edition = \"2026\"\n"
       "publish = false\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
+      "[build]\n"
       "implicit-std = true\n\n"
       "[[bin]]\n"
       "name = \"app\"\n"
@@ -57,8 +56,7 @@ TEST(RunCliTests, RejectsLibSelection)
       "version = \"0.1.0\"\n"
       "edition = \"2026\"\n"
       "publish = false\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
+      "[build]\n"
       "implicit-std = true\n\n"
       "[[bin]]\n"
       "name = \"app\"\n"
@@ -89,8 +87,7 @@ TEST(RunCliTests, NonDryRunRunRejectsCompilerWithoutRequiredCompilePlanVersion)
       "version = \"0.1.0\"\n"
       "edition = \"2026\"\n"
       "publish = false\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
+      "[build]\n"
       "implicit-std = true\n\n"
       "[[bin]]\n"
       "name = \"app\"\n"
@@ -102,7 +99,7 @@ TEST(RunCliTests, NonDryRunRunRejectsCompilerWithoutRequiredCompilePlanVersion)
       fake_styio,
       "#!/bin/sh\n"
       "if [ \"$1\" = \"--machine-info=json\" ]; then\n"
-      "  printf '%s\\n' '{\"tool\":\"styio\",\"compiler_version\":\"0.0.5\",\"channel\":\"stable\",\"supported_contracts\":{\"compile_plan\":[]},\"capabilities\":[\"machine_info_json\",\"single_file_entry\",\"jsonl_diagnostics\"],\"edition_max\":\"2026\"}'\n"
+      "  printf '%s\\n' '{\"tool\":\"styio\",\"compiler_version\":\"0.0.5\",\"channel\":\"stable\",\"active_integration_phase\":\"compile-plan-live\",\"supported_contract_versions\":{\"machine_info\":[1],\"jsonl_diagnostics\":[1],\"compile_plan\":[1],\"runtime_events\":[]},\"supported_adapter_modes\":[\"cli\"],\"feature_flags\":{\"single_file_entry\":true,\"jsonl_diagnostics\":true,\"compile_plan_consumer\":true,\"project_execution_via_compile_plan\":true,\"runtime_event_stream\":false},\"supported_contracts\":{\"compile_plan\":[]},\"capabilities\":[\"machine_info_json\",\"single_file_entry\",\"jsonl_diagnostics\"],\"edition_max\":\"2026\"}'\n"
       "  exit 0\n"
       "fi\n"
       "echo unexpected invocation >&2\n"
@@ -131,8 +128,7 @@ TEST(RunCliTests, NonDryRunRunExecutesPublishedCompilePlan)
       "version = \"0.1.0\"\n"
       "edition = \"2026\"\n"
       "publish = false\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
+      "[build]\n"
       "implicit-std = true\n\n"
       "[[bin]]\n"
       "name = \"app\"\n"
@@ -157,7 +153,9 @@ TEST(RunCliTests, NonDryRunRunExecutesPublishedCompilePlan)
   const json payload = json::parse(stdout_text);
   EXPECT_EQ(payload.at("intent").get<std::string>(), "run");
   EXPECT_EQ(payload.at("styio").at("integration_phase").get<std::string>(), "compile-plan-live");
-  const json receipt = json::parse(ReadFile(fs::path(payload.at("build_root").get<std::string>()) / "receipt.json"));
+  const json receipt = json::parse(
+    ReadFile(fs::path(payload.at("plan").at("build_root").get<std::string>()) / "receipt.json")
+  );
   EXPECT_EQ(receipt.at("intent").get<std::string>(), "run");
 }
 
@@ -173,8 +171,7 @@ TEST(TestCliTests, DryRunEmitsTestIntentForUniqueTestTarget)
       "version = \"0.1.0\"\n"
       "edition = \"2026\"\n"
       "publish = false\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
+      "[build]\n"
       "implicit-std = true\n\n"
       "[[test]]\n"
       "name = \"smoke\"\n"
@@ -205,8 +202,7 @@ TEST(TestCliTests, RejectsBinSelection)
       "version = \"0.1.0\"\n"
       "edition = \"2026\"\n"
       "publish = false\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
+      "[build]\n"
       "implicit-std = true\n\n"
       "[[test]]\n"
       "name = \"smoke\"\n"
@@ -238,8 +234,7 @@ TEST(TestCliTests, NonDryRunTestRejectsCompilerWithoutRequiredCompilePlanVersion
       "version = \"0.1.0\"\n"
       "edition = \"2026\"\n"
       "publish = false\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
+      "[build]\n"
       "implicit-std = true\n\n"
       "[[test]]\n"
       "name = \"smoke\"\n"
@@ -251,7 +246,7 @@ TEST(TestCliTests, NonDryRunTestRejectsCompilerWithoutRequiredCompilePlanVersion
       fake_styio,
       "#!/bin/sh\n"
       "if [ \"$1\" = \"--machine-info=json\" ]; then\n"
-      "  printf '%s\\n' '{\"tool\":\"styio\",\"compiler_version\":\"0.0.5\",\"channel\":\"stable\",\"supported_contracts\":{\"compile_plan\":[]},\"capabilities\":[\"machine_info_json\",\"single_file_entry\",\"jsonl_diagnostics\"],\"edition_max\":\"2026\"}'\n"
+      "  printf '%s\\n' '{\"tool\":\"styio\",\"compiler_version\":\"0.0.5\",\"channel\":\"stable\",\"active_integration_phase\":\"compile-plan-live\",\"supported_contract_versions\":{\"machine_info\":[1],\"jsonl_diagnostics\":[1],\"compile_plan\":[1],\"runtime_events\":[]},\"supported_adapter_modes\":[\"cli\"],\"feature_flags\":{\"single_file_entry\":true,\"jsonl_diagnostics\":true,\"compile_plan_consumer\":true,\"project_execution_via_compile_plan\":true,\"runtime_event_stream\":false},\"supported_contracts\":{\"compile_plan\":[]},\"capabilities\":[\"machine_info_json\",\"single_file_entry\",\"jsonl_diagnostics\"],\"edition_max\":\"2026\"}'\n"
       "  exit 0\n"
       "fi\n"
       "echo unexpected invocation >&2\n"
@@ -280,8 +275,7 @@ TEST(TestCliTests, NonDryRunTestExecutesPublishedCompilePlan)
       "version = \"0.1.0\"\n"
       "edition = \"2026\"\n"
       "publish = false\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
+      "[build]\n"
       "implicit-std = true\n\n"
       "[[test]]\n"
       "name = \"smoke\"\n"
@@ -306,6 +300,8 @@ TEST(TestCliTests, NonDryRunTestExecutesPublishedCompilePlan)
   const json payload = json::parse(stdout_text);
   EXPECT_EQ(payload.at("intent").get<std::string>(), "test");
   EXPECT_EQ(payload.at("styio").at("integration_phase").get<std::string>(), "compile-plan-live");
-  const json receipt = json::parse(ReadFile(fs::path(payload.at("build_root").get<std::string>()) / "receipt.json"));
+  const json receipt = json::parse(
+    ReadFile(fs::path(payload.at("plan").at("build_root").get<std::string>()) / "receipt.json")
+  );
   EXPECT_EQ(receipt.at("intent").get<std::string>(), "test");
 }

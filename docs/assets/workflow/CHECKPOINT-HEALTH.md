@@ -24,4 +24,4 @@ Checkpoint health against a published external compiler:
 2. `extractability-check.sh`
 3. optional published-binary compatibility and interface probing through `preflight-readiness-check.py` when `--styio-bin` is provided
 
-The repository keeps its native CMake/CTest tooling, but callers should continue to use this outer health entrypoint. Source-build mode is exercised through the public `pafio use build` and `pafio build minimal` command path rather than a separate checkpoint-health flag.
+The repository keeps its native CMake/CTest tooling, but callers should continue to use this outer health entrypoint. Source-build mode is exercised through the public `pafio build --styio-bin <path>` command path rather than a separate checkpoint-health flag.

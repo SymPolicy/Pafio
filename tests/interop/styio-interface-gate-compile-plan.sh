@@ -2,6 +2,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+PAFIO_BIN="${1:?expected pafio binary path}"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
@@ -49,7 +50,11 @@ EOF
 chmod +x "$FAKE_STYIO"
 
 export PAFIO_HOME="$TMP/pafio-home"
-python3 "$ROOT/scripts/styio-interface-gate.py" --styio-bin "$FAKE_STYIO" --require-compile-plan --json >"$TMP/out.json"
+python3 "$ROOT/scripts/styio-interface-gate.py" \
+  --pafio-bin "$PAFIO_BIN" \
+  --styio-bin "$FAKE_STYIO" \
+  --require-compile-plan \
+  --json >"$TMP/out.json"
 python3 - "$TMP/out.json" <<'PY'
 import json
 import pathlib
@@ -59,5 +64,6 @@ payload = json.loads(pathlib.Path(sys.argv[1]).read_text())
 assert payload["ok"] is True, payload
 assert payload["require_compile_plan"] is True, payload
 step_names = [step["name"] for step in payload["steps"]]
-assert "compile_plan_execute" in step_names, payload
+assert "pafio_build_execute" in step_names, payload
+assert "compile_plan_execute" not in step_names, payload
 PY

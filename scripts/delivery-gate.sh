@@ -6,7 +6,7 @@ usage() {
 Usage: scripts/delivery-gate.sh [options]
 
 Run the common Styio delivery floor by composing repository hygiene, the docs
-gate, external audit, and checkpoint health into one entrypoint.
+gate, the repository-local secret scan, and checkpoint health into one entrypoint.
 
 Options:
   --mode <auto|checkpoint|staged|push>
@@ -14,8 +14,7 @@ Options:
   --base <ref>              Base ref for team-docs-gate branch checks
   --range <rev-range>       Explicit revision range for repo-hygiene push mode
   --skip-health             Skip checkpoint-health (docs/process-only deliveries)
-  --skip-audit              Skip external audit gate
-  --audit-bin <path>        Explicit audit executable
+  --skip-audit              Skip the repository-local secret scan
   --styio-bin <path>        Optional external styio binary for checkpoint-health
   --build-dir <dir>         Forwarded to checkpoint-health
   -h, --help                Show this help
@@ -136,7 +135,6 @@ BASE_REF=""
 REV_RANGE=""
 RUN_HEALTH=1
 RUN_AUDIT=1
-AUDIT_BIN=""
 STYIO_BIN=""
 BUILD_DIR=""
 
@@ -162,10 +160,6 @@ while [[ $# -gt 0 ]]; do
       RUN_AUDIT=0
       shift
       ;;
-    --audit-bin)
-      AUDIT_BIN="$2"
-      shift 2
-      ;;
     --styio-bin)
       STYIO_BIN="$2"
       shift 2
@@ -188,11 +182,11 @@ done
 
 REPO_CMD=(python3 scripts/repo-hygiene-gate.py)
 DOCS_GATE_CMD=(./scripts/docs-gate.sh)
-AUDIT_CMD=(./scripts/audit-gate.sh)
+AUDIT_CMD=(python3 scripts/secret-scan.py)
 HEALTH_CMD=(./scripts/checkpoint-health.sh)
 
-if [[ -n "$AUDIT_BIN" ]]; then
-  AUDIT_CMD+=(--audit-bin "$AUDIT_BIN")
+if [[ -n "$REV_RANGE" ]]; then
+  AUDIT_CMD+=(--range "$REV_RANGE")
 fi
 if [[ -n "$BUILD_DIR" ]]; then
   HEALTH_CMD+=(--build-dir "$BUILD_DIR")
@@ -266,7 +260,7 @@ esac
 if [[ "$RUN_AUDIT" -eq 1 ]]; then
   run_cmd "${AUDIT_CMD[@]}"
 else
-  log "audit skipped"
+  log "secret-scan skipped"
 fi
 
 if [[ "$RUN_HEALTH" -eq 1 ]]; then

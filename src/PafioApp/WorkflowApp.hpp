@@ -1,12 +1,13 @@
 #pragma once
 
+#include <string>
 #include <string_view>
 #include <vector>
 
 namespace pafio
 {
 
-int HandleProjectGraph(const std::vector<std::string> &args, bool as_json);
+int HandleMetadata(const std::vector<std::string> &args, bool as_json);
 int HandleCheck(const std::vector<std::string> &args, bool as_json);
 int HandlePlanCommand(
     std::string_view command_name,

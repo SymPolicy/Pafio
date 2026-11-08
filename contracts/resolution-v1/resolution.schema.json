@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://styio.dev/contracts/pafio/resolution-v1.schema.json",
+  "title": "Pafio resolution-v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "manifest_sha256",
+    "lock_sha256",
+    "roots",
+    "packages"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "manifest_sha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "lock_sha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "roots": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/packageId"
+      },
+      "uniqueItems": true
+    },
+    "packages": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/package"
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "packageId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "dependency": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "alias",
+        "package_id"
+      ],
+      "properties": {
+        "alias": {
+          "type": "string",
+          "minLength": 1
+        },
+        "package_id": {
+          "$ref": "#/$defs/packageId"
+        }
+      }
+    },
+    "package": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "root",
+        "content_sha256",
+        "dependencies"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/packageId"
+        },
+        "root": {
+          "type": "string",
+          "minLength": 1
+        },
+        "content_sha256": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/sha256"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "dependencies": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/dependency"
+          }
+        }
+      }
+    }
+  }
+}

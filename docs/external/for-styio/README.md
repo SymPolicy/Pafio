@@ -2,7 +2,7 @@
 
 **Purpose:** Hold the `styio` knowledge pack and public interface expectations required by `pafio` developers.
 
-**Last updated:** 2026-04-19
+**Last updated:** 2026-09-04
 
 ## Scope
 
@@ -18,6 +18,5 @@ These files document the external compiler dependency. They must not become a ba
 ## Recommended Reading Order
 
 1. `Styio-External-Interface-Requirement-Spec.md`
-2. `Styio-Public-Interface-Roadmap.md`
-3. `../../planning/Pafio-Future-Direction-and-Styio-Coordination.md`
-4. `Styio-for-Pafio-Developers.md`
+2. `Styio-Observable-Identity-Handoff-Plan.md` (conditional, not authorized, and not started)
+3. `Styio-for-Pafio-Developers.md`

@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import argparse
 import fnmatch
+import json
+import os
 import pathlib
 import subprocess
 import sys
@@ -13,7 +15,7 @@ from dataclasses import dataclass
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 COPY_SCRIPT = ROOT / "scripts" / "copy-to-external-repo.sh"
 CHECK_NO_BINARIES = ROOT / "scripts" / "check_no_binaries.py"
-REPO_HYGIENE = ROOT / "scripts" / "repo-hygiene-check.py"
+REPO_HYGIENE = ROOT / "scripts" / "repo-hygiene-gate.py"
 DOCS_AUDIT = ROOT / "scripts" / "docs-audit.py"
 NATIVE_CHECK = ROOT / "scripts" / "native-check.sh"
 SCRIPT_DIR = pathlib.Path(__file__).resolve().parent
@@ -38,7 +40,19 @@ class Step:
 
 
 def run_step(step: Step) -> dict:
-    proc = subprocess.run(step.command, cwd=step.cwd, capture_output=True, text=True)
+    log_root = os.environ.get("PAFIO_GATE_LOG_DIR")
+    log_dir = pathlib.Path(log_root) / step.name if log_root else None
+    env = None
+    if log_dir:
+        log_dir.mkdir(parents=True, exist_ok=True)
+        env = dict(os.environ, PAFIO_GATE_LOG_DIR=str(log_dir))
+    proc = subprocess.run(step.command, cwd=step.cwd, env=env, capture_output=True, text=True)
+    if log_dir:
+        (log_dir / "stdout.log").write_text(proc.stdout)
+        (log_dir / "stderr.log").write_text(proc.stderr)
+        (log_dir / "process.json").write_text(json.dumps({
+            "command": step.command, "cwd": str(step.cwd), "returncode": proc.returncode,
+        }) + "\n")
     return {
         "name": step.name,
         "command": step.command,
@@ -85,13 +99,21 @@ def delivery_steps(export_root: pathlib.Path) -> list[Step]:
                 "--repo-root",
                 str(export_root),
                 "--mode",
-                "all",
+                "export",
                 "--skip-doc-check",
             ],
             export_root,
         ),
-        Step("delivery_docs_governance", [sys.executable, str(DOCS_AUDIT)], export_root),
-        Step("delivery_native_check", [str(NATIVE_CHECK)], export_root),
+        Step(
+            "delivery_docs_governance",
+            [sys.executable, str(export_root / "scripts" / "docs-audit.py")],
+            export_root,
+        ),
+        Step(
+            "delivery_native_check",
+            [str(export_root / "scripts" / "native-check.sh")],
+            export_root,
+        ),
     ]
 
 
@@ -109,7 +131,17 @@ def main(argv: list[str] | None = None) -> int:
     structural_errors: list[str] = []
     with tempfile.TemporaryDirectory(prefix="pafio-delivery-gate-") as temp_dir:
         export_root = pathlib.Path(temp_dir) / "delivery"
-        subprocess.run([str(COPY_SCRIPT), str(export_root)], cwd=ROOT, check=True, capture_output=True, text=True)
+        copy_command = [str(COPY_SCRIPT), str(export_root)]
+        copy_result = subprocess.run(copy_command, cwd=ROOT, capture_output=True, text=True)
+        if log_root := os.environ.get("PAFIO_GATE_LOG_DIR"):
+            log_dir = pathlib.Path(log_root) / "delivery_copy"
+            log_dir.mkdir(parents=True, exist_ok=True)
+            (log_dir / "stdout.log").write_text(copy_result.stdout)
+            (log_dir / "stderr.log").write_text(copy_result.stderr)
+            (log_dir / "process.json").write_text(json.dumps({
+                "command": copy_command, "cwd": str(ROOT), "returncode": copy_result.returncode,
+            }) + "\n")
+        copy_result.check_returncode()
         structural_errors = validate_export_tree(export_root)
         if not structural_errors:
             for step in delivery_steps(export_root):
@@ -120,10 +152,10 @@ def main(argv: list[str] | None = None) -> int:
 
     ok = not structural_errors and all(result["ok"] for result in results)
     payload = {"ok": ok, "structural_errors": structural_errors, "steps": results}
+    if log_root := os.environ.get("PAFIO_GATE_LOG_DIR"):
+        (pathlib.Path(log_root) / "report.json").write_text(json.dumps(payload) + "\n")
 
     if args.json:
-        import json
-
         sys.stdout.write(json.dumps(payload, sort_keys=True) + "\n")
     else:
         for error in structural_errors:

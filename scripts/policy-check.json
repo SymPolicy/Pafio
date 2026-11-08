@@ -1,0 +1,27 @@
+{
+  "allowed_plaintext_hosts": [
+    "localhost",
+    "127.0.0.1",
+    "0.0.0.0",
+    "[::1]",
+    "github.com",
+    "www.apache.org",
+    "example.com",
+    "example.org",
+    "example.net"
+  ],
+  "allowed_plaintext_suffixes": [
+    ".invalid",
+    ".test",
+    ".example",
+    ".local"
+  ],
+  "allowed_plaintext_templates": [
+    "{host}"
+  ],
+  "allowed_permission_scopes": [
+    "read",
+    "none"
+  ],
+  "artifact_policy_version": 1
+}

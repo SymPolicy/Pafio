@@ -1,24 +1,16 @@
 # Security Docs
 
-**Purpose:** Define the public/private boundary for security-sensitive `pafio` code so registry auth, account policy, and trust decisions do not leak into the open-source tree.
+**Purpose:** Define Pafio's local supply-chain and subprocess security boundary.
 
-**Last updated:** 2026-04-13
+**Last updated:** 2026-07-30
 
-## Scope
+Pafio owns validation for manifests, locks, registry trust metadata, immutable
+content hashes, bounded downloads, archive prescan, atomic writes, file locks,
+and the explicit Styio subprocess.
 
-- private module boundaries for auth/account/trust logic
-- public interface ownership for security hooks
-- gitignored source and test locations reserved for closed-source security implementations
+Credentials, production keys, account policy, registry write authorization,
+hosted workspace data, and backend runtime records are not stored in this
+repository. Service-side security policy belongs to Styio Platform.
 
-## Ownership
-
-- the public interface boundary lives in [Pafio-Private-Security-Module-Contract.md](./Pafio-Private-Security-Module-Contract.md)
-- registry layout and non-secret transport rules remain owned by [../registry/Pafio-Registry-V2-Protocol.md](../registry/Pafio-Registry-V2-Protocol.md)
-- client/server registry behavior remains owned by the documents under [../registry/](../registry/)
-
-## Maintenance Rules
-
-- do not put secret material, tokens, account rules, or trust allowlists under the tracked `src/`, `tests/`, `docs/`, or `scripts/` trees
-- keep private implementation paths under the gitignored `*-private/` roots documented here
-- when a public command surface reserves a security hook, the open-source contract must describe only the interface and redacted observability, not the private implementation details
-- when extending registry security privately, prefer delegating to the public default helpers before adding deployment-specific behavior
+Security changes require focused malicious-input and rollback tests before the
+final repository regression.

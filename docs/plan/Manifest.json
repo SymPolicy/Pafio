@@ -1,0 +1,44 @@
+[
+  {
+    "id": "3e0236ee-2deb-4ba5-b4cf-322a52df8b46",
+    "status": "completed",
+    "title": "Pafio Product and Ecosystem Convergence",
+    "directory": "pafio-product-convergence",
+    "source_files": [
+      "docs/plan/pafio-product-convergence/Requirements.md",
+      "docs/plan/pafio-product-convergence/Architecture.md",
+      "docs/plan/pafio-product-convergence/Validation.md",
+      "docs/plan/pafio-product-convergence/Evidence.md"
+    ],
+    "purpose": "Preserve the accepted product-wide Pafio ownership and ecosystem convergence delivery record.",
+    "goal": "Make Pafio the package and project workflow entry for externally installed Styio and cut every ecosystem owner over to that boundary.",
+    "description": "Completed clean-break delivery for the Pafio command surface, machine contracts, ecosystem ownership, public identity, and fixed-revision release matrix.",
+    "checkpoints": "pafio-product-convergence/Checkpoints.json",
+    "kind": "group",
+    "capability_key": "pafio/product-workflows",
+    "tree_mode": "show",
+    "node_status": "hide",
+    "decision_issues": []
+  },
+  {
+    "id": "da2b8636-e716-4dcb-a3da-ddf89cc57c1c",
+    "status": "completed",
+    "title": "Pafio Trusted Dependency Kernel",
+    "directory": "pafio-thin-core",
+    "source_files": [
+      "docs/plan/pafio-thin-core/Requirements.md",
+      "docs/plan/pafio-thin-core/Evidence.md",
+      "docs/plan/pafio-thin-core/Architecture.md",
+      "docs/plan/pafio-thin-core/Validation.md"
+    ],
+    "purpose": "Preserve the accepted internal dependency-kernel delivery record beneath the complete Pafio product boundary.",
+    "goal": "Provide the deterministic manifest-to-resolution kernel used internally by Pafio workflows.",
+    "description": "Completed dependency-kernel baseline; it is an internal subsystem rather than Pafio's complete product boundary.",
+    "checkpoints": "pafio-thin-core/Checkpoints.json",
+    "kind": "group",
+    "capability_key": "pafio/dependency-kernel",
+    "tree_mode": "show",
+    "node_status": "hide",
+    "decision_issues": []
+  }
+]

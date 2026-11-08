@@ -4,6 +4,7 @@
 
 #include <filesystem>
 #include <optional>
+#include <stdexcept>
 #include <string>
 
 namespace pafio
@@ -45,8 +46,17 @@ struct DependencyCommandResult
   size_t package_count = 0;
 };
 
-struct FetchCommandResult
+class SyncError : public std::runtime_error
 {
+public:
+  using std::runtime_error::runtime_error;
+};
+
+struct SyncProjectResult
+{
+  ResolvedGraphResult graph;
+  std::filesystem::path resolution_path;
+  std::string lockfile_mode;
   std::filesystem::path manifest_path;
   size_t package_count = 0;
   size_t git_package_count = 0;
@@ -55,7 +65,9 @@ struct FetchCommandResult
 
 DependencyCommandResult AddDependencyAndRefreshLock(const AddDependencyRequest &request);
 DependencyCommandResult RemoveDependencyAndRefreshLock(const RemoveDependencyRequest &request);
-FetchCommandResult FetchDependencies(const std::filesystem::path &manifest_path, const ResolveOptions &options = {});
+SyncProjectResult SyncProjectDependencies(
+    const std::filesystem::path &manifest_path,
+    const ResolveOptions &options = {});
 std::string DependencySectionName(DependencySection section);
 
 }  // namespace pafio

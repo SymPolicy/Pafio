@@ -3,6 +3,7 @@
 #include "PafioManifest/Manifest.hpp"
 
 #include <cstddef>
+#include <cstdint>
 #include <filesystem>
 #include <optional>
 #include <string>
@@ -31,6 +32,22 @@ struct PublishResult
   size_t dev_dependency_count = 0;
 };
 
+inline constexpr std::uintmax_t kMaxRemotePublishArchiveBytes = 64U * 1024U * 1024U;
+
+struct RemotePublishArchive
+{
+  std::string name;
+  std::string base64;
+  std::string sha256;
+  std::uintmax_t size_bytes = 0;
+};
+
 PublishResult PreparePublishCandidate(const PublishRequest &request);
+RemotePublishArchive ReadRemotePublishArchive(
+    const std::filesystem::path &archive_path,
+    std::uintmax_t max_size_bytes = kMaxRemotePublishArchiveBytes);
+std::string BuildRemotePublishRequestJson(
+    const PublishResult &candidate,
+    std::uintmax_t max_size_bytes = kMaxRemotePublishArchiveBytes);
 
 }  // namespace pafio

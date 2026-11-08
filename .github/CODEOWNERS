@@ -1,0 +1,7 @@
+# Gate definitions and the delivery toolchain are repository-owned: a
+# pull request cannot weaken the policy checks it is judged by without
+# owner review.
+/.github/CODEOWNERS @SymPolicy
+/.github/workflows/ @SymPolicy
+/scripts/ @SymPolicy
+/.githooks/ @SymPolicy

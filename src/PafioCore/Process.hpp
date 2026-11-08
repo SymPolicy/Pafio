@@ -23,8 +23,20 @@ struct ProcessResult
   std::string stderr_text;
 };
 
+// Filesystem paths passed as process text need UTF-8 before Windows' wide API.
+inline std::string ProcessPathString(const std::filesystem::path &path)
+{
+#if defined(_WIN32)
+  const std::u8string value = path.u8string();
+  return {reinterpret_cast<const char *>(value.data()), value.size()};
+#else
+  return path.string();
+#endif
+}
+
 struct ProcessRequest
 {
+  // Process text fields (program, args, and environment overrides) are UTF-8 on Windows.
   std::string program;
   std::vector<std::string> args;
   std::optional<std::filesystem::path> working_directory;
@@ -41,7 +53,6 @@ struct ProcessRequest
 
 inline constexpr std::chrono::milliseconds kExternalProcessProbeTimeout{std::chrono::seconds{30}};
 inline constexpr std::chrono::milliseconds kExternalProcessStepTimeout{std::chrono::minutes{10}};
-inline constexpr std::chrono::milliseconds kExternalProcessBuildTimeout{std::chrono::minutes{60}};
 
 class ProcessFailure : public std::runtime_error
 {

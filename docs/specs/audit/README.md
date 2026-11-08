@@ -10,6 +10,6 @@ This directory owns audit rules that apply across code, tests, docs, gates, and 
 
 Start with [CODE-AUDIT-CHECKLIST.md](./CODE-AUDIT-CHECKLIST.md). Its first required check is whether the code follows the seven design principles.
 
-The auditable-code framework is external and centralized in the sibling `audit` repository. This repository does not expose an audit interface; external auditors run `audit` against the worktree and load `modules/default` plus `for-pafio`.
+The auditable-code checklist is owned by this repository. Publication audit runs through the local GitVault reviewer; this checklist is the shared review baseline applied to every change.
 
 Generated inventory: [INDEX.md](./INDEX.md).

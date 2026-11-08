@@ -18,92 +18,18 @@
 #include <gtest/gtest.h>
 #include <nlohmann/json.hpp>
 
+#include "BuildTestSupport.hpp"
+
 namespace fs = std::filesystem;
 using json = nlohmann::json;
+using pafio::testsupport::ChildProcessResult;
+using pafio::testsupport::MakeTempDir;
+using pafio::testsupport::ReadFile;
+using pafio::testsupport::RunChildProcess;
+using pafio::testsupport::WriteFile;
 
 namespace
 {
-
-struct ChildProcessResult
-{
-  int exit_code = 0;
-  std::string stdout_text;
-  std::string stderr_text;
-};
-
-ChildProcessResult RunChildProcess(const std::string &binary, const std::vector<std::string> &args)
-{
-  int stdout_pipe[2];
-  int stderr_pipe[2];
-  if (pipe(stdout_pipe) != 0 || pipe(stderr_pipe) != 0)
-  {
-    throw std::runtime_error("failed to create test pipes");
-  }
-
-  const pid_t child = fork();
-  if (child < 0)
-  {
-    close(stdout_pipe[0]);
-    close(stdout_pipe[1]);
-    close(stderr_pipe[0]);
-    close(stderr_pipe[1]);
-    throw std::runtime_error("failed to fork test process");
-  }
-
-  if (child == 0)
-  {
-    dup2(stdout_pipe[1], STDOUT_FILENO);
-    dup2(stderr_pipe[1], STDERR_FILENO);
-    close(stdout_pipe[0]);
-    close(stdout_pipe[1]);
-    close(stderr_pipe[0]);
-    close(stderr_pipe[1]);
-
-    std::vector<char *> argv;
-    argv.reserve(args.size() + 2U);
-    argv.push_back(const_cast<char *>(binary.c_str()));
-    for (const std::string &arg : args)
-    {
-      argv.push_back(const_cast<char *>(arg.c_str()));
-    }
-    argv.push_back(nullptr);
-
-    execvp(binary.c_str(), argv.data());
-    _exit(127);
-  }
-
-  close(stdout_pipe[1]);
-  close(stderr_pipe[1]);
-
-  auto read_all = [](int fd) {
-    std::string text;
-    std::array<char, 4096> buffer{};
-    ssize_t read_size = 0;
-    while ((read_size = read(fd, buffer.data(), buffer.size())) > 0)
-    {
-      text.append(buffer.data(), static_cast<size_t>(read_size));
-    }
-    close(fd);
-    return text;
-  };
-
-  ChildProcessResult result;
-  result.stdout_text = read_all(stdout_pipe[0]);
-  result.stderr_text = read_all(stderr_pipe[0]);
-
-  int status = 0;
-  waitpid(child, &status, 0);
-  if (WIFEXITED(status))
-  {
-    result.exit_code = WEXITSTATUS(status);
-  }
-  else
-  {
-    result.exit_code = 1;
-  }
-
-  return result;
-}
 
 std::vector<std::string> ListTarEntries(const fs::path &archive_path)
 {
@@ -129,23 +55,6 @@ std::string ReadTarFile(const fs::path &archive_path, const std::string &member)
   return result.stdout_text;
 }
 
-fs::path MakeTempDir(const std::string &label)
-{
-  const fs::path root = fs::temp_directory_path() / "pafio-native-pack-tests" / label;
-  fs::remove_all(root);
-  fs::create_directories(root);
-  return root;
-}
-
-void WriteFile(const fs::path &path, const std::string &content)
-{
-  fs::create_directories(path.parent_path());
-  std::ofstream out(path);
-  ASSERT_TRUE(out.good());
-  out << content;
-  ASSERT_TRUE(out.good());
-}
-
 }  // namespace
 
 TEST(PackTests, WritesDeterministicSourceArchiveForSinglePackage)
@@ -159,8 +68,7 @@ TEST(PackTests, WritesDeterministicSourceArchiveForSinglePackage)
       "name = \"acme/app\"\n"
       "version = \"0.1.0\"\n"
       "edition = \"2026\"\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
+      "[build]\n"
       "implicit-std = true\n\n"
       "[[bin]]\n"
       "name = \"app\"\n"
@@ -201,8 +109,7 @@ TEST(PackTests, WritesDeterministicSourceArchiveForSinglePackage)
           "version = \"0.1.0\"\n"
           "edition = \"2026\"\n"
           "publish = false\n\n"
-          "[toolchain]\n"
-          "channel = \"nightly\"\n"
+          "[build]\n"
           "implicit-std = true\n\n"
           "[[bin]]\n"
           "name = \"app\"\n"
@@ -220,8 +127,7 @@ TEST(PackTests, WorkspaceRootPackageArchiveExcludesWorkspaceMembers)
       "name = \"acme/root\"\n"
       "version = \"0.1.0\"\n"
       "edition = \"2026\"\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
+      "[build]\n"
       "implicit-std = true\n\n"
       "[lib]\n"
       "path = \"src/lib.styio\"\n\n"
@@ -238,8 +144,7 @@ TEST(PackTests, WorkspaceRootPackageArchiveExcludesWorkspaceMembers)
       "name = \"acme/util\"\n"
       "version = \"0.1.0\"\n"
       "edition = \"2026\"\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
+      "[build]\n"
       "implicit-std = true\n\n"
       "[lib]\n"
       "path = \"src/lib.styio\"\n");
@@ -277,8 +182,7 @@ TEST(PackTests, WorkspaceOnlyPackRequiresExplicitPackageSelectionWhenAmbiguous)
       "name = \"acme/app\"\n"
       "version = \"0.1.0\"\n"
       "edition = \"2026\"\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
+      "[build]\n"
       "implicit-std = true\n\n"
       "[[bin]]\n"
       "name = \"app\"\n"
@@ -292,8 +196,7 @@ TEST(PackTests, WorkspaceOnlyPackRequiresExplicitPackageSelectionWhenAmbiguous)
       "name = \"acme/tool\"\n"
       "version = \"0.2.0\"\n"
       "edition = \"2026\"\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
+      "[build]\n"
       "implicit-std = true\n\n"
       "[[bin]]\n"
       "name = \"tool\"\n"
@@ -325,6 +228,199 @@ TEST(PackTests, WorkspaceOnlyPackRequiresExplicitPackageSelectionWhenAmbiguous)
   EXPECT_TRUE(fs::exists(payload.at("archive_path").get<std::string>()));
 }
 
+TEST(PackTests, SkipsHiddenLocalStateInIncludedTree)
+{
+  const fs::path root = MakeTempDir("hidden-local-state");
+  WriteFile(
+      root / "pafio.toml",
+      "[pafio]\n"
+      "manifest-version = 1\n\n"
+      "[package]\n"
+      "name = \"acme/app\"\n"
+      "version = \"0.1.0\"\n"
+      "edition = \"2026\"\n\n"
+      "[build]\n"
+      "implicit-std = true\n\n"
+      "[[bin]]\n"
+      "name = \"app\"\n"
+      "path = \"src/main.styio\"\n");
+  WriteFile(root / "src/main.styio", ">_(\"hello\")\n");
+  WriteFile(root / ".env", "TOKEN=local-only\n");
+  WriteFile(root / ".hidden/nested.env", "TOKEN=local-only\n");
+
+  const pafio::PackResult result = pafio::WriteSourcePackage({
+      .manifest_path = root / "pafio.toml",
+  });
+
+  const std::vector<std::string> entries = ListTarEntries(result.archive_path);
+  EXPECT_EQ(
+      entries,
+      std::vector<std::string>({
+          "app-0.1.0/pafio.toml",
+          "app-0.1.0/src/main.styio",
+      }));
+}
+
+TEST(PackTests, RejectsCredentialNamedFileInIncludedTree)
+{
+  const fs::path root = MakeTempDir("credential-name-rejected");
+  WriteFile(
+      root / "pafio.toml",
+      "[pafio]\n"
+      "manifest-version = 1\n\n"
+      "[package]\n"
+      "name = \"acme/app\"\n"
+      "version = \"0.1.0\"\n"
+      "edition = \"2026\"\n\n"
+      "[build]\n"
+      "implicit-std = true\n\n"
+      "[[bin]]\n"
+      "name = \"app\"\n"
+      "path = \"src/main.styio\"\n");
+  WriteFile(root / "src/main.styio", ">_(\"hello\")\n");
+  WriteFile(root / "certs/server.pem", "placeholder\n");
+
+  EXPECT_THROW(
+      pafio::WriteSourcePackage({
+          .manifest_path = root / "pafio.toml",
+      }),
+      pafio::PackError);
+}
+
+TEST(PackTests, RejectsCredentialShapedFileContents)
+{
+  const fs::path root = MakeTempDir("credential-content-rejected");
+  WriteFile(
+      root / "pafio.toml",
+      "[pafio]\n"
+      "manifest-version = 1\n\n"
+      "[package]\n"
+      "name = \"acme/app\"\n"
+      "version = \"0.1.0\"\n"
+      "edition = \"2026\"\n\n"
+      "[build]\n"
+      "implicit-std = true\n\n"
+      "[[bin]]\n"
+      "name = \"app\"\n"
+      "path = \"src/main.styio\"\n");
+  WriteFile(root / "src/main.styio", ">_(\"hello\")\n");
+  WriteFile(root / "notes.txt", std::string("-----BEGIN TEST ") + "PRIVATE KEY-----\n");
+
+  EXPECT_THROW(
+      pafio::WriteSourcePackage({
+          .manifest_path = root / "pafio.toml",
+      }),
+      pafio::PackError);
+}
+
+TEST(PackTests, RejectsJwtShapedFileContents)
+{
+  const fs::path root = MakeTempDir("jwt-content-rejected");
+  WriteFile(
+      root / "pafio.toml",
+      "[pafio]\n"
+      "manifest-version = 1\n\n"
+      "[package]\n"
+      "name = \"acme/app\"\n"
+      "version = \"0.1.0\"\n"
+      "edition = \"2026\"\n\n"
+      "[build]\n"
+      "implicit-std = true\n\n"
+      "[[bin]]\n"
+      "name = \"app\"\n"
+      "path = \"src/main.styio\"\n");
+  WriteFile(root / "src/main.styio", ">_(\"hello\")\n");
+  // The JWT is assembled at test runtime so the credential-shaped literal
+  // never exists in the source tree while still exercising the detector.
+  const std::string jwt =
+      std::string("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9") + "." +
+      "eyJzdWIiOiIxMjM0NTY3ODkwIn0" + "." + "c2lnbmF0dXJlcGF5bG9hZA";
+  WriteFile(root / "notes.txt", "token: " + jwt + "\n");
+
+  EXPECT_THROW(
+      pafio::WriteSourcePackage({
+          .manifest_path = root / "pafio.toml",
+      }),
+      pafio::PackError);
+}
+
+TEST(PackTests, IgnoresPlantedSymlinkAtPredictableTempPath)
+{
+  const fs::path root = MakeTempDir("temp-symlink-ignored");
+  WriteFile(
+      root / "pafio.toml",
+      "[pafio]\n"
+      "manifest-version = 1\n\n"
+      "[package]\n"
+      "name = \"acme/app\"\n"
+      "version = \"0.1.0\"\n"
+      "edition = \"2026\"\n\n"
+      "[build]\n"
+      "implicit-std = true\n\n"
+      "[[bin]]\n"
+      "name = \"app\"\n"
+      "path = \"src/main.styio\"\n");
+  WriteFile(root / "src/main.styio", ">_(\"hello\")\n");
+  WriteFile(root / "victim.txt", "keep me\n");
+
+  const fs::path archive = root / "dist" / "app.tar";
+  fs::create_directories(archive.parent_path());
+  const fs::path planted = archive.string() + ".tmp";
+  fs::create_symlink(root / "victim.txt", planted);
+
+  EXPECT_NO_THROW(
+      pafio::WriteSourcePackage({
+          .manifest_path = root / "pafio.toml",
+          .output_path = archive,
+      }));
+  EXPECT_TRUE(fs::is_symlink(planted));
+  EXPECT_EQ(ReadFile(root / "victim.txt"), "keep me\n");
+  EXPECT_TRUE(fs::exists(archive));
+}
+
+TEST(PackTests, ExclusiveTempCreateLeavesPlantedDecoysUntouched)
+{
+  const fs::path root = MakeTempDir("temp-decoys-untouched");
+  WriteFile(
+      root / "pafio.toml",
+      "[pafio]\n"
+      "manifest-version = 1\n\n"
+      "[package]\n"
+      "name = \"acme/app\"\n"
+      "version = \"0.1.0\"\n"
+      "edition = \"2026\"\n\n"
+      "[build]\n"
+      "implicit-std = true\n\n"
+      "[[bin]]\n"
+      "name = \"app\"\n"
+      "path = \"src/main.styio\"\n");
+  WriteFile(root / "src/main.styio", ">_(\"hello\")\n");
+  WriteFile(root / "victim.txt", "keep me\n");
+
+  const fs::path archive = root / "dist" / "app.tar";
+  fs::create_directories(archive.parent_path());
+  const fs::path decoy_file = archive.parent_path() / "app.tar.tmp.1.1";
+  const fs::path decoy_link = archive.parent_path() / "app.tar.tmp.2.2";
+  WriteFile(decoy_file, "decoy\n");
+#if !defined(_WIN32)
+  fs::create_symlink(root / "victim.txt", decoy_link);
+#else
+  WriteFile(decoy_link, "decoy\n");
+#endif
+
+  EXPECT_NO_THROW(
+      pafio::WriteSourcePackage({
+          .manifest_path = root / "pafio.toml",
+          .output_path = archive,
+      }));
+  EXPECT_EQ(ReadFile(decoy_file), "decoy\n");
+#if !defined(_WIN32)
+  EXPECT_TRUE(fs::is_symlink(decoy_link));
+#endif
+  EXPECT_EQ(ReadFile(root / "victim.txt"), "keep me\n");
+  EXPECT_TRUE(fs::exists(archive));
+}
+
 TEST(PackTests, RejectsSymlinkInsideIncludedTree)
 {
   const fs::path root = MakeTempDir("symlink-rejected");
@@ -336,8 +432,7 @@ TEST(PackTests, RejectsSymlinkInsideIncludedTree)
       "name = \"acme/app\"\n"
       "version = \"0.1.0\"\n"
       "edition = \"2026\"\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
+      "[build]\n"
       "implicit-std = true\n\n"
       "[[bin]]\n"
       "name = \"app\"\n"

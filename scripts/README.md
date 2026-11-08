@@ -2,7 +2,7 @@
 
 **Purpose:** Hold repository-local helper scripts used to validate extractability, contract hygiene, and black-box test setup for `pafio`.
 
-**Last updated:** 2026-04-24
+**Last updated:** 2026-07-30
 
 ## Current Public Scripts
 
@@ -13,25 +13,20 @@ For fresh-machine bootstrap and the common build/test flow, start with [../docs/
 - docs/process gate
 - repository hygiene gate
 - team runbook maintenance gate
-- external `audit` gate
-- checkpoint health gate
+- repository-local exact-match secret scan
+- policy check (CI authority, authorization defaults, transport, container runtime, release artifacts)
+- dependency policy check- checkpoint health gate
 - delivery gate
-- curl-pipe installer for installing the `pafio` binary and managed `styio` shim into a PATH directory
 - native configure/build/test entrypoint
-- Debian 13 / compatible Debian/Ubuntu dev environment bootstrap with the shared LLVM 18.1.x, CMake/CTest 3.31.6, and Python 3.13.5 baseline
+- Debian 13 trixie dev and CI environment bootstrap with the shared LLVM 18.1.x, CMake/CTest 3.31.6, and Python 3.13.5 baseline
 - extractability self-check
 - contract fixture validation
-- black-box integration runner setup
 - published-binary compiler handoff and interface acceptance gate
-- synthetic multi-tenant compile-cloud stress gate with container hot replacement checks
-- registry server publish/fetch acceptance gate
-- registry promotion from writable origin storage to read-side serving root
-- registry `v2` role-key generation, local publish worker, `v1 -> v2` import, and static-root verification
-- local HTTP server for the registry `v2` publish/verify control-plane contract
 - copy subtree into an external standalone repository target
-- migration preflight that chains bootstrap, extractability, and optional published external compiler handshake checks
+- published external compiler handshake checks
 
-## Private Script Rule
+## Security Rule
 
-- auth-bearing registry publish smoke gates belong under the gitignored `scripts-private/` tree
-- the tracked public scripts may validate redacted security metadata, but they must not carry credentials or deployment-owned auth policy
+Repository scripts may validate redacted client contracts, but they must not
+carry credentials, production keys, service runtime data, or deployment-owned
+authorization policy.

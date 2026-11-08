@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import pathlib
 import subprocess
 import sys
@@ -12,7 +13,7 @@ from dataclasses import dataclass
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 CHECK_NO_BINARIES = ROOT / "scripts" / "check_no_binaries.py"
-REPO_HYGIENE = ROOT / "scripts" / "repo-hygiene-check.py"
+REPO_HYGIENE = ROOT / "scripts" / "repo-hygiene-gate.py"
 DOCS_AUDIT = ROOT / "scripts" / "docs-audit.py"
 NATIVE_CHECK = ROOT / "scripts" / "native-check.sh"
 EXTRACTABILITY_CHECK = ROOT / "scripts" / "extractability-check.sh"
@@ -24,7 +25,6 @@ DEFAULT_FEATURE_CONFIG = ROOT / "scripts" / "submit-gate.features.json"
 DEFAULT_FEATURE_FLAGS = {
     "enable_release_profile": False,
     "enable_styio_compatibility": False,
-    "enable_cloud_registry_checks": False,
 }
 
 
@@ -37,7 +37,22 @@ class Step:
 
 def run_step(step: Step) -> dict:
     started = time.perf_counter()
-    proc = subprocess.run(step.command, cwd=step.cwd, capture_output=True, text=True)
+    log_root = os.environ.get("PAFIO_GATE_LOG_DIR")
+    log_dir = pathlib.Path(log_root) / step.name if log_root else None
+    if log_dir:
+        log_dir.mkdir(parents=True, exist_ok=True)
+        (log_dir / "command.json").write_text(
+            json.dumps({"command": step.command, "cwd": str(step.cwd)}) + "\n"
+        )
+        env = dict(os.environ, PAFIO_GATE_LOG_DIR=str(log_dir))
+        with (log_dir / "stdout.log").open("w") as stdout, (log_dir / "stderr.log").open("w") as stderr:
+            proc = subprocess.run(step.command, cwd=step.cwd, env=env, stdout=stdout, stderr=stderr)
+        (log_dir / "process.exit").write_text(f"{proc.returncode}\n")
+        output = (log_dir / "stdout.log").read_text()
+        errors = (log_dir / "stderr.log").read_text()
+    else:
+        proc = subprocess.run(step.command, cwd=step.cwd, capture_output=True, text=True)
+        output, errors = proc.stdout, proc.stderr
     duration_ms = (time.perf_counter() - started) * 1000.0
     return {
         "name": step.name,
@@ -45,8 +60,8 @@ def run_step(step: Step) -> dict:
         "cwd": str(step.cwd),
         "returncode": proc.returncode,
         "duration_ms": round(duration_ms, 3),
-        "stdout": proc.stdout,
-        "stderr": proc.stderr,
+        "stdout": output,
+        "stderr": errors,
         "ok": proc.returncode == 0,
     }
 
@@ -56,7 +71,7 @@ def load_feature_flags(config_path: pathlib.Path) -> tuple[dict[str, bool], list
     flags = dict(DEFAULT_FEATURE_FLAGS)
     if not config_path.exists():
         warnings.append(
-            f"feature config not found ({config_path}); release/styio/cloud features are disabled by default"
+            f"feature config not found ({config_path}); release and Styio compatibility features are disabled by default"
         )
         return flags, warnings
 
@@ -64,12 +79,12 @@ def load_feature_flags(config_path: pathlib.Path) -> tuple[dict[str, bool], list
         payload = json.loads(config_path.read_text(encoding="utf-8"))
     except json.JSONDecodeError:
         warnings.append(
-            f"feature config is invalid JSON ({config_path}); release/styio/cloud features remain disabled"
+            f"feature config is invalid JSON ({config_path}); release and Styio compatibility features remain disabled"
         )
         return flags, warnings
     if not isinstance(payload, dict):
         warnings.append(
-            f"feature config must be a JSON object ({config_path}); release/styio/cloud features remain disabled"
+            f"feature config must be a JSON object ({config_path}); release and Styio compatibility features remain disabled"
         )
         return flags, warnings
 
@@ -121,7 +136,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--feature-config",
         type=pathlib.Path,
         default=DEFAULT_FEATURE_CONFIG,
-        help="feature-flag JSON for release/styio/cloud gates",
+        help="feature-flag JSON for release and Styio compatibility gates",
     )
     parser.add_argument("--json", action="store_true", help="emit machine-readable summary")
     return parser
@@ -151,8 +166,6 @@ def main(argv: list[str] | None = None) -> int:
         elif not args.styio_bin:
             warnings.append("release profile did not provide --styio-bin; skipping styio_compatibility")
 
-        if not feature_flags["enable_cloud_registry_checks"]:
-            warnings.append("cloud registry checks are disabled by feature flags")
     elif args.styio_bin:
         warnings.append("--styio-bin is ignored unless --profile release is used")
 

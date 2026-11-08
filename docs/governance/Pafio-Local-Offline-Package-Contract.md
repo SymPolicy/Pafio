@@ -1,50 +1,34 @@
 # Pafio Local Offline Package Contract
 
-**Purpose:** Define the local-first package-manager contract for offline package use, local import/export, and project-local Styio environment optimization.
+**Purpose:** Define deterministic local, vendored, cached, offline, and frozen dependency behavior.
 
-**Last updated:** 2026-04-24
+**Last updated:** 2026-07-30
 
-## Mission
+## Sources
 
-`pafio` is a client product. It must be able to resolve, validate, build, and
-inspect projects without `pafio` when all required packages are already
-available from local sources, vendored snapshots, cache state, or explicitly
-imported offline package bundles.
+Pafio may resolve workspace members, path dependencies, vendored snapshots,
+content-addressed cached packages, pinned Git revisions, and exact registry
+versions. Every non-local source is represented by immutable identity and
+validated content metadata in the lock and resolution state.
 
-## Offline Sources
+## Modes
 
-Offline package resolution may use:
+- `--locked` forbids lock mutation.
+- `--offline` forbids network access.
+- `--frozen` enables both restrictions.
 
-- workspace members
-- path dependencies
-- vendored dependency snapshots
-- existing `PAFIO_HOME` cache entries
-- deterministic source archives created by `pafio pack`
-- future local import bundles that carry package metadata and source archives
+An offline or frozen operation fails before partial state is committed when a
+required immutable object is unavailable locally.
 
-When `--offline` or `--frozen` is active, `pafio` must not contact
-`pafio`, registry mirrors, git remotes, or other network sources.
+## Portability
 
-## Local Import / Export
+`pafio vendor` creates project-local dependency state for offline use.
+`pafio pack` creates a deterministic `.pafio.src.tar` source archive. Pafio
+validates archive paths, size, manifest count, and content hashes before
+materialization.
 
-The local portability path is client-side:
+## Compiler Boundary
 
-- export creates a deterministic package or dependency bundle that can move
-  between machines without platform access
-- import validates the bundle and materializes it into local cache or an
-  explicit project-local package source
-- imported packages must be visible to resolver and lock validation without
-  requiring a platform endpoint
-- bundle metadata must preserve package name, version, source fingerprint,
-  archive hash, and dependency metadata
-
-This contract does not make `pafio` a registry server. Global package
-distribution, regional mirrors, and authoritative write/control planes belong
-to `pafio`.
-
-## Local Compiler Environment
-
-`pafio` should optimize and improve the local Styio compiler environment through
-binary-mode discovery, source-build mode, project-local compiler pins, cache
-warm-up, and build-plan validation. Hosted execution and cloud workers remain
-platform responsibilities.
+Offline dependency preparation does not imply compiler ownership. Project
+workflows still require an independently installed compatible Styio binary.
+Pafio neither stores nor mutates compiler installations under `PAFIO_HOME`.

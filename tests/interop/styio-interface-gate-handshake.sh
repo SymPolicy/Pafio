@@ -2,6 +2,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+PAFIO_BIN="${1:?expected pafio binary path}"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
@@ -21,7 +22,10 @@ EOF
 chmod +x "$FAKE_STYIO"
 
 export PAFIO_HOME="$TMP/pafio-home"
-python3 "$ROOT/scripts/styio-interface-gate.py" --styio-bin "$FAKE_STYIO" --json >"$TMP/out.json"
+python3 "$ROOT/scripts/styio-interface-gate.py" \
+  --pafio-bin "$PAFIO_BIN" \
+  --styio-bin "$FAKE_STYIO" \
+  --json >"$TMP/out.json"
 python3 - "$TMP/out.json" <<'PY'
 import json
 import pathlib
@@ -32,7 +36,11 @@ assert payload["ok"] is True, payload
 assert payload["machine_info"]["tool"] == "styio", payload
 assert payload["machine_info"]["supported_contracts"]["compile_plan"] == [1], payload
 assert payload["require_compile_plan"] is False, payload
-pafio_check = next(step for step in payload["steps"] if step["name"] == "pafio_check")
-pafio_payload = json.loads(pafio_check["stdout"])
-assert pafio_payload["styio"]["integration_phase"] == "compile-plan-live", pafio_payload
+pafio_doctor = next(step for step in payload["steps"] if step["name"] == "pafio_doctor")
+pafio_payload = json.loads(pafio_doctor["stdout"])
+compiler = next(check for check in pafio_payload["checks"] if check["name"] == "styio")
+assert compiler["status"] == "ok", compiler
+assert compiler["detail"]["compiler_version"] == "0.0.5", compiler
+assert compiler["detail"]["compiler_channel"] == "stable", compiler
+assert compiler["detail"]["supported_compile_plan_versions"] == [1], compiler
 PY

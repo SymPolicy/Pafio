@@ -1,10 +1,15 @@
 #include "PafioPlan/CompilePlan.hpp"
 
 #include "PafioCore/Errors.hpp"
+#include "PafioCore/FnvHash.hpp"
+#include "PafioCore/Paths.hpp"
 #include "PafioCore/Version.hpp"
 #include "PafioResolve/Resolver.hpp"
 
 #include <algorithm>
+#include <array>
+#include <atomic>
+#include <chrono>
 #include <filesystem>
 #include <fstream>
 #include <functional>
@@ -55,29 +60,6 @@ void ValidateIntent(std::string_view intent)
   }
 }
 
-fs::path CanonicalAbsolutePath(const fs::path &path)
-{
-  return fs::absolute(path).lexically_normal();
-}
-
-uint64_t Fnv1a64(const std::string &value)
-{
-  uint64_t hash = 1469598103934665603ULL;
-  for (const unsigned char ch : value)
-  {
-    hash ^= ch;
-    hash *= 1099511628211ULL;
-  }
-  return hash;
-}
-
-std::string Hex64(uint64_t value)
-{
-  std::ostringstream out;
-  out << std::hex << value;
-  return out.str();
-}
-
 std::string ReadFile(const fs::path &path)
 {
   std::ifstream in(path, std::ios::binary);
@@ -107,7 +89,7 @@ std::string Join(const std::vector<std::string> &parts, std::string_view separat
 
 fs::path AbsoluteTargetPath(const pafio::ResolvedPackage &package, const std::string &relative_path)
 {
-  return CanonicalAbsolutePath(package.root_dir / relative_path);
+  return pafio::CanonicalAbsolutePath(package.root_dir / relative_path);
 }
 
 void RequireExistingSourceFile(const fs::path &path, std::string_view context)
@@ -397,7 +379,7 @@ ProfileConfig ResolveProfile(std::string_view profile_name)
   throw pafio::PlanError("unsupported build profile: " + std::string(profile_name));
 }
 
-void ValidateUniformToolchain(const pafio::ResolvedGraphResult &graph)
+void ValidateUniformBuildConfig(const pafio::ResolvedGraphResult &graph)
 {
   if (graph.packages.empty())
   {
@@ -412,23 +394,20 @@ void ValidateUniformToolchain(const pafio::ResolvedGraphResult &graph)
       throw pafio::PlanError(
           "compile-plan v1 requires a uniform package.edition across the resolved graph");
     }
-    if (package.package.toolchain.channel != baseline.package.toolchain.channel)
+    if (package.package.build.implicit_std != baseline.package.build.implicit_std)
     {
       throw pafio::PlanError(
-          "compile-plan v1 requires a uniform [toolchain].channel across the resolved graph");
-    }
-    if (package.package.toolchain.implicit_std != baseline.package.toolchain.implicit_std)
-    {
-      throw pafio::PlanError(
-          "compile-plan v1 requires a uniform [toolchain].implicit-std across the resolved graph");
+          "compile-plan v1 requires a uniform [build].implicit-std across the resolved graph");
     }
   }
 }
 
-std::string BuildStdPackageId(const pafio::ResolvedPackage &entry_package)
+std::string BuildStdPackageId(
+    const pafio::ResolvedPackage &entry_package,
+    std::string_view compiler_channel)
 {
-  const std::string prefix = entry_package.package.toolchain.implicit_std ? "builtin:std@" : "builtin:std-disabled@";
-  return prefix + entry_package.package.toolchain.channel + "/" + entry_package.package.edition;
+  const std::string prefix = entry_package.package.build.implicit_std ? "builtin:std@" : "builtin:std-disabled@";
+  return prefix + std::string(compiler_channel) + "/" + entry_package.package.edition;
 }
 
 std::vector<std::string> BuildPackageOrder(const pafio::ResolvedGraphResult &graph)
@@ -518,7 +497,7 @@ std::string BuildSourceHash(const pafio::ResolvedGraphResult &graph)
     digest_input.append(ReadFile(path));
     digest_input.push_back('\0');
   }
-  return Hex64(Fnv1a64(digest_input));
+  return pafio::Hex64(pafio::Fnv1a64(digest_input));
 }
 
 json BuildTargetsJson(const pafio::ResolvedPackage &package)
@@ -597,6 +576,328 @@ json BuildPackageJson(const pafio::ResolvedPackage &package)
   return record;
 }
 
+std::vector<std::string> NormalizeRequiredCapabilities(const std::vector<std::string> &capabilities)
+{
+  std::vector<std::string> normalized = capabilities;
+  for (const std::string &capability : normalized)
+  {
+    if (capability.empty())
+    {
+      throw pafio::PlanError("observable static snapshot required capability names must not be empty");
+    }
+  }
+  std::sort(normalized.begin(), normalized.end());
+  normalized.erase(std::unique(normalized.begin(), normalized.end()), normalized.end());
+  return normalized;
+}
+
+fs::path NormalizeParentSnapshotPath(const fs::path &parent_snapshot_path, const fs::path &workspace_root)
+{
+  if (parent_snapshot_path.empty())
+  {
+    throw pafio::PlanError("observable static snapshot parent_snapshot_path must not be empty");
+  }
+  if (parent_snapshot_path.is_absolute())
+  {
+    return parent_snapshot_path.lexically_normal();
+  }
+  return (workspace_root / parent_snapshot_path).lexically_normal();
+}
+
+constexpr std::array<std::string_view, 4> kRuntimeObservationModes = {"disabled", "aggregate", "sampled", "detailed"};
+
+std::vector<std::string> NormalizeRuntimeObservationCapabilities(const std::vector<std::string> &capabilities)
+{
+  std::vector<std::string> normalized = capabilities;
+  for (const std::string &capability : normalized)
+  {
+    if (capability.empty())
+    {
+      throw pafio::PlanError("runtime observation required capability names must not be empty");
+    }
+  }
+  std::sort(normalized.begin(), normalized.end());
+  normalized.erase(std::unique(normalized.begin(), normalized.end()), normalized.end());
+  return normalized;
+}
+
+void ValidateRuntimeObservationRequest(const pafio::RuntimeObservationRequest &observation)
+{
+  if (observation.version < 1)
+  {
+    throw pafio::PlanError(
+        "runtime observation version must be a positive integer: " + std::to_string(observation.version));
+  }
+  if (observation.mode.has_value() &&
+      std::find(kRuntimeObservationModes.begin(), kRuntimeObservationModes.end(), *observation.mode) ==
+          kRuntimeObservationModes.end())
+  {
+    throw pafio::PlanError("runtime observation mode must be one of disabled|aggregate|sampled|detailed: " + *observation.mode);
+  }
+  if (observation.lane_capacity.has_value() && *observation.lane_capacity < 1)
+  {
+    throw pafio::PlanError(
+        "runtime observation lane_capacity must be a positive integer: " + std::to_string(*observation.lane_capacity));
+  }
+  if (observation.priority_reserved.has_value() && *observation.priority_reserved < 1)
+  {
+    throw pafio::PlanError(
+        "runtime observation priority_reserved must be a positive integer: " +
+        std::to_string(*observation.priority_reserved));
+  }
+  if (observation.producer_lanes.has_value() && *observation.producer_lanes < 1)
+  {
+    throw pafio::PlanError(
+        "runtime observation producer_lanes must be a positive integer: " + std::to_string(*observation.producer_lanes));
+  }
+  if (observation.sampling.has_value())
+  {
+    const pafio::RuntimeObservationSampling &sampling = *observation.sampling;
+    if (sampling.numerator < 1)
+    {
+      throw pafio::PlanError(
+          "runtime observation sampling numerator must be a positive integer: " + std::to_string(sampling.numerator));
+    }
+    if (sampling.denominator < 1)
+    {
+      throw pafio::PlanError(
+          "runtime observation sampling denominator must be a positive integer: " +
+          std::to_string(sampling.denominator));
+    }
+    if (sampling.seed.has_value() && *sampling.seed < 0)
+    {
+      throw pafio::PlanError(
+          "runtime observation sampling seed must not be negative: " + std::to_string(*sampling.seed));
+    }
+  }
+}
+
+// Only the fields the caller set are written; Styio owns every default.
+json BuildRuntimeObservationJson(const pafio::RuntimeObservationRequest &observation)
+{
+  ValidateRuntimeObservationRequest(observation);
+  json request{{"version", observation.version}};
+  if (observation.mode.has_value())
+  {
+    request["mode"] = *observation.mode;
+  }
+  if (!observation.required_capabilities.empty())
+  {
+    request["required_capabilities"] = NormalizeRuntimeObservationCapabilities(observation.required_capabilities);
+  }
+  if (observation.lane_capacity.has_value())
+  {
+    request["lane_capacity"] = *observation.lane_capacity;
+  }
+  if (observation.priority_reserved.has_value())
+  {
+    request["priority_reserved"] = *observation.priority_reserved;
+  }
+  if (observation.producer_lanes.has_value())
+  {
+    request["producer_lanes"] = *observation.producer_lanes;
+  }
+  if (observation.sampling.has_value())
+  {
+    json sampling{
+        {"numerator", observation.sampling->numerator},
+        {"denominator", observation.sampling->denominator},
+    };
+    if (observation.sampling->seed.has_value())
+    {
+      sampling["seed"] = *observation.sampling->seed;
+    }
+    request["sampling"] = std::move(sampling);
+  }
+  return request;
+}
+
+json BuildEmitJson(const pafio::BuildPlanRequest &request, const fs::path &workspace_root)
+{
+  json emit{
+      {"error_format", "jsonl"},
+      {"ast", false},
+      {"styio_ir", false},
+      {"llvm_ir", false},
+  };
+  if (request.observable_static_snapshot.has_value())
+  {
+    const pafio::ObservableStaticSnapshotRequest &snapshot = *request.observable_static_snapshot;
+    if (snapshot.schema_version < 1)
+    {
+      throw pafio::PlanError(
+          "observable static snapshot schema_version must be a positive integer: " +
+          std::to_string(snapshot.schema_version));
+    }
+    json snapshot_request{
+        {"schema_version", snapshot.schema_version},
+        {"required_capabilities", NormalizeRequiredCapabilities(snapshot.required_capabilities)},
+    };
+    if (snapshot.parent_snapshot_path.has_value())
+    {
+      snapshot_request["parent_snapshot_path"] =
+          NormalizeParentSnapshotPath(*snapshot.parent_snapshot_path, workspace_root).string();
+    }
+    emit["observable_static_snapshot"] = std::move(snapshot_request);
+  }
+  if (request.runtime_observation.has_value())
+  {
+    emit["runtime_observation"] = BuildRuntimeObservationJson(*request.runtime_observation);
+  }
+  return emit;
+}
+
+// Observation settings contribute to cache identity; the compact dump of the emitted
+// request is stable because nlohmann::json orders object keys.
+std::string RuntimeObservationCacheMaterial(const pafio::BuildPlanRequest &request)
+{
+  if (!request.runtime_observation.has_value())
+  {
+    return "";
+  }
+  return ";runtime-observation=" + BuildRuntimeObservationJson(*request.runtime_observation).dump();
+}
+
+// The parent snapshot path is deliberately excluded: it changes on every run and
+// must not change cache identity. Output ownership is per invocation.
+std::string ObservableStaticSnapshotCacheMaterial(const pafio::BuildPlanRequest &request)
+{
+  if (!request.observable_static_snapshot.has_value())
+  {
+    return "";
+  }
+  const pafio::ObservableStaticSnapshotRequest &snapshot = *request.observable_static_snapshot;
+  return ";observable-static-snapshot=" + std::to_string(snapshot.schema_version) + ":" +
+         Join(NormalizeRequiredCapabilities(snapshot.required_capabilities), ",");
+}
+
+fs::path AllocateInvocationRoot(const fs::path &cache_root)
+{
+  static std::atomic<unsigned long long> sequence{0};
+  std::error_code error;
+  fs::create_directories(cache_root, error);
+  if (error)
+  {
+    throw pafio::PlanError("failed to create build directory: " + error.message());
+  }
+  for (;;)
+  {
+    const auto tick = std::chrono::steady_clock::now().time_since_epoch().count();
+    const fs::path root = cache_root /
+        (std::to_string(tick) + "-" +
+         std::to_string(sequence.fetch_add(1, std::memory_order_relaxed)));
+    // Directory creation claims ownership atomically across processes. A name
+    // collision retries allocation; existing results are never overwritten.
+    if (fs::create_directory(root, error))
+    {
+      return root;
+    }
+    if (error)
+    {
+      throw pafio::PlanError("failed to create invocation directory: " + error.message());
+    }
+  }
+}
+
+struct InvocationDir
+{
+  unsigned long long tick;
+  unsigned long long sequence;
+  fs::path path;
+};
+
+// Invocation directory names are "<steady-clock tick>-<sequence>"; both parts
+// are decimal integers so retention compares numerically instead of by name
+// width. Names that do not parse are never touched by pruning.
+bool ParseInvocationDirName(const std::string &name, unsigned long long &tick, unsigned long long &sequence)
+{
+  const std::size_t dash = name.find('-');
+  if (dash == 0 || dash == std::string::npos || dash + 1 == name.size())
+  {
+    return false;
+  }
+  unsigned long long parts[2] = {0, 0};
+  std::size_t part = 0;
+  for (std::size_t index = 0; index < name.size(); ++index)
+  {
+    if (index == dash)
+    {
+      part = 1;
+      continue;
+    }
+    const char ch = name[index];
+    if (ch < '0' || ch > '9' || parts[part] > 100000000000000000ULL)
+    {
+      return false;
+    }
+    parts[part] = parts[part] * 10 + static_cast<unsigned long long>(ch - '0');
+  }
+  tick = parts[0];
+  sequence = parts[1];
+  return true;
+}
+
+// The invocation directory that owns a caller-referenced parent snapshot must
+// survive pruning, or a delta request would lose the base it still needs.
+fs::path ParentSnapshotOwner(
+    const pafio::BuildPlanRequest &request,
+    const fs::path &workspace_root,
+    const fs::path &cache_root)
+{
+  if (!request.observable_static_snapshot.has_value() ||
+      !request.observable_static_snapshot->parent_snapshot_path.has_value())
+  {
+    return {};
+  }
+  const fs::path parent =
+      NormalizeParentSnapshotPath(*request.observable_static_snapshot->parent_snapshot_path, workspace_root);
+  const fs::path relative = parent.lexically_relative(cache_root);
+  if (relative.empty() || relative.begin()->empty() || *relative.begin() == "..")
+  {
+    return {};
+  }
+  return cache_root / *relative.begin();
+}
+
+// Derived per-invocation outputs stay owned by their invocation, but a cache
+// key retains at most the newest kRetainedInvocationRoots directories plus the
+// current one and the owner of a referenced parent snapshot. Removal is
+// best-effort: a prune failure must never fail a compile.
+constexpr std::size_t kRetainedInvocationRoots = 8;
+
+void PruneInvocationRoots(const fs::path &cache_root, const fs::path &current, const fs::path &preserve)
+{
+  std::vector<InvocationDir> entries;
+  std::error_code error;
+  for (const fs::directory_entry &entry : fs::directory_iterator(cache_root, error))
+  {
+    if (!entry.is_directory(error) || error)
+    {
+      error.clear();
+      continue;
+    }
+    InvocationDir dir{0, 0, entry.path()};
+    if (!ParseInvocationDirName(dir.path.filename().string(), dir.tick, dir.sequence) ||
+        dir.path == current || dir.path == preserve)
+    {
+      continue;
+    }
+    entries.push_back(std::move(dir));
+  }
+  if (error || entries.size() <= kRetainedInvocationRoots)
+  {
+    return;
+  }
+  std::sort(entries.begin(), entries.end(), [](const InvocationDir &a, const InvocationDir &b) {
+    return a.tick != b.tick ? a.tick > b.tick : a.sequence > b.sequence;
+  });
+  for (std::size_t index = kRetainedInvocationRoots; index < entries.size(); ++index)
+  {
+    fs::remove_all(entries[index].path, error);
+    error.clear();
+  }
+}
+
 }  // namespace
 
 namespace pafio
@@ -614,7 +915,19 @@ BuildPlanResult WriteBuildCompilePlan(const BuildPlanRequest &request)
   resolve_options.offline = request.offline;
   resolve_options.vendor_root = request.vendor_root;
   const ResolvedGraphResult graph = ResolveSingleVersionGraph(request.manifest_path, resolve_options);
-  ValidateUniformToolchain(graph);
+  return WriteBuildCompilePlan(request, graph);
+}
+
+BuildPlanResult WriteBuildCompilePlan(
+    const BuildPlanRequest &request,
+    const ResolvedGraphResult &graph)
+{
+  if (!fs::exists(request.manifest_path))
+  {
+    throw PlanError("manifest not found: " + request.manifest_path.string());
+  }
+  ValidateIntent(request.intent);
+  ValidateUniformBuildConfig(graph);
 
   const ResolvedPackage &entry_package = ResolveEntryPackage(request, graph);
   const SelectedTarget entry_target = ResolveEntryTarget(request, entry_package);
@@ -622,20 +935,25 @@ BuildPlanResult WriteBuildCompilePlan(const BuildPlanRequest &request)
   const std::vector<std::string> package_order = BuildPackageOrder(graph);
   const std::string source_hash = BuildSourceHash(graph);
   const std::string compiler_version = request.compiler_version.value_or("unbound");
+  const std::string compiler_channel = request.compiler_channel.value_or("unbound");
 
   const std::string cache_material =
       "compiler=" + compiler_version +
+      ";compiler-channel=" + compiler_channel +
       ";compile-plan=1" +
       ";intent=" + request.intent +
       ";edition=" + entry_package.package.edition +
-      ";build-mode=" + request.build_mode +
       ";profile=" + profile.name +
       ";target=" + entry_package.id + ":" + entry_target.kind + ":" + entry_target.name +
-      ";source=" + source_hash;
-  const std::string cache_key = Hex64(Fnv1a64(cache_material));
+      ";source=" + source_hash +
+      ObservableStaticSnapshotCacheMaterial(request) +
+      RuntimeObservationCacheMaterial(request);
+  const std::string cache_key = pafio::Hex64(pafio::Fnv1a64(cache_material));
 
-  const fs::path workspace_root = CanonicalAbsolutePath(graph.manifest_path.parent_path());
-  const fs::path build_root = workspace_root / ".pafio" / "build" / cache_key;
+  const fs::path workspace_root = pafio::CanonicalAbsolutePath(graph.manifest_path.parent_path());
+  const fs::path cache_root = workspace_root / ".pafio" / "build" / cache_key;
+  const fs::path build_root = AllocateInvocationRoot(cache_root);
+  PruneInvocationRoots(cache_root, build_root, ParentSnapshotOwner(request, workspace_root, cache_root));
   const fs::path artifact_dir = build_root / "artifacts";
   const fs::path diag_dir = build_root / "diag";
   const fs::path plan_path = build_root / "plan.json";
@@ -661,14 +979,13 @@ BuildPlanResult WriteBuildCompilePlan(const BuildPlanRequest &request)
                     {"file", entry_target.file.string()},
                 }},
       {"toolchain", {
-                        {"channel", entry_package.package.toolchain.channel},
+                        {"channel", compiler_channel},
                         {"edition", entry_package.package.edition},
-                        {"implicit_std", entry_package.package.toolchain.implicit_std},
-                        {"std_package_id", BuildStdPackageId(entry_package)},
+                        {"implicit_std", entry_package.package.build.implicit_std},
+                        {"std_package_id", BuildStdPackageId(entry_package, compiler_channel)},
                     }},
       {"profile", {
                        {"name", profile.name},
-                       {"build_mode", request.build_mode},
                        {"opt_level", profile.opt_level},
                        {"debug", profile.debug},
                        {"lto", profile.lto},
@@ -683,12 +1000,7 @@ BuildPlanResult WriteBuildCompilePlan(const BuildPlanRequest &request)
                       {"artifact_dir", artifact_dir.string()},
                       {"diag_dir", diag_dir.string()},
                   }},
-      {"emit", {
-                   {"error_format", "jsonl"},
-                   {"ast", false},
-                   {"styio_ir", false},
-                   {"llvm_ir", false},
-               }},
+      {"emit", BuildEmitJson(request, workspace_root)},
   };
 
   fs::create_directories(artifact_dir);
@@ -720,7 +1032,6 @@ BuildPlanResult WriteBuildCompilePlan(const BuildPlanRequest &request)
       .entry_target_kind = entry_target.kind,
       .entry_target_name = entry_target.name,
       .profile_name = profile.name,
-      .build_mode = request.build_mode,
       .package_count = graph.packages.size(),
   };
 }

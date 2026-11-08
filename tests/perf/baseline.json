@@ -14,13 +14,13 @@
     },
     {
       "median_ms": 1000.0,
-      "name": "check_single_package",
+      "name": "metadata_locked_offline",
       "p95_ms": 1000.0,
       "runs": 5
     },
     {
       "median_ms": 1000.0,
-      "name": "lock_check_single_package",
+      "name": "sync_locked_offline",
       "p95_ms": 1000.0,
       "runs": 5
     },

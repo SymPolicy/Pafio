@@ -2,7 +2,11 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-TARGET="${1:-<pafio-workspace>}"
+if [[ "$#" -ne 1 ]]; then
+  echo "usage: $0 <target-dir>" >&2
+  exit 64
+fi
+TARGET="$1"
 
 mkdir -p "$TARGET"
 

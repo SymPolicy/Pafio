@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import os
 import re
+import subprocess
 import sys
 from dataclasses import dataclass
 from datetime import date
@@ -20,7 +21,7 @@ COLLECTION_DIRS = [
     Path("docs/assets/workflow"),
     Path("docs/governance"),
     Path("docs/operations"),
-    Path("docs/planning"),
+    Path("docs/plan"),
     Path("docs/registry"),
     Path("docs/security"),
     Path("docs/specs"),
@@ -32,12 +33,12 @@ COLLECTION_DIRS = [
 INDEX_META = {
     "docs": ("pafio Docs Index", "Provide the generated inventory for `docs/`; directory boundaries and maintenance rules live in [README.md](./README.md)."),
     "docs/adr": ("ADR Index", "Provide the generated inventory for `docs/adr/`; decision-record conventions live in [README.md](./README.md)."),
-    "docs/audit": ("Audit Index", "Provide the generated inventory for `docs/audit/`; transient defect records live in ignored `docs/audit/defects/` and are enforced by external `audit` runs."),
+    "docs/audit": ("Audit Index", "Provide the generated inventory for `docs/audit/`; defect records live in `docs/audit/defects/` and are enforced by the repository audit gates."),
     "docs/assets": ("Assets Index", "Provide the generated inventory for `docs/assets/`; reusable workflow assets live in [README.md](./README.md)."),
     "docs/assets/workflow": ("Workflow Assets Index", "Provide the generated inventory for `docs/assets/workflow/`; gate and workflow guidance live in [README.md](./README.md)."),
     "docs/governance": ("Governance Index", "Provide the generated inventory for `docs/governance/`; normative rules and contracts live in [README.md](./README.md)."),
     "docs/operations": ("Operations Index", "Provide the generated inventory for `docs/operations/`; gates and operational runbooks live in [README.md](./README.md)."),
-    "docs/planning": ("Planning Index", "Provide the generated inventory for `docs/planning/`; phased implementation plans live in [README.md](./README.md)."),
+    "docs/plan": ("Plan Index", "Provide the generated inventory for `docs/plan/`; completed Better Plan evidence lives in [README.md](./README.md)."),
     "docs/registry": ("Registry Index", "Provide the generated inventory for `docs/registry/`; package registry contracts live in [README.md](./README.md)."),
     "docs/security": ("Security Index", "Provide the generated inventory for `docs/security/`; public/private security boundary docs live in [README.md](./README.md)."),
     "docs/specs": ("Specs Index", "Provide the generated inventory for `docs/specs/`; cross-cutting agent and audit rules live in [README.md](./README.md)."),
@@ -83,9 +84,35 @@ def extract_purpose(path: Path) -> str:
     return compact_plain(match.group(1)) if match else f"Inventory entry for `{path.name}`."
 
 
+def tracked_files(base: Path) -> set[str] | None:
+    # Outside a working checkout (exported delivery trees) the filesystem is
+    # the tracked boundary: every delivered file is indexable.
+    if not (ROOT / ".git").exists():
+        return None
+    proc = subprocess.run(
+        ["git", "ls-files", "-z", "--", base.relative_to(ROOT).as_posix()],
+        cwd=ROOT, capture_output=True,
+    )
+    if proc.returncode != 0:
+        raise RuntimeError(
+            f"git ls-files failed for {base.relative_to(ROOT).as_posix()}: "
+            "tracked-file boundary unavailable"
+        )
+    return {p for p in proc.stdout.decode().split("\0") if p}
+
+
 def extract_last_updated(path: Path) -> str:
     match = LAST_UPDATED_RE.search(read_text(path))
-    return match.group(1) if match else TODAY
+    if match:
+        return match.group(1)
+    proc = subprocess.run(
+        ["git", "log", "-1", "--format=%cs", "--",
+         path.resolve().relative_to(ROOT).as_posix()],
+        cwd=ROOT, capture_output=True, text=True,
+    )
+    if proc.returncode == 0 and proc.stdout.strip():
+        return proc.stdout.strip()
+    return TODAY
 
 
 def rel_link(from_dir: Path, target: Path) -> str:
@@ -94,7 +121,7 @@ def rel_link(from_dir: Path, target: Path) -> str:
 
 
 def choose_dir_entry(path: Path) -> Path | None:
-    for name in ("INDEX.md", "README.md"):
+    for name in ("INDEX.md", "README.md", "Architecture.md"):
         candidate = path / name
         if candidate.exists():
             return candidate
@@ -103,13 +130,23 @@ def choose_dir_entry(path: Path) -> Path | None:
 
 def build_entries(base: Path) -> list[Entry]:
     entries: list[Entry] = []
-    children = [child for child in base.iterdir() if child.name not in {"README.md", "INDEX.md"} and not child.name.startswith(".")]
+    tracked = tracked_files(base)
+    children = [
+        child for child in base.iterdir()
+        if child.name not in {"README.md", "INDEX.md"} and not child.name.startswith(".")
+        and (child.is_dir() or tracked is None or child.relative_to(ROOT).as_posix() in tracked)
+    ]
     for child in sorted(children, key=lambda item: (0 if item.is_dir() else 1, item.name.lower())):
         if child.is_dir():
             entry_target = choose_dir_entry(child)
-            if entry_target is None:
+            if entry_target is None or (tracked is not None and entry_target.relative_to(ROOT).as_posix() not in tracked):
                 continue
-            summary_source = child / "README.md" if (child / "README.md").exists() else entry_target
+            readme = child / "README.md"
+            summary_source = (
+                readme
+                if readme.exists() and (tracked is None or readme.relative_to(ROOT).as_posix() in tracked)
+                else entry_target
+            )
             entries.append(
                 Entry(
                     rel_path=f"{child.name}/",
@@ -147,7 +184,9 @@ def render_index(base: Path) -> str:
     rel = base.relative_to(ROOT).as_posix()
     title, purpose = INDEX_META[rel]
     entries = build_entries(base)
-    updated = max((entry.last_updated for entry in entries), default=TODAY)
+    readme = base / "README.md"
+    fallback = extract_last_updated(readme) if readme.exists() else TODAY
+    updated = max((entry.last_updated for entry in entries), default=fallback)
     dir_entries = [entry for entry in entries if entry.is_dir]
     file_entries = [entry for entry in entries if not entry.is_dir]
 
@@ -197,7 +236,11 @@ def main() -> int:
     group.add_argument("--write", action="store_true")
     group.add_argument("--check", action="store_true")
     args = parser.parse_args()
-    return sync_indexes(check=args.check)
+    try:
+        return sync_indexes(check=args.check)
+    except RuntimeError as exc:
+        print(f"docs-index: {exc}", file=sys.stderr)
+        return 1
 
 
 if __name__ == "__main__":

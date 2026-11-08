@@ -1,0 +1,245 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://styio.io/contracts/pafio/metadata/v1",
+  "title": "Pafio metadata v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "package",
+    "workspace",
+    "dependencies",
+    "targets",
+    "lock",
+    "resolution",
+    "vendor"
+  ],
+  "properties": {
+    "package": {
+      "oneOf": [
+        {
+          "type": "object",
+          "maxProperties": 0
+        },
+        {
+          "$ref": "#/$defs/packageSummary"
+        }
+      ]
+    },
+    "workspace": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "exclude",
+        "manifest_path",
+        "members",
+        "packages",
+        "resolver",
+        "root",
+        "root_package_ids"
+      ],
+      "properties": {
+        "exclude": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "manifest_path": {
+          "type": "string"
+        },
+        "members": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "packages": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/packageSummary"
+          }
+        },
+        "resolver": {
+          "const": "1"
+        },
+        "root": {
+          "type": "string"
+        },
+        "root_package_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "dependencies": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "alias",
+          "kind",
+          "package",
+          "package_id",
+          "parent_package_id",
+          "requirement",
+          "source"
+        ],
+        "properties": {
+          "alias": {
+            "type": "string",
+            "minLength": 1
+          },
+          "kind": {
+            "enum": [
+              "normal",
+              "dev"
+            ]
+          },
+          "package": {
+            "type": "string",
+            "minLength": 1
+          },
+          "package_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "parent_package_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "requirement": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "source": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "kind",
+              "location",
+              "rev"
+            ],
+            "properties": {
+              "kind": {
+                "enum": [
+                  "path",
+                  "git",
+                  "registry"
+                ]
+              },
+              "location": {
+                "type": "string",
+                "minLength": 1
+              },
+              "rev": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^[0-9a-f]{40}$"
+              }
+            }
+          }
+        }
+      }
+    },
+    "targets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "name",
+          "package_id",
+          "path"
+        ],
+        "properties": {
+          "kind": {
+            "enum": [
+              "lib",
+              "bin",
+              "test"
+            ]
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "package_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "path": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "lock": {
+      "type": "object"
+    },
+    "resolution": {
+      "type": "object"
+    },
+    "vendor": {
+      "type": "object"
+    }
+  },
+  "$defs": {
+    "packageSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "edition",
+        "id",
+        "manifest_path",
+        "name",
+        "publish",
+        "root",
+        "source_kind",
+        "version"
+      ],
+      "properties": {
+        "edition": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "manifest_path": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "publish": {
+          "type": "boolean"
+        },
+        "root": {
+          "type": "string"
+        },
+        "source_kind": {
+          "enum": [
+            "workspace",
+            "path",
+            "git",
+            "registry"
+          ]
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}

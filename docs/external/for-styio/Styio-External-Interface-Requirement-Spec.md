@@ -162,7 +162,7 @@ The compiler must honor:
 - `entry.package_id`
 - `entry.target_kind`
 - `entry.target_name`
-- `entry.root_source`
+- `entry.file`
 
 The compiler must not re-discover a different default target when the plan already names one.
 
@@ -242,8 +242,8 @@ The gate validates:
 - required handshake fields and types
 - direct compatibility acceptance through `pafio check`
 - compile-plan advertisement when requested
-- direct `styio --compile-plan <path>` execution against a dry-run plan when requested
-- output-directory materialization for compile-plan execution
+- `styio --compile-plan <path>` execution against a real plan, with a working build and output materialization under the invocation's declared roots
+- with `--task-resource`, real Pafio check/build/test/run workflows against the candidate binary, including compile-failure/repair transitions, concurrent invocations, snapshot/delta, and runtime observation
 
 ## 7. Delivery Checklist for the Styio Team
 

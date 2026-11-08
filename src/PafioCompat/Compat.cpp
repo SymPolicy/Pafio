@@ -11,17 +11,31 @@
 #include <optional>
 #include <sstream>
 #include <string>
+#include <string_view>
 #include <tuple>
 #include <vector>
 
 #include <nlohmann/json.hpp>
 #include <toml++/toml.h>
 
+#if defined(_WIN32)
+#include <io.h>
+#else
+#include <unistd.h>
+#endif
+
 namespace fs = std::filesystem;
 using json = nlohmann::json;
 
 namespace
 {
+
+// The contract file contracts/compat/styio-support.toml is the single
+// authority; CMake bakes its contents into this literal at configure time so
+// dev-tree and installed binaries always evaluate the same matrix.
+constexpr std::string_view kEmbeddedStyioSupportToml =
+#include "EmbeddedStyioSupportToml.inc"
+;
 
 std::tuple<int, int, int> ParseSemver(const std::string &version)
 {
@@ -55,14 +69,20 @@ int ParseEdition(const std::string &edition)
 
 toml::table LoadCompatMatrix()
 {
-  const fs::path compat_matrix_path = pafio::ProjectRoot() / "contracts" / "compat" / "styio-support.toml";
-  return toml::parse_file(compat_matrix_path.string());
+  try
+  {
+    return toml::parse(kEmbeddedStyioSupportToml, std::string_view{"embedded styio-support.toml"});
+  }
+  catch (const toml::parse_error &err)
+  {
+    throw pafio::CompatibilityError("failed to parse embedded compatibility matrix: " + std::string(err.description()));
+  }
 }
 
 json ProbeMachineInfo(const fs::path &binary)
 {
   const pafio::ProcessResult result = pafio::RunProcess<pafio::CompilerProbeError>({
-      .program = binary.string(),
+      .program = pafio::ProcessPathString(binary),
       .args = {"--machine-info=json"},
       .search_path = false,
       .timeout = pafio::kExternalProcessProbeTimeout,
@@ -88,7 +108,11 @@ json ProbeMachineInfo(const fs::path &binary)
       "tool",
       "compiler_version",
       "channel",
+      "active_integration_phase",
       "supported_contracts",
+      "supported_contract_versions",
+      "supported_adapter_modes",
+      "feature_flags",
       "capabilities",
       "edition_max",
   };
@@ -106,6 +130,22 @@ json ProbeMachineInfo(const fs::path &binary)
   if (!payload["capabilities"].is_array())
   {
     throw pafio::CompatibilityError("compiler handshake field 'capabilities' must be an array");
+  }
+  if (!payload["active_integration_phase"].is_string() || payload["active_integration_phase"].get<std::string>().empty())
+  {
+    throw pafio::CompatibilityError("compiler handshake field 'active_integration_phase' must be a non-empty string");
+  }
+  if (!payload["supported_contract_versions"].is_object())
+  {
+    throw pafio::CompatibilityError("compiler handshake field 'supported_contract_versions' must be an object");
+  }
+  if (!payload["supported_adapter_modes"].is_array())
+  {
+    throw pafio::CompatibilityError("compiler handshake field 'supported_adapter_modes' must be an array");
+  }
+  if (!payload["feature_flags"].is_object())
+  {
+    throw pafio::CompatibilityError("compiler handshake field 'feature_flags' must be an object");
   }
   if (payload["tool"] != "styio")
   {
@@ -193,54 +233,49 @@ std::vector<int> LoadIntArray(const toml::table &table, const std::string &key)
   return values;
 }
 
-struct ProjectToolchainPin
+bool IsExecutable(const fs::path &path)
 {
-  fs::path pin_path;
-  std::string compiler_version;
-  std::string compiler_channel;
-};
+#if defined(_WIN32)
+  return _waccess(path.c_str(), 0) == 0;
+#else
+  return access(path.string().c_str(), X_OK) == 0;
+#endif
+}
 
-std::optional<ProjectToolchainPin> LoadProjectToolchainPin(const fs::path &manifest_path)
+std::optional<fs::path> FindStyioOnPath()
 {
-  const std::optional<fs::path> pin_path = pafio::FindProjectToolchainPinPath(manifest_path);
-  if (!pin_path.has_value())
+  const char *path_value = std::getenv("PATH");
+  if (path_value == nullptr || *path_value == '\0')
   {
     return std::nullopt;
   }
 
-  toml::table doc;
-  try
-  {
-    doc = toml::parse_file(pin_path->string());
-  }
-  catch (const toml::parse_error &err)
-  {
-    throw pafio::ToolError(
-        "failed to parse project toolchain pin '" + pin_path->string() + "': " + std::string(err.description()));
-  }
+#if defined(_WIN32)
+  constexpr char kPathSeparator = ';';
+  constexpr std::array<std::string_view, 2> kNames{"styio.exe", "styio"};
+#else
+  constexpr char kPathSeparator = ':';
+  constexpr std::array<std::string_view, 1> kNames{"styio"};
+#endif
 
-  const toml::table *styio_table = doc["styio"].as_table();
-  if (styio_table == nullptr)
+  std::stringstream entries(path_value);
+  std::string entry;
+  while (std::getline(entries, entry, kPathSeparator))
   {
-    throw pafio::ToolError("project toolchain pin is missing [styio]: " + pin_path->string());
+    if (entry.empty())
+    {
+      continue;
+    }
+    for (const std::string_view name : kNames)
+    {
+      const fs::path candidate = fs::path(entry) / name;
+      if (fs::is_regular_file(candidate) && IsExecutable(candidate))
+      {
+        return pafio::CanonicalAbsolutePath(candidate);
+      }
+    }
   }
-
-  const auto compiler_version = styio_table->get_as<std::string>("version");
-  const auto compiler_channel = styio_table->get_as<std::string>("channel");
-  if (compiler_version == nullptr || compiler_version->get().empty())
-  {
-    throw pafio::ToolError("project toolchain pin is missing styio.version: " + pin_path->string());
-  }
-  if (compiler_channel == nullptr || compiler_channel->get().empty())
-  {
-    throw pafio::ToolError("project toolchain pin is missing styio.channel: " + pin_path->string());
-  }
-
-  return ProjectToolchainPin{
-      .pin_path = *pin_path,
-      .compiler_version = compiler_version->get(),
-      .compiler_channel = compiler_channel->get(),
-  };
+  return std::nullopt;
 }
 
 }  // namespace
@@ -249,8 +284,7 @@ namespace pafio
 {
 
 std::optional<fs::path> ResolveStyioBinary(
-    const std::optional<std::string> &explicit_path,
-    const std::optional<fs::path> &manifest_path)
+    const std::optional<std::string> &explicit_path)
 {
   if (explicit_path.has_value() && !explicit_path->empty())
   {
@@ -265,34 +299,7 @@ std::optional<fs::path> ResolveStyioBinary(
     }
   }
 
-  if (manifest_path.has_value())
-  {
-    if (const std::optional<ProjectToolchainPin> pin = LoadProjectToolchainPin(*manifest_path); pin.has_value())
-    {
-      const fs::path pafio_home = ResolvePafioHome();
-      const fs::path managed_binary =
-          ManagedStyioBinaryPath(ManagedStyioInstallRoot(pafio_home, pin->compiler_channel, pin->compiler_version));
-      if (!fs::exists(managed_binary) || !fs::is_regular_file(managed_binary))
-      {
-        throw ToolError(
-            "project toolchain pin requires an installed managed styio compiler: " + pin->compiler_channel + "/" +
-            pin->compiler_version + " (" + pin->pin_path.string() + ")");
-      }
-      return managed_binary;
-    }
-  }
-
-  const std::optional<fs::path> pafio_home = ResolveOptionalPafioHome();
-  if (pafio_home.has_value())
-  {
-    const fs::path managed_binary = ManagedStyioBinaryPath(ManagedStyioCurrentRoot(*pafio_home));
-    if (fs::exists(managed_binary))
-    {
-      return managed_binary;
-    }
-  }
-
-  return std::nullopt;
+  return FindStyioOnPath();
 }
 
 CompatibilityReport CheckCompilerCompatibility(const fs::path &binary)
@@ -339,7 +346,18 @@ CompatibilityReport CheckCompilerCompatibility(const fs::path &binary)
   report.compiler_version = machine_info["compiler_version"].get<std::string>();
   report.compiler_channel = machine_info["channel"].get<std::string>();
   report.compiler_edition_max = machine_info["edition_max"].get<std::string>();
-  report.integration_phase = entry["integration_phase"].value<std::string>().value_or("unspecified");
+  // The phase reported to consumers is the compiler's advertised
+  // active_integration_phase; the matrix entry's phase is the requirement it
+  // must satisfy, not a value to echo back.
+  const std::string compiler_phase = machine_info["active_integration_phase"].get<std::string>();
+  const std::string required_phase = entry["integration_phase"].value<std::string>().value_or("");
+  if (!required_phase.empty() && compiler_phase != required_phase)
+  {
+    throw CompatibilityError(
+        "compiler active_integration_phase '" + compiler_phase +
+        "' does not match the phase required by this pafio phase: " + required_phase);
+  }
+  report.integration_phase = compiler_phase;
   report.supported_compile_plan_versions = expected_compile_plan_versions;
   report.capabilities = std::move(capabilities);
   return report;

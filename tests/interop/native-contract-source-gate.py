@@ -50,12 +50,19 @@ def tracked_files() -> list[Path]:
     return sorted(files, key=lambda item: item.relative_to(ROOT).as_posix())
 
 
+POLICY_FILE = "scripts/artifact-policy.json"
+
+
 def main() -> int:
     problems: list[str] = []
     for path in tracked_files():
         if not path.is_file():
             continue
         rel = path.relative_to(ROOT).as_posix()
+        # The artifact policy file legitimately enumerates the forbidden
+        # contract terms it enforces; it is the definition, not a reference.
+        if rel == POLICY_FILE:
+            continue
         lowered = rel.lower()
         for needle in FORBIDDEN_NAME_PARTS:
             if needle in lowered:

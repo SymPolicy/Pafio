@@ -1,0 +1,416 @@
+[
+  {
+    "id": "e07f8c8e-58e5-4313-96b0-da239e42d0c8",
+    "status": "completed",
+    "role": "group_design",
+    "verification_profile": "code",
+    "prerequisites": [],
+    "platform": "any",
+    "difficulty": "critical",
+    "goal": "Freeze the completed trusted dependency-kernel design as one coherent delivery group.",
+    "description": "Scope: the thin-core requirements, architecture, validation contract, evidence, and manifest-to-resolution implementation boundary. Context: the accepted delivery established deterministic resolution, verified content-addressed storage, ordered atomic state, and offline replay as Pafio's internal kernel. Target: preserve that source-grounded design spine in the current grouped-delivery model. Design Considerations: retain O(V + E) exact-version traversal, sorted deterministic output, digest-keyed single-flight work, and lock-then-resolution commit ordering. Design Value: one explicit design owner makes the historical kernel closure and its final proof independently readable. Constraints & Risks: this migration records completed work only; it must not add compiler, cloud, registry-service, compatibility, private-path, or backend-runtime scope.",
+    "acceptance_criteria": [
+      {
+        "checked": true,
+        "text": "Requirements, architecture, validation, and evidence agree on the deterministic trusted dependency-kernel boundary."
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "docs(plan): migrate dependency-kernel design state",
+      "target": "a task-specific temporary branch in Pafio"
+    },
+    "next": [
+      "0861f893-f534-42a9-99d1-05480d9fe05b"
+    ]
+  },
+  {
+    "id": "0861f893-f534-42a9-99d1-05480d9fe05b",
+    "status": "completed",
+    "role": "implementation",
+    "verification_profile": "code",
+    "prerequisites": [
+      "e07f8c8e-58e5-4313-96b0-da239e42d0c8"
+    ],
+    "platform": "any",
+    "difficulty": "critical",
+    "goal": "Deliver one consumer-only Pafio sync loop that deterministically locks, verifies and materializes dependencies, then emits the minimal Styio resolution-v1 contract.",
+    "description": "Scope: Closure: capability - one manifest-to-resolution sync transaction for path and registry dependency graphs; own the current manifest/lock/resolver/registry/security/store path, add the minimal resolution-v1 contract and focused tests, and do not extend compiler, toolchain, cloud, IDE, hosted-control-plane, Git-source, vendor, pack, or publish behavior. Context: the repository already contains a working exact-version resolver and completed supply-chain hardening, but its CLI and plan mix package consumption with compiler workflow, tool installation, cloud policy, registry service operation, and Vityo aggregation. Target: sync prepares an immutable graph, reuses a valid lock, materializes missing SHA-256 objects through bounded single-flight work, commits lock and then resolution-v1 as ordered atomic files, and reproduces the same state with --locked --offline. Design Considerations: retain O(V + E) exact-version traversal for this closure; use hash maps only for lookup, sorted vectors for graph/output determinism, per-digest locks plus temp/hash/prescan/rename for CAS commits, and a project-local resolution file modeled as a narrow package-id-to-root map. Mutable path/workspace packages expose a null content digest rather than a false manifest-derived digest. Design Value: creates the smallest independently useful and trustworthy package-manager kernel and a stable handoff that lets later ownership migrations delete broad Pafio surfaces. Constraints & Risks: preserve completed TUF/archive/atomic-write protections; no absolute paths in lockfiles; resolution commits last and digest mismatch rejects an interrupted cross-file commit; no full regression during implementation; naming migration and range solving are separate future capabilities with no compatibility shims.",
+    "requirements": [
+      "REQ-THIN-001",
+      "REQ-THIN-002",
+      "REQ-THIN-003",
+      "REQ-THIN-004",
+      "REQ-THIN-005"
+    ],
+    "design": {
+      "artifact": "docs/plan/pafio-thin-core/Architecture.md",
+      "owned_paths": [
+        "src/PafioManifest",
+        "src/PafioResolve/Resolver.cpp",
+        "src/PafioResolve/Resolver.hpp",
+        "src/PafioResolve/ResolutionContract.cpp",
+        "src/PafioResolve/ResolutionContract.hpp",
+        "src/PafioRegistryClient",
+        "src/PafioSecurity",
+        "src/PafioCore/AtomicFile.cpp",
+        "src/PafioCore/AtomicFile.hpp",
+        "src/PafioCore/FileLock.cpp",
+        "src/PafioCore/FileLock.hpp",
+        "src/PafioWorkflow/Dependencies.cpp",
+        "src/PafioWorkflow/Dependencies.hpp",
+        "src/PafioApp/PackageApp.cpp",
+        "contracts/resolution-v1/resolution.schema.json"
+      ],
+      "scaffold_paths": [
+        "src/PafioResolve/ResolutionContract.cpp",
+        "src/PafioResolve/ResolutionContract.hpp",
+        "contracts/resolution-v1/resolution.schema.json"
+      ],
+      "acceptance_paths": [
+        "docs/plan/pafio-thin-core/Validation.md",
+        "tests/native/ManifestTests.cpp",
+        "tests/native/LockTests.cpp",
+        "tests/native/SyncTests.cpp",
+        "tests/native/SecurityTests.cpp",
+        "tests/native/TufTests.cpp",
+        "tests/native/ResolutionContractTests.cpp",
+        "tests/interop/pafio-thin-core-contract.sh"
+      ],
+      "symbols": [
+        {
+          "path": "src/PafioResolve/ResolutionContract.hpp",
+          "kind": "type",
+          "name": "ResolutionDocument",
+          "operation": "add",
+          "signature": "ResolutionDocument{schema_version, manifest_sha256, lock_sha256, roots, packages}"
+        },
+        {
+          "path": "src/PafioResolve/ResolutionContract.hpp",
+          "kind": "function",
+          "name": "SerializeResolutionCanonical",
+          "operation": "add",
+          "signature": "std::string SerializeResolutionCanonical(const ResolvedGraphResult &, std::string_view manifest_sha256, std::string_view lock_sha256)"
+        },
+        {
+          "path": "src/PafioResolve/Resolver.cpp",
+          "kind": "function",
+          "name": "ResolveSingleVersionGraph",
+          "operation": "modify",
+          "signature": "ResolvedGraphResult ResolveSingleVersionGraph(const std::filesystem::path &, const ResolveOptions &)"
+        },
+        {
+          "path": "src/PafioApp/PackageApp.cpp",
+          "kind": "function",
+          "name": "HandleSync",
+          "operation": "modify",
+          "signature": "int HandleSync(const std::vector<std::string> &, bool as_json)"
+        }
+      ],
+      "interfaces": [
+        {
+          "name": "sync transaction",
+          "producer": "src/PafioApp/PackageApp.cpp",
+          "consumers": [
+            "src/PafioCLI/CLI.cpp",
+            "tests/native/SyncTests.cpp"
+          ],
+          "inputs": "validated manifest, optional lock, resolve flags and registry/cache state",
+          "outputs": "verified CAS objects plus canonical lock and resolution-v1 committed as ordered atomic files",
+          "errors": [
+            "manifest or lock invalid/stale",
+            "resolution cycle or source/version conflict",
+            "registry trust or content verification failure",
+            "offline object missing or corrupt",
+            "bounded lock wait or atomic commit failure"
+          ]
+        },
+        {
+          "name": "resolution-v1",
+          "producer": "src/PafioResolve/ResolutionContract.cpp",
+          "consumers": [
+            "docs/external/for-styio/Styio-External-Interface-Requirement-Spec.md",
+            "tests/interop/pafio-thin-core-contract.sh"
+          ],
+          "inputs": "immutable resolved graph plus manifest and lock digests",
+          "outputs": "canonical project-local JSON package-id-to-source-root mapping with registry SHA-256 and null mutable-local digest",
+          "errors": [
+            "unsupported schema",
+            "stale manifest or lock digest",
+            "duplicate package id or dangling dependency alias",
+            "missing local package root"
+          ]
+        }
+      ],
+      "dependencies": [
+        {
+          "from": "src/PafioRegistryClient/Client.cpp",
+          "to": "src/PafioSecurity/TufVerifier.cpp",
+          "reason": "Registry metadata must be verified before it can enter resolution or the content-addressed store."
+        },
+        {
+          "from": "src/PafioApp/PackageApp.cpp",
+          "to": "src/PafioCore/AtomicFile.cpp",
+          "reason": "The sync transaction commits each file atomically in lock-then-resolution order so digest mismatch rejects an interrupted cross-file commit."
+        },
+        {
+          "from": "tests/interop/pafio-thin-core-contract.sh",
+          "to": "contracts/resolution-v1/resolution.schema.json",
+          "reason": "The black-box Styio handoff fixture validates the exact published resolution contract."
+        }
+      ],
+      "decisions": {
+        "composition": "one prepare/commit sync transaction with the resolution file committed last",
+        "algorithms": "lock-first exact-version DFS with active-stack cycle detection; O(V + E)",
+        "data_structures": "unordered lookup maps, compact node vectors, sorted dependency vectors and a unique digest work set",
+        "state": "portable lock is committed state; SHA-256 CAS is immutable shared state; resolution-v1 is generated machine-local state and uses null content_sha256 for mutable path/workspace packages",
+        "isolation": "the core dependency graph excludes compiler workflow, toolchain, cloud, IDE and hosted control-plane modules",
+        "concurrency": "bounded workers across distinct digests and single-flight plus per-digest file locks for identical content"
+      },
+      "test_seams": [
+        "pure canonical resolution serializer",
+        "injectable registry/file fixtures",
+        "failure injection before each atomic commit",
+        "two-process same-digest sync",
+        "minimal Styio contract consumer"
+      ]
+    },
+    "acceptance_criteria": [
+      {
+        "checked": true,
+        "text": "A mixed path-plus-registry transitive graph completes one sync and emits a lock and resolution-v1 whose bytes are identical on an unchanged second run.",
+        "evidence_refs": [
+          {
+            "type": "command",
+            "command_sha256": "1f327212420c5a26ae895d3899f72e4bcc9be000750e5e120956821277545a15",
+            "exit_code": 0,
+            "recorded_at": "2026-07-28T03:28:06Z"
+          },
+          {
+            "type": "command",
+            "command_sha256": "71dce4d0810a85c517b324387c687d897a8d74199fba5eee32f7db2112533645",
+            "exit_code": 0,
+            "recorded_at": "2026-07-28T03:28:06Z"
+          },
+          {
+            "type": "command",
+            "command_sha256": "6c4d42c3ce3471f83ba0c1c9b5a02f3b579dcd6421e6f9a28de76ae12b43e414",
+            "exit_code": 0,
+            "recorded_at": "2026-07-28T03:28:06Z"
+          },
+          {
+            "type": "command",
+            "command_sha256": "ad1edb4e0750c499095847500b0531b9820b3b6da85f8b96f6068289c82cfa03",
+            "exit_code": 0,
+            "recorded_at": "2026-07-28T03:28:06Z"
+          }
+        ]
+      },
+      {
+        "checked": true,
+        "text": "After a warm sync, --locked --offline performs no network access or extraction and resolves every package root from verified local state.",
+        "evidence_refs": [
+          {
+            "type": "command",
+            "command_sha256": "1f327212420c5a26ae895d3899f72e4bcc9be000750e5e120956821277545a15",
+            "exit_code": 0,
+            "recorded_at": "2026-07-28T03:28:06Z"
+          },
+          {
+            "type": "command",
+            "command_sha256": "71dce4d0810a85c517b324387c687d897a8d74199fba5eee32f7db2112533645",
+            "exit_code": 0,
+            "recorded_at": "2026-07-28T03:28:06Z"
+          },
+          {
+            "type": "command",
+            "command_sha256": "6c4d42c3ce3471f83ba0c1c9b5a02f3b579dcd6421e6f9a28de76ae12b43e414",
+            "exit_code": 0,
+            "recorded_at": "2026-07-28T03:28:06Z"
+          },
+          {
+            "type": "command",
+            "command_sha256": "ad1edb4e0750c499095847500b0531b9820b3b6da85f8b96f6068289c82cfa03",
+            "exit_code": 0,
+            "recorded_at": "2026-07-28T03:28:06Z"
+          }
+        ]
+      },
+      {
+        "checked": true,
+        "text": "Corrupt artifacts, traversal archives, interrupted ordered commits and two-process same-digest races either recover online or fail closed offline; no torn individual file/CAS object or resolution accepted against incomplete state is observable.",
+        "evidence_refs": [
+          {
+            "type": "command",
+            "command_sha256": "1f327212420c5a26ae895d3899f72e4bcc9be000750e5e120956821277545a15",
+            "exit_code": 0,
+            "recorded_at": "2026-07-28T03:28:06Z"
+          },
+          {
+            "type": "command",
+            "command_sha256": "71dce4d0810a85c517b324387c687d897a8d74199fba5eee32f7db2112533645",
+            "exit_code": 0,
+            "recorded_at": "2026-07-28T03:28:06Z"
+          },
+          {
+            "type": "command",
+            "command_sha256": "6c4d42c3ce3471f83ba0c1c9b5a02f3b579dcd6421e6f9a28de76ae12b43e414",
+            "exit_code": 0,
+            "recorded_at": "2026-07-28T03:28:06Z"
+          },
+          {
+            "type": "command",
+            "command_sha256": "ad1edb4e0750c499095847500b0531b9820b3b6da85f8b96f6068289c82cfa03",
+            "exit_code": 0,
+            "recorded_at": "2026-07-28T03:28:06Z"
+          }
+        ]
+      },
+      {
+        "checked": true,
+        "text": "The resolution-v1 schema and minimal Styio consumer accept the canonical fixture and reject stale digests, duplicate IDs, dangling aliases, missing roots and unknown schema versions.",
+        "evidence_refs": [
+          {
+            "type": "command",
+            "command_sha256": "1f327212420c5a26ae895d3899f72e4bcc9be000750e5e120956821277545a15",
+            "exit_code": 0,
+            "recorded_at": "2026-07-28T03:28:06Z"
+          },
+          {
+            "type": "command",
+            "command_sha256": "71dce4d0810a85c517b324387c687d897a8d74199fba5eee32f7db2112533645",
+            "exit_code": 0,
+            "recorded_at": "2026-07-28T03:28:06Z"
+          },
+          {
+            "type": "command",
+            "command_sha256": "6c4d42c3ce3471f83ba0c1c9b5a02f3b579dcd6421e6f9a28de76ae12b43e414",
+            "exit_code": 0,
+            "recorded_at": "2026-07-28T03:28:06Z"
+          },
+          {
+            "type": "command",
+            "command_sha256": "ad1edb4e0750c499095847500b0531b9820b3b6da85f8b96f6068289c82cfa03",
+            "exit_code": 0,
+            "recorded_at": "2026-07-28T03:28:06Z"
+          }
+        ]
+      },
+      {
+        "checked": true,
+        "text": "Source/target dependency evidence proves the thin core and resolution schema do not depend on or expose compiler workflow, toolchain, cloud, IDE or hosted-control-plane behavior.",
+        "evidence_refs": [
+          {
+            "type": "command",
+            "command_sha256": "1f327212420c5a26ae895d3899f72e4bcc9be000750e5e120956821277545a15",
+            "exit_code": 0,
+            "recorded_at": "2026-07-28T03:28:06Z"
+          },
+          {
+            "type": "command",
+            "command_sha256": "71dce4d0810a85c517b324387c687d897a8d74199fba5eee32f7db2112533645",
+            "exit_code": 0,
+            "recorded_at": "2026-07-28T03:28:06Z"
+          },
+          {
+            "type": "command",
+            "command_sha256": "6c4d42c3ce3471f83ba0c1c9b5a02f3b579dcd6421e6f9a28de76ae12b43e414",
+            "exit_code": 0,
+            "recorded_at": "2026-07-28T03:28:06Z"
+          },
+          {
+            "type": "command",
+            "command_sha256": "ad1edb4e0750c499095847500b0531b9820b3b6da85f8b96f6068289c82cfa03",
+            "exit_code": 0,
+            "recorded_at": "2026-07-28T03:28:06Z"
+          }
+        ]
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "feat(package): close the thin deterministic sync core",
+      "target": "a task-specific temporary branch in Pafio"
+    },
+    "regression": {
+      "scope": "focused",
+      "commands": [
+        "cmake -S . -B build-codex",
+        "cmake --build build-codex --target pafio pafio_native_tests",
+        "./build-codex/bin/pafio_native_tests --gtest_filter=ManifestTests.*:LockfileTests.*:LockGenerationTests.*:ResolverTests.*:SyncCliTests.*:SecurityTests.*:TufVerifierTests.*:ResolutionContractTests.*",
+        "ctest --test-dir build-codex -R 'pafio_(cli_sync_help|registry_http_fetch|registry_v2_http_read|registry_v2_unit|tuf_parity_unit|thin_core_contract)$' --output-on-failure --no-tests=error"
+      ],
+      "criteria": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ],
+      "paths": [
+        "src/PafioManifest",
+        "src/PafioResolve",
+        "src/PafioRegistryClient",
+        "src/PafioSecurity",
+        "src/PafioCore/AtomicFile.cpp",
+        "src/PafioCore/FileLock.cpp",
+        "src/PafioWorkflow/Dependencies.cpp",
+        "src/PafioApp/PackageApp.cpp",
+        "contracts/resolution-v1",
+        "tests/native",
+        "tests/interop/pafio-thin-core-contract.sh"
+      ]
+    },
+    "next": [
+      "2257c50d-1701-4248-8c3a-74f681eade00"
+    ]
+  },
+  {
+    "id": "2257c50d-1701-4248-8c3a-74f681eade00",
+    "status": "completed",
+    "role": "final_validation",
+    "verification_profile": "code",
+    "prerequisites": [
+      "0861f893-f534-42a9-99d1-05480d9fe05b"
+    ],
+    "platform": "any",
+    "difficulty": "critical",
+    "goal": "Preserve the accepted end-to-end proof for the trusted dependency-kernel group.",
+    "description": "Scope: the complete thin-core delivery, its native and interoperability tests, frozen validation contract, and recorded evidence. Context: focused implementation evidence already proves deterministic sync, fail-closed integrity, concurrency safety, offline replay, and the narrow Styio resolution contract. Target: represent that accepted group-level outcome in the current final-validation role. Design Considerations: reuse the maintained repository regression surface and keep proof separate from implementation ownership. Design Value: a trailing group proof makes requirement coverage and historical completion explicit. Constraints & Risks: do not rerun or reinterpret the historical product delivery during this state-format migration, and do not record private paths or backend runtime data.",
+    "requirements": [
+      "REQ-THIN-001",
+      "REQ-THIN-002",
+      "REQ-THIN-003",
+      "REQ-THIN-004",
+      "REQ-THIN-005"
+    ],
+    "acceptance_criteria": [
+      {
+        "checked": true,
+        "text": "The frozen thin-core validation contract and evidence cover deterministic sync, offline replay, integrity failures, concurrency, the resolution-v1 consumer, and excluded product surfaces."
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "docs(plan): migrate dependency-kernel validation state",
+      "target": "a task-specific temporary branch in Pafio"
+    },
+    "regression": {
+      "scope": "full",
+      "commands": [
+        "cmake -S . -B build-codex -DPAFIO_BUILD_TESTS=ON",
+        "cmake --build build-codex -j4",
+        "ctest --test-dir build-codex --output-on-failure --no-tests=error"
+      ],
+      "criteria": [
+        0
+      ],
+      "paths": [
+        "src",
+        "contracts",
+        "tests"
+      ]
+    },
+    "next": []
+  }
+]

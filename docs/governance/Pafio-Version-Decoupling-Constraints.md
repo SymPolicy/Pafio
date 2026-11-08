@@ -1,137 +1,49 @@
 # Pafio Version Decoupling Constraints
 
-**Purpose:** Freeze the compatibility, release, protocol, and cache isolation rules that let `pafio` and `styio` evolve as separately maintained projects without accidental version coupling.
+**Purpose:** Keep Pafio, Styio, language editions, and machine contracts independently versioned.
 
-**Last updated:** 2026-04-10
+**Last updated:** 2026-08-01
 
-## 1. Version Axes
+## Independent Axes
 
-The system has four independent version axes:
+1. Styio language edition
+2. Styio compiler version
+3. compile-plan contract version
+4. Pafio product version
+5. Pafio manifest, lock, metadata, and resolution contract versions
 
-1. Language edition: `edition`
-2. Compiler version: `styio x.y.z`
-3. Machine contract version: `compile-plan vN`
-4. Package-manager version: `pafio a.b.c`
+Pafio never infers compatibility from matching product versions. It probes
+`styio --machine-info=json`, validates the advertised compile-plan version and
+capabilities, and then delegates compilation through the published process
+boundary.
 
-These axes must never be collapsed into a single shared version number.
+Pafio must not link compiler internals, inspect compiler source, install or
+switch the compiler, or reuse compiler outputs across incompatible compiler,
+contract, edition, profile, target, or source identities.
 
-## 2. Non-Negotiable Rules
+`pafio.lock` changes only for dependency or lock-schema reasons; the Pafio
+binary version is not a semantic dependency.
 
-`pafio` MUST:
+The package-manager compatibility declaration is
+`contracts/compat/styio-support.toml`. Styio remains the authority for
+diagnostics, receipts, and runtime events.
 
-- support only published `styio` releases by default
-- release after the `styio` versions it claims to support
-- negotiate capability through machine-readable metadata, not through source inspection
-- treat `compile-plan` as a separately versioned protocol
-- isolate caches and build outputs by compiler version, protocol version, edition, and profile
-- avoid changing `pafio.lock` format or contents for non-resolution reasons
+## Platform-Independent Releases
 
-`pafio` MUST NOT:
+Pafio's shared source branch and each operating-system release are separate
+promotion units. Advancing a revision to `nightly` establishes a shared source
+candidate; it does not claim that Linux, macOS, and Windows binaries are all
+ready or released.
 
-- link against `styio` implementation libraries
-- include `styio` private headers
-- parse Styio syntax using its own private grammar fork
-- generate plans that require unpublished language features
-- assume that `pafio` and `styio` share matching version numbers
-- reuse build artifacts across incompatible compiler or contract versions
+Each platform release independently owns:
 
-## 3. Capability Handshake
+1. the exact Pafio source revision;
+2. its native build and runtime compatibility gate;
+3. its artifact format, checksum, signature, and provenance evidence; and
+4. its publication and rollback decision.
 
-`pafio` must query the compiler first:
-
-```text
-styio --machine-info=json
-```
-
-The returned payload is the authority for:
-
-- tool identity
-- supported machine contract versions
-- supported capability flags
-- maximum supported `edition`
-- compiler version and release channel
-
-`pafio` must reject unsupported compilers using this handshake before any dependency resolution side effects are committed.
-
-## 4. Release Policy
-
-- `styio` publishes first.
-- `pafio` publishes later, after validating against released compiler builds.
-- `pafio` may define a minimum supported `styio` version and an optionally tested upper range.
-- The real allow/deny decision must still be based on capability and contract support.
-
-## 5. Contract Policy
-
-- `pafio/contracts/` is the source of truth for `pafio`-owned machine contracts.
-- `styio` may keep vendored snapshots, but vendored copies are read-only mirrors.
-- Backward-compatible additions should prefer optional fields.
-- Breaking protocol changes require a new major contract line such as `compile-plan/v2`.
-
-## 6. Cache and Output Isolation
-
-Every `pafio` build cache key must include at least:
-
-- `styio` compiler version
-- compile-plan major version
-- edition
-- profile
-- target identity
-- source hash
-
-No build output may be shared across mismatched values for those dimensions.
-
-Pinned git source caches must also live under hermetic `PAFIO_HOME` state rather than arbitrary developer-local checkouts.
-
-Managed compiler installs created by `pafio tool install` must also live under hermetic `PAFIO_HOME/tools/` state rather than arbitrary mutable developer-local paths.
-
-## 7. Lockfile Stability
-
-`pafio.lock` must not encode the `pafio` tool version as a semantic dependency.
-
-Allowed reasons for `pafio.lock` changes:
-
-- dependency declarations changed
-- resolution rules changed intentionally
-- source metadata changed
-- lock schema changed
-
-Forbidden reasons for `pafio.lock` changes:
-
-- formatter drift
-- map iteration order drift
-- `pafio` patch version drift without resolution changes
-
-## 8. Compatibility Matrix
-
-`pafio/contracts/compat/styio-support.toml` is the package-manager-side published compatibility declaration.
-
-It records:
-
-- minimum supported compiler version
-- optionally tested upper bound
-- required capability flags
-- supported compile-plan versions for the current integration phase
-- maximum edition
-- release channel constraints
-
-Compatibility entries may be phased. During bootstrap, `pafio` may support metadata-only integration against published `styio` releases before `compile-plan` exists. In that phase, compile-plan support must be recorded as an empty list instead of being guessed.
-
-## 9. Acceptance Gates
-
-The following gates are required before declaring the split architecture ready:
-
-- `pafio_version_decouple_gate`
-- `pafio_extractability_gate`
-- `styio_contract_compat_gate`
-- `styio_pafio_dual_maintenance_gate`
-
-Each gate must run in an isolated temporary environment and must not reuse developer-local caches.
-
-## 10. Known Tradeoffs
-
-- This design is heavier than a direct in-process integration.
-- The machine handshake and compatibility matrix add maintenance work.
-- Cache partitioning increases disk usage.
-- Publishing `pafio` after `styio` slows release cadence.
-
-These tradeoffs are intentional and preferred over hidden version coupling.
+Passing one platform's gate never waives another platform's gate and never
+authorizes another platform's artifacts. Windows publication is organized and
+accepted from a Windows release environment. The shared `nightly` promotion may
+continue without a Windows artifact, provided release wording names the actual
+platform scope and does not advertise Windows availability.

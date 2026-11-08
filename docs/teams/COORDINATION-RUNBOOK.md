@@ -1,71 +1,67 @@
 # Coordination Runbook
 
-**Purpose:** Provide the daily-work coordination entrypoint for `pafio`; explicitly maintain team ownership, review routing, escalation paths, and checkpoint discipline without replacing SSOT planning or governance documents.
+**Purpose:** Route Pafio changes across core, registry, compiler-contract, and delivery owners.
 
-**Last updated:** 2026-04-24
+**Last updated:** 2026-09-08
 
 ## Mission
 
-Keep module boundaries, review routing, and checkpoint recovery clear across
-`pafio` local-first package-manager workflow, registry client delivery,
-compiler-facing contracts, offline package portability, platform handoff, and
-docs/delivery operations.
+Keep every closure inside one Pafio product boundary and coordinate external
+owners through published machine contracts.
 
 ## Module Map
 
 ```text
-Docs / Delivery -> Core / Workflow
-Docs / Delivery -> Registry / Publish
-Docs / Delivery -> Styio / Contracts
-Styio / Contracts -> Core / Workflow
-Registry / Publish -> Core / Workflow
-Styio / Contracts -> pafio handoff
+Core / Workflow -> Styio / Contracts
+Core / Workflow -> Registry / Publish
+Docs / Delivery -> all Pafio owners
+Styio / Contracts -> Styio
+Registry / Publish -> Styio Platform
 ```
 
 ## Ownership Table
 
-| Team | Primary runbook | Main surface | Required review trigger |
-|------|-----------------|--------------|-------------------------|
-| Core / Workflow | [CORE-WORKFLOW-RUNBOOK.md](./CORE-WORKFLOW-RUNBOOK.md) | native CLI, manifests, lockfiles, resolver, local import/export, package workflow, platform compatibility shims | CLI shape, manifest/lock behavior, offline package workflow change |
-| Registry / Publish | [REGISTRY-PUBLISH-RUNBOOK.md](./REGISTRY-PUBLISH-RUNBOOK.md) | registry client docs, offline package expectations, publish/fetch flow | registry transport, publish client semantics, local package portability change |
-| Styio / Contracts | [STYIO-CONTRACTS-RUNBOOK.md](./STYIO-CONTRACTS-RUNBOOK.md) | `contracts/`, compiler handoff, local Styio environment contract, external `styio` interface expectations, `pafio` handoff | machine contract, compatibility payload, compile-plan/platform boundary change |
-| Docs / Delivery | [DOCS-DELIVERY-RUNBOOK.md](./DOCS-DELIVERY-RUNBOOK.md) | docs tree, repo hygiene, docs gate, delivery-facing docs | docs topology, gate shape, repo hygiene rule, workflow entrypoint change |
+| Team | Runbook | Primary surface |
+| --- | --- | --- |
+| Core / Workflow | `CORE-WORKFLOW-RUNBOOK.md` | project and dependency transactions |
+| Registry / Publish | `REGISTRY-PUBLISH-RUNBOOK.md` | registry and package lifecycle clients |
+| Styio / Contracts | `STYIO-CONTRACTS-RUNBOOK.md` | compiler and machine handoff |
+| Docs / Delivery | `DOCS-DELIVERY-RUNBOOK.md` | SSOT, gates, and release evidence |
 
 ## Review Matrix
 
-1. Core CLI, manifest, offline package, local import/export, or build flow changes require Core / Workflow review.
-2. Registry publish/fetch/promotion or remote transport client changes require Registry / Publish review.
-3. External compiler handshake, `contracts/`, compiler-facing CLI contract changes, or platform migration handoff changes require Styio / Contracts review.
-4. Docs tree, gate wiring, or workflow entrypoint changes require Docs / Delivery review.
-5. Any change that crosses those boundaries needs both affected owners in the same checkpoint.
+Public commands and metadata require Core and Docs review. Compile-plan changes
+require Core and Styio review. Registry route or request changes require
+Registry and Platform review. Cross-owner changes require fixed revisions.
 
 ## Escalation Rules
 
-1. If implementation and planning disagree, escalate to `docs/planning/`.
-2. If CLI or compiler contract wording disagrees, escalate to `docs/governance/` and `docs/external/for-styio/`.
-3. If registry delivery shape disagrees, escalate to `docs/registry/`.
-4. If platform service ownership disagrees, escalate to `docs/planning/Pafio-Styio-Cloud-Migration-Handoff.md` and the downstream `styio-cloud` docs.
-5. If workflow or delivery process disagrees, escalate to `docs/assets/workflow/`.
+Implementation conflicts escalate to the CLI contract or accepted ADR. Service
+behavior escalates to Platform. Compiler behavior escalates to Styio. No owner
+conflict is resolved by copying the foreign implementation into Pafio.
+
+These review routes do not require a new user confirmation for ordinary work
+already authorized by the current request. First inspect the owning contracts
+and existing decisions; prepare a concrete proposal for any unresolved owner
+decision. Preserve the required owner review and approval, pause only its
+dependent change or cutover, and continue independent authorized work.
 
 ## Checkpoint Policy
 
-1. Keep risky work within one to three day mergeable batches.
-2. Structural changes must update the owning runbook and the affected workflow docs in the same checkpoint.
-3. Interrupted work must leave a recoverable note in the owning doc or active plan, not just chat state.
+Close one independently testable capability or scenario at a time. Run focused
+tests during implementation. Follow [Post-Commit CI Checks](../specs/POST-COMMIT-CI-CHECKS.md)
+for the final regression after source review and all in-scope repairs. Diagnose
+failures by stage, repair ordinary in-scope defects, and run the necessary
+follow-up checks. Request a developer decision only when a repair would change
+the objective, a published contract, or the risk boundary.
 
 ## Release / Cutover Gates
 
-| Cutover | Minimum gate |
-|---------|--------------|
-| Core workflow or native CLI | `./scripts/checkpoint-health.sh` |
-| Registry client delivery path | `./scripts/checkpoint-health.sh` and relevant registry acceptance commands |
-| Compiler handoff / contracts | `./scripts/checkpoint-health.sh --styio-bin /absolute/path/to/styio` |
-| Offline package / local import-export | `./scripts/checkpoint-health.sh` plus local resolver/cache coverage |
-| Platform service handoff | `./scripts/docs-gate.sh`, platform migration docs, and downstream `pafio` gates |
-| Docs or delivery process | `./scripts/docs-gate.sh` and `python3 scripts/repo-hygiene-gate.py --mode tracked` |
+Pafio, Styio, Platform, Vityo, site, audit, and aggregate revisions are pinned
+before the coordinated nightly cutover. Any failed owner contract blocks the
+cutover without introducing compatibility code.
 
 ## Handoff / Recovery
 
-1. Record the affected owner runbooks and workflow docs.
-2. Record the next command and remaining blocker if a checkpoint stops mid-flight.
-3. State whether an external `styio` binary is required for the next recovery step.
+Record only revision, contract, status, and safe test evidence. Exclude
+credentials, personal data, machine paths, and backend runtime payloads.

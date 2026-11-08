@@ -3,16 +3,122 @@ name: audit
 on:
   pull_request:
   push:
+  merge_group:
   workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  audit:
+  policy:
     runs-on: ubuntu-24.04
-    timeout-minutes: 2
+    timeout-minutes: 10
+    env:
+      STYIO_PYTHON_VERSION: "3.13.5"
 
     steps:
-      - name: Confirm policy workflow handoff
-        run: echo "The released policy audit runs in .github/workflows/audit.yml."
+      - name: Checkout Pafio
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          fetch-depth: 0
+          path: Pafio
+          persist-credentials: false
+
+      - name: Set up standardized Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: ${{ env.STYIO_PYTHON_VERSION }}
+
+      # Coverage mapping for the retired centralized audit integration:
+      # the ignored defect queue and artifact/inventory policy are
+      # enforced by repo-hygiene-gate, docs governance by docs-audit and
+      # the ecosystem doc gate, binary policy by check_no_binaries, and
+      # the license/dependency-manifest/usage-boundary evidence by
+      # dependency-policy-check.
+      # The ecosystem CLI doc gate's canonical implementation lives in the
+      # sibling styio-nightly checkout; the wrapper skips without it, so pin
+      # the revision it delegates to before the gates run.
+      - name: Check out the canonical ecosystem doc gate
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          repository: SymPolicy/Styio
+          ref: 0f6680caec26e34aae0d39e70654eb25493fe553
+          path: styio-nightly
+          sparse-checkout: scripts/ecosystem-cli-doc-gate.py
+          persist-credentials: false
+
+      - name: Run policy and defect-queue gates
+        working-directory: Pafio
+        run: |
+          python3 scripts/repo-hygiene-gate.py --repo-root . --mode tracked
+          python3 scripts/check_no_binaries.py --repo-root . --mode tracked
+          python3 scripts/policy-check.py --repo-root .
+          python3 scripts/docs-audit.py
+          python3 scripts/ecosystem-cli-doc-gate.py --json
+          python3 scripts/dependency-policy-check.py --repo-root .
+
+  # Outgoing-range policy gate: the deterministic privacy/credential/
+  # identity/workspace-hygiene contract, pinned to the published probator
+  # revision. This job is isolated on purpose: it never executes
+  # repository-provided scripts, checks out the audited range as data, and
+  # shares no PATH, workspace, or artifacts with jobs that run PR code.
+  # The operator-local withheld-name list is not shipped to CI by design;
+  # the publication gate audits it at push.
+  range-scan:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out the audited range as data
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          fetch-depth: 0
+          path: audited-tree
+          persist-credentials: false
+
+      - name: Install probator
+        run: cargo install --locked --git https://github.com/Unka-Malloc/Probator --rev 06370579165cd6816c1ade0b32108795783e4680 probator
+
+      - name: Check out the pinned policy contract
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          repository: Unka-Malloc/Probator
+          ref: 06370579165cd6816c1ade0b32108795783e4680
+          path: probator
+          sparse-checkout: tools/privacy-cleaner
+          persist-credentials: false
+
+      - name: Resolve the audited base
+        working-directory: audited-tree
+        id: range
+        run: |
+          case "$GITHUB_EVENT_NAME" in
+            pull_request|pull_request_target) BASE="${{ github.event.pull_request.base.sha }}" ;;
+            merge_group) BASE="${{ github.event.merge_group.base_sha }}" ;;
+            *) BASE="${{ github.event.before }}" ;;
+          esac
+          if [[ -z "$BASE" || "$BASE" == "0000000000000000000000000000000000000000" ]]; then
+            echo "base=" >> "$GITHUB_OUTPUT"
+          else
+            echo "base=--base $BASE" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Audit the outgoing range
+        working-directory: audited-tree
+        run: probator stage1 --contract ../probator/tools/privacy-cleaner/contract.json --repo . --head HEAD ${{ steps.range.outputs.base }}
+
+  # Stable aggregate gate: rulesets require this single `audit` check context,
+  # and it only turns green when both the policy surface and the isolated
+  # outgoing-range scan succeed.
+  audit:
+    runs-on: ubuntu-24.04
+    needs: [policy, range-scan]
+    if: always()
+    steps:
+      - name: Aggregate audit result
+        env:
+          POLICY_RESULT: ${{ needs.policy.result }}
+          RANGE_SCAN_RESULT: ${{ needs['range-scan'].result }}
+        run: |
+          test "$POLICY_RESULT" = "success"
+          test "$RANGE_SCAN_RESULT" = "success"

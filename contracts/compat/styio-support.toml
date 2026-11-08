@@ -14,3 +14,17 @@ required_capabilities = [
 supported_compile_plan_versions = [1]
 integration_phase = "compile-plan-live"
 notes = "Current compatibility requires a styio compiler that advertises compile-plan v1 and accepts styio --compile-plan for build/run/test orchestration."
+
+[[supported_styio]]
+min = "0.0.1"
+max_exclusive = "0.1.0"
+channel = "nightly"
+edition_max = "2026"
+required_capabilities = [
+  "machine_info_json",
+  "single_file_entry",
+  "jsonl_diagnostics"
+]
+supported_compile_plan_versions = [1]
+integration_phase = "compile-plan-live"
+notes = "The coordinated nightly lane consumes the same compile-plan v1 contract as the stable lane."

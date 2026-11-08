@@ -2,20 +2,22 @@
 
 **Purpose:** Define the required workflow for checking GitHub Actions after a local commit is pushed, including what must be verified before committing and what must be watched after pushing.
 
-**Last updated:** 2026-04-26
+**Last updated:** 2026-09-08
 
 ## Scope
 
-This spec applies to agent and maintainer work on `pafio` branches. It covers local pre-commit verification, post-push GitHub Actions monitoring, and failure recovery for repository-local and cross-repository gates.
+This spec applies to agent and maintainer work on `Pafio` branches. It covers local pre-commit verification, post-push GitHub Actions monitoring, and failure recovery for repository-local and cross-repository gates.
+
+Use the current request and existing approvals to determine authority. This workflow does not itself authorize a commit, push, merge, release, or governance change. Repository review and approval requirements remain effective; do not ask again for an action already covered by the same scope and risk boundary. Resolve discoverable facts and ordinary in-scope implementation issues directly, report material findings, and pause only work that needs a new decision.
 
 ## Commit-Time Verification
 
-Before creating a commit, the agent must run the closest local equivalent of the GitHub Actions checks affected by the change.
+Before creating an authorized commit, run the closest local checks affected by the change. Use focused checks during implementation and reuse passing evidence while its inputs remain unchanged. The commands below are a scope-dependent catalog, not a requirement to run every gate before every commit.
 
-Minimum local checks for normal changes:
+Local checks for the affected surfaces:
 
 ```bash
-ctest --test-dir build-codex --output-on-failure
+ctest --test-dir build-codex --output-on-failure -R '<affected-test-pattern>'
 python3 scripts/repo-hygiene-gate.py --mode tracked
 python3 scripts/docs-audit.py
 ```
@@ -26,17 +28,40 @@ extractability gate, performance smoke gate, and delivery package gate that
 were previously split across `styio-ci`, `repo-hygiene`, and `Submit Gate`.
 `local-ci-gate` is the pafio repository's own CI surface; it is not the shared
 Styio ecosystem resource gate modeled by upstream `styio-ci-gate`.
+Inside that workflow, `Linux / Debian 13 trixie gate` is the blocking repository
+gate for shared-source `nightly` promotion. `macOS / latest native smoke` is an
+independent platform adaptation lane. `Windows / latest native smoke` runs only
+through explicit `workflow_dispatch`; Windows release owners execute it from
+the Windows release flow and must resolve any failure before publishing Windows
+artifacts. Neither a shared-source merge nor another platform's passing result
+constitutes Windows release evidence.
 
-Cross-repository contract or product changes must also run the matching ecosystem gate from `styio-nightly`, for example:
+During authorized Windows process-adaptation work, dispatch the same workflow
+with `native_process_only=true` for focused validation. It builds the CLI and runs the
+independent `PortableProcess.*` contracts plus CLI probes. The default dispatch
+still runs the full workflow; focused process evidence does not replace the
+platform's complete release acceptance.
+
+For cross-repository checkouts, CI first tries the Pafio branch name and falls
+back independently to each sibling repository's `nightly` branch when that
+branch does not exist there. A Pafio-only change therefore does not require
+creating empty matching branches in Styio or Vityo.
+
+Cross-repository documentation changes run the ecosystem CLI docs gate:
 
 ```bash
-cd <styio-workspace>
-python3 scripts/ecosystem-cli-doc-gate.py --workspace-root <workspace-root>
-python3 scripts/ecosystem-product-gate.py --workspace-root <workspace-root>
-python3 scripts/ecosystem-sample-workflow-gate.py --workspace-root <workspace-root>
+cd <pafio-workspace>
+python3 scripts/ecosystem-cli-doc-gate.py --require-workspace --workspace-root <workspace-root>
 ```
 
+The docs gate validates the Pafio-owned surface locally by default. Its explicit
+workspace form checks fixed Pafio, Styio, Styio Platform, and Vityo
+documentation; it never discovers or delegates to a mutable sibling checkout.
 The commit message body should record the checks that were actually run.
+
+## Final Regression
+
+Run the required complete regression after all changes, source review, in-scope repairs, and focused verification are finished. Coordinate local and CI evidence for the same candidate; required CI checks still run after an authorized push. If the regression fails, diagnose the failing stage and repair ordinary defects within the authorized scope. Run the focused checks needed to verify those repairs, then repeat only the affected checks and any broader regression needed to establish acceptance, reusing still-valid evidence. Request a developer decision only when the necessary repair would change the objective, a published contract, or the risk boundary. Keep acceptance unresolved until the required checks pass.
 
 ## Post-Push Verification
 
@@ -46,15 +71,15 @@ Required steps:
 
 1. Resolve the current branch and pushed commit.
 2. Query GitHub Actions for the repository and branch.
-3. Watch the relevant workflow run or check suite until it reaches a terminal state when the expected runtime is reasonable.
-4. If a check fails, inspect the failing job logs, identify the smallest fix, run the matching local gate, create a follow-up commit, and push again.
-5. If a check is still queued or running when the turn must end, report the run URL, current status, and the command needed to resume checking.
+3. Observe the relevant run for the exact pushed commit using bounded tool waits and progress updates. An expired observation window does not cancel the run or establish its result.
+4. If a check fails, inspect its diagnostics and report a privacy-safe cause and the smallest repair and verification proposal. Follow the Final Regression decision rule for complete-regression failures. Ordinary focused-check failures may be repaired within existing authority; a follow-up commit or push must also be covered by that authority.
+5. If observation is blocked or the turn ends before the run completes, report the run URL, commit, unresolved status, and resume command as an incomplete verification handoff.
 
 Preferred commands:
 
 ```bash
 gh run list --branch "$(git branch --show-current)" --limit 10
-gh run watch <run-id> --exit-status
+gh run view <run-id> --json headSha,status,conclusion,url
 gh run view <run-id> --log-failed
 ```
 
@@ -62,26 +87,26 @@ If `gh` is unavailable or unauthenticated, the agent must state that GitHub Acti
 
 ## Cross-Repository Work
 
-When one delivery touches `styio-nightly`, `pafio`, and `styio-view`, post-push verification applies to every pushed repository. The agent should check each repository's GitHub Actions status, not only the repository that received the last commit.
+When one delivery spans several sibling repositories, post-push verification
+applies to every pushed repository. The agent should check each repository's GitHub
+Actions status, not only the repository that received the last commit.
 
-Cross-repository gates must use the same workspace checkout set that will be visible to CI. If a gate consumes another repository's branch, push that repository first or report that remote CI may still be using an older sibling checkout.
+Cross-repository gates must use the same workspace checkout set that will be visible to CI. If a gate consumes another repository's branch, perform an already-authorized dependency push first; otherwise prepare the required handoff and report the revision mismatch. A gate dependency does not grant permission to publish another repository.
 
 ## Delivery Ruleset Governance
 
-Required GitHub merge gates are maintained through GitHub Rulesets, not legacy classic branch protection. Protected downstream branches should require `audit` and `local-ci-gate` as the stable repository-local status-check surface, with `audit` kept as the policy workflow check where the upstream ruleset expects it.
+Required GitHub merge gates are maintained through GitHub Rulesets, not legacy classic branch protection. Protected downstream branches should require `secret-scan` and the blocking Linux `local-ci-gate` job as the stable repository-local status-check surface. macOS results apply only to macOS adaptation. Windows is a separately dispatched release lane and must not become a shared-source merge requirement or inherit another platform's acceptance evidence.
 
 Gate audits must inspect effective branch rules, for example:
 
 ```bash
-gh api repos/SymPolicy/Pafio/rules/branches/release
+gh api repos/<owner>/<repo>/rules/branches/ai-dev
 ```
 
-Do not use `branches/<branch>/protection/required_status_checks` as the authority for this repository. That legacy classic endpoint can return 404 even when the Ruleset gate is active.
+Do not use `branches/ai-dev/protection/required_status_checks` as the authority for this repository. That legacy classic endpoint can return 404 even when the Ruleset gate is active.
 
 ## Completion Criteria
 
-A pushed change is not complete until one of these is true:
+A delivery requiring remote verification is complete only when the required checks pass for the exact delivered commit and all authorized acceptance conditions are satisfied. After an approved repair and push, use the replacement commit's results.
 
-1. GitHub Actions checks passed.
-2. GitHub Actions checks failed, the failure was fixed and re-pushed, and the replacement run passed.
-3. GitHub Actions could not be observed within the current turn, and the final handoff records the unresolved run status and recovery command.
+Queued, running, failed, cancelled, or unobservable checks remain unresolved verification. A status URL and recovery command make the handoff actionable; they do not make the delivery complete. A local-only request is complete against its local acceptance conditions and does not require an unsolicited push.

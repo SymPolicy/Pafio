@@ -28,7 +28,7 @@ Docs/process-only delivery:
 
 1. worktree hygiene and docs ownership checks when local changes exist
 2. push-range hygiene and docs ownership checks when `HEAD` is ahead of the delivery base
-3. `./scripts/audit-gate.sh`
+3. `python3 scripts/secret-scan.py`
 4. `./scripts/checkpoint-health.sh`
 
 `auto` mode is the default. It must not report success from an empty staged

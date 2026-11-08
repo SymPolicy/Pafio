@@ -1,8 +1,14 @@
 #include "PafioWorkflow/Dependencies.hpp"
 
+#include "PafioCore/AtomicFile.hpp"
+#include "PafioCore/ContractLexicon.hpp"
 #include "PafioCore/Errors.hpp"
+#include "PafioCore/FileLock.hpp"
+#include "PafioCore/Paths.hpp"
+#include "PafioCore/Sha256.hpp"
 #include "PafioManifest/Lockfile.hpp"
 #include "PafioManifest/Manifest.hpp"
+#include "PafioResolve/ResolutionContract.hpp"
 #include "PafioResolve/Resolver.hpp"
 
 #include <algorithm>
@@ -19,18 +25,6 @@ namespace fs = std::filesystem;
 namespace
 {
 
-const std::regex &PackageNameRegex()
-{
-  static const std::regex pattern("^[a-z0-9][a-z0-9_-]*/[a-z0-9][a-z0-9_-]*$");
-  return pattern;
-}
-
-const std::regex &SemverRegex()
-{
-  static const std::regex pattern("^\\d+\\.\\d+\\.\\d+$");
-  return pattern;
-}
-
 bool IsNonEmptyRelativePath(const std::string &value)
 {
   if (value.empty())
@@ -43,28 +37,6 @@ bool IsNonEmptyRelativePath(const std::string &value)
 bool IsRegistryRootUrl(const std::string &value)
 {
   return value.starts_with("file://") || value.starts_with("http://") || value.starts_with("https://");
-}
-
-void ValidatePackageName(const std::string &value, const std::string &context)
-{
-  if (!std::regex_match(value, PackageNameRegex()))
-  {
-    throw pafio::ValidationError(context + " must match namespace/name");
-  }
-}
-
-void ValidateSemver(const std::string &value, const std::string &context)
-{
-  if (!std::regex_match(value, SemverRegex()))
-  {
-    throw pafio::ValidationError(context + " must be strict semver x.y.z");
-  }
-}
-
-std::string PackageShortName(const std::string &package_name)
-{
-  ValidatePackageName(package_name, "package name");
-  return package_name.substr(package_name.find('/') + 1U);
 }
 
 std::string ReadFile(const fs::path &path)
@@ -82,16 +54,7 @@ std::string ReadFile(const fs::path &path)
 
 void WriteFile(const fs::path &path, const std::string &content)
 {
-  std::ofstream out(path);
-  if (!out)
-  {
-    throw std::runtime_error("failed to open file for write: " + path.string());
-  }
-  out << content;
-  if (!out.good())
-  {
-    throw std::runtime_error("failed to write file: " + path.string());
-  }
+  pafio::AtomicWriteFile(path, content);
 }
 
 std::vector<pafio::Dependency> &SelectSection(pafio::PackageConfig &package, pafio::DependencySection section)
@@ -246,7 +209,7 @@ DependencyCommandResult AddDependencyAndRefreshLock(const AddDependencyRequest &
   {
     throw ValidationError("dependency source must be a non-empty string");
   }
-  ValidatePackageName(request.package_name, "dependency package");
+  pafio::RequirePackageName(request.package_name, "dependency package");
   const int source_kind_count = static_cast<int>(request.use_git) + static_cast<int>(request.use_registry) +
                                 static_cast<int>(!request.use_git && !request.use_registry);
   if (source_kind_count != 1)
@@ -263,6 +226,11 @@ DependencyCommandResult AddDependencyAndRefreshLock(const AddDependencyRequest &
     {
       throw ValidationError("git dependencies require --rev <rev>");
     }
+    pafio::RequireGitCommitId(*request.rev, "dependency rev");
+    if (pafio::UrlHasUserinfo(request.source))
+    {
+      throw ValidationError("git dependency source must not embed credentials in the URL userinfo");
+    }
     if (request.version.has_value())
     {
       throw ValidationError("--version is only valid with --registry");
@@ -278,7 +246,7 @@ DependencyCommandResult AddDependencyAndRefreshLock(const AddDependencyRequest &
     {
       throw ValidationError("registry dependencies require --version <x.y.z>");
     }
-    ValidateSemver(*request.version, "dependency version");
+    pafio::RequireExactSemver(*request.version, "dependency version");
     if (!IsRegistryRootUrl(request.source))
     {
       throw ValidationError("registry dependency source must use file://, http://, or https://");
@@ -289,7 +257,7 @@ DependencyCommandResult AddDependencyAndRefreshLock(const AddDependencyRequest &
     throw ValidationError("--rev is only valid with --git and --version is only valid with --registry");
   }
 
-  const std::string alias = request.alias.value_or(PackageShortName(request.package_name));
+  const std::string alias = request.alias.value_or(pafio::PackageShortName(request.package_name));
   const std::string original_manifest = ReadFile(request.manifest_path);
   const fs::path lockfile_path = request.manifest_path.parent_path() / "pafio.lock";
   const std::optional<std::string> original_lock = fs::exists(lockfile_path) ? std::optional<std::string>(ReadFile(lockfile_path)) : std::nullopt;
@@ -392,17 +360,36 @@ DependencyCommandResult RemoveDependencyAndRefreshLock(const RemoveDependencyReq
       match.section);
 }
 
-FetchCommandResult FetchDependencies(const fs::path &manifest_path, const ResolveOptions &options)
+SyncProjectResult SyncProjectDependencies(
+    const fs::path &manifest_path,
+    const ResolveOptions &options)
 {
   if (!fs::exists(manifest_path))
   {
     throw ValidationError("manifest not found: " + manifest_path.string());
   }
+  const fs::path requested_lockfile_path =
+      CanonicalAbsolutePath(manifest_path).parent_path() / "pafio.lock";
+  if (options.locked && !fs::exists(requested_lockfile_path))
+  {
+    throw SyncError("lockfile missing: " + requested_lockfile_path.string());
+  }
 
-  const LockGenerationResult generated = ResolveSingleVersionLockfile(manifest_path, options);
+  ResolvedGraphResult graph = ResolveSingleVersionGraph(manifest_path, options);
+  const std::string rendered = SerializeLockfileCanonical(graph.lockfile);
+  const std::string manifest_bytes =
+      SerializeManifestCanonical(LoadManifest(graph.manifest_path));
+  const std::string manifest_sha256 = Sha256Text(manifest_bytes);
+  const std::string lock_sha256 = Sha256Text(rendered);
+  const std::string resolution_bytes =
+      SerializeResolutionCanonical(graph, manifest_sha256, lock_sha256);
+  const fs::path resolution_path =
+      ProjectStateRootForManifest(graph.manifest_path) / "resolution-v1.json";
+  std::string lockfile_mode = options.locked ? "locked" : "unchanged";
+
   size_t git_package_count = 0;
   size_t registry_package_count = 0;
-  for (const LockPackage &package : generated.lockfile.packages)
+  for (const ResolvedPackage &package : graph.packages)
   {
     if (package.source_kind == "git")
     {
@@ -414,9 +401,48 @@ FetchCommandResult FetchDependencies(const fs::path &manifest_path, const Resolv
     }
   }
 
+  const FileLockGuard project_lock =
+      AcquireFileLock(graph.lockfile_path.parent_path(), FileLockScope::kProject);
+  const std::string current_manifest_bytes =
+      SerializeManifestCanonical(LoadManifest(graph.manifest_path));
+  if (Sha256Text(current_manifest_bytes) != manifest_sha256)
+  {
+    throw ValidationError(
+        "manifest changed while sync was preparing: " + graph.manifest_path.string());
+  }
+
+  if (options.locked)
+  {
+    if (!fs::exists(graph.lockfile_path))
+    {
+      throw SyncError("lockfile missing: " + graph.lockfile_path.string());
+    }
+    if (ReadFile(graph.lockfile_path) != rendered)
+    {
+      throw SyncError("lockfile is stale: " + graph.lockfile_path.string());
+    }
+  }
+  else if (!fs::exists(graph.lockfile_path) ||
+           ReadFile(graph.lockfile_path) != rendered)
+  {
+    AtomicWriteFile(graph.lockfile_path, rendered);
+    lockfile_mode = "write";
+  }
+
+  if (!fs::exists(resolution_path) ||
+      ReadFile(resolution_path) != resolution_bytes)
+  {
+    AtomicWriteFile(resolution_path, resolution_bytes);
+  }
+
+  const fs::path resolved_manifest_path = graph.manifest_path;
+  const size_t package_count = graph.packages.size();
   return {
-      .manifest_path = generated.manifest_path,
-      .package_count = generated.lockfile.packages.size(),
+      .graph = std::move(graph),
+      .resolution_path = resolution_path,
+      .lockfile_mode = std::move(lockfile_mode),
+      .manifest_path = resolved_manifest_path,
+      .package_count = package_count,
       .git_package_count = git_package_count,
       .registry_package_count = registry_package_count,
   };

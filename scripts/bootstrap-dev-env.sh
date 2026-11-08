@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-TOOL_VENV="${PAFIO_TOOL_VENV:-$HOME/.local/venvs/pafio-tools}"
+TOOL_VENV="${PAFIO_NIGHTLY_TOOL_VENV:-$HOME/.local/venvs/pafio-nightly-tools}"
 DEBIAN_STANDARD_VERSION="${STYIO_TOOLCHAIN_DEBIAN_STANDARD_VERSION:-13}"
 LLVM_STANDARD_SERIES="${STYIO_TOOLCHAIN_LLVM_STANDARD_SERIES:-18.1.x}"
 CMAKE_STANDARD_VERSION="${STYIO_TOOLCHAIN_CMAKE_STANDARD_VERSION:-3.31.6}"
@@ -16,10 +16,10 @@ Install the Debian/Ubuntu packages required to build and test pafio on a fresh
 Linux container or VM.
 
 Optional environment:
-  PAFIO_TOOL_VENV      Python virtualenv used for standardized cmake/ctest
+  PAFIO_NIGHTLY_TOOL_VENV   Python virtualenv used for standardized cmake/ctest
                             Default: $TOOL_VENV
 
-Standardized baseline shared with styio-nightly:
+Standardized baseline shared by the Pafio and Styio development checkouts:
   Debian                  $DEBIAN_STANDARD_VERSION (trixie)
   LLVM / Clang / LLD      $LLVM_STANDARD_SERIES via clang-18 toolchain packages
   CMake / CTest           $CMAKE_STANDARD_VERSION (installed into the tool venv)
@@ -91,6 +91,7 @@ install_system_packages() {
     python3
     python3-pip
     python3-venv
+    rsync
   )
 
   log "installing system packages"

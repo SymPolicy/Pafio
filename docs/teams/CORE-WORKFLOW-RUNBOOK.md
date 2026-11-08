@@ -1,69 +1,130 @@
 # Core / Workflow Runbook
 
-**Purpose:** Provide the daily-work entrypoint for `pafio` core workflow maintainers covering the native CLI, manifests, lockfiles, resolver, offline package paths, local import/export, and build/test flow.
+**Purpose:** Route maintenance for Pafio manifests, dependency transactions, metadata, and local workflows.
 
-**Last updated:** 2026-05-02
+**Last updated:** 2026-10-23
 
 ## Mission
 
-Own the local-first package-manager core and native workflow behavior, including
-offline package use, local import/export, project-local toolchain mode
-selection, source-build orchestration, and platform compatibility shims, without
-redefining registry policy, platform service behavior, or published external
-compiler contracts.
+Maintain the local-first Pafio product without assuming ownership of compiler
+installation or hosted execution.
 
 ## Owned Surface
 
-1. `src/`
-2. `tests/`
-3. `CMakeLists.txt`
-4. `scripts/bootstrap-check.py`
-5. `scripts/native-check.sh`
-6. `scripts/checkpoint-health.sh`
-7. offline resolver/cache behavior and future local import/export commands
-8. Temporary platform compatibility surfaces such as `pafio cloud` until they are consumed from `styio-platform`
-9. Native registry read-plane security in `src/PafioRegistryClient/`, `src/PafioSecurity/`, and the local `src/pafio_registry_v2/` compatibility helpers that keep offline package use safe while platform owns hosted service behavior
+1. `src/PafioCLI/`, `src/PafioApp/`, and `src/PafioManifest/`
+2. `src/PafioResolve/`, `src/PafioWorkflow/`, and `src/PafioPlan/`
+3. `src/PafioCore/`, `src/PafioTree/`, and `src/PafioVendor/`
+4. focused native and CLI tests
+5. black-box acceptance for public workflow and ecosystem-verifier behavior
 
 ## Daily Workflow
 
-1. Start from [../BUILD-AND-DEV-ENV.md](../BUILD-AND-DEV-ENV.md).
-2. Keep native build/test behavior behind `scripts/checkpoint-health.sh`.
-3. Treat `pafio use`, `pafio set`, `pafio sync`, `pafio project-graph --json`, `pafio tool status --json`, `pafio build minimal`, local import/export, offline package use, and `pafio-toolchain.lock` as owned workflow surface.
-4. Keep the bootstrap path `curl ... install-pafio.sh | sh`, `pafio install styio@latest`, and the managed `styio` shim runnable on a fresh VM before claiming installer closure.
-5. Update CLI or workflow docs when public behavior changes.
-6. Keep `src/PafioCLI/CLI.cpp` thin. New payload builders, workflow validation rules, and private process helpers belong in domain or infrastructure modules, not in the CLI router.
-7. Keep `src/PafioToolchain/` vocabulary and project-local state terminology aligned with docs. When source-build, channel, risk, lane, or security terms change in code, update the owning governance and delivery docs in the same checkpoint.
-8. Keep any remaining local cloud compatibility deterministic and small; new cloud stress or scheduler behavior belongs in `styio-platform`.
-9. Keep `pafio cloud plan --json` targeting the native JSON `styio-platform` submit-job route, currently `POST /api/styio-platform/v1/jobs`, and update native tests when that route changes.
-10. Keep registry package identity, registry object paths, HTTP read limits, and tar pre-extraction checks aligned between the native client and Python registry v2 helpers.
-11. Preserve offline package operation: cache reads must not require platform connectivity once metadata and artifacts are available locally.
-12. Treat remote HTTP registry trust as a core fetch invariant: public clients
-    must import a platform descriptor and validate the pinned root metadata
-    before materializing registry packages.
+1. Start from the CLI and manifest contracts.
+2. Keep one sync transaction behind `check`, `build`, `run`, and `test`.
+3. Keep metadata bounded to its seven v1 fields.
+4. Exercise the smallest relevant native filter before cross-repository tests.
+5. Keep the fixed-revision verifier acceptance isolated from live owner
+   worktrees; validate executable new/build/frozen/metadata behavior only in the
+   final full product matrix.
+6. Exercise registry graph resolution with a minimal verified cache fixture.
+   Do not revive filesystem publish or duplicate the Platform registry service
+   to prepare repository-local tests.
+7. Keep the top-level `-h` and `--help` aliases equivalent and cover both forms
+   with executable CLI tests.
+8. Keep process requests and results shared across `ProcessPosix.cpp` and
+   `ProcessWindows.cpp`; CMake selects the host implementation, while
+   `Process.cpp` owns common result formatting. Windows uses literal Unicode
+   arguments, an explicit inherited-handle list, overlapped pipes, and a Job
+   Object for requested process-group termination. Capture limits bound retained
+   output while every stream continues draining. Only `ProcessRequest.timeout`
+   supplies a deadline; native Windows exit codes do not claim POSIX signals.
+   The `pafio check|build|run|test` compile invocation deliberately passes no
+   internal deadline so a healthy compiler runs to completion; the invoking
+   job or environment supplies any bound, while every other external call
+   still uses `kExternalProcessStepTimeout`.
+   Exercise `pafio_process_tests` on the actual target platform before updating
+   a downstream fixed product matrix. CLI headers declare their own standard
+   library dependencies; MSVC does not supply the incidental `<string>` import
+   previously inherited by `WorkflowApp.hpp` on other toolchains.
+9. Keep filesystem paths native inside Pafio, and convert them to UTF-8 only
+   when placing them in Windows process fields. Resolve the shared home from a
+   nonempty `PAFIO_HOME`, then `HOME`, then the Unix account database; fail
+   explicitly when no home can be resolved.
 
 ## Change Classes
 
-1. Small: local command behavior, fixture cleanup, or dry-run plan output. Run checkpoint health.
-2. Medium: CLI shape, manifest/lock semantics, dependency preparation loops, local import/export bundle semantics, project-graph payloads, platform compatibility payloads, native contract source gates, tool-status payloads, toolchain-mode persistence, or resolver behavior. Update docs and tests together.
-3. High: binary/build execution routing, source-build fetch/build semantics, installer bootstrap behavior, registry fetch/extract trust policy, offline package guarantees, platform compatibility semantics, or checkpoint entrypoint change. Coordinate with Docs / Delivery, Registry / Publish, and Styio / Contracts.
+1. Small: isolated validation or rendering fix.
+2. Medium: manifest, lock, resolution, metadata, or workflow behavior.
+3. High: public command, schema, atomicity, or external process boundary.
 
 ## Required Gates
 
 ```bash
-./scripts/checkpoint-health.sh
-./scripts/delivery-gate.sh --skip-audit --skip-health
-ctest --test-dir build-codex -R pafio_installer_bootstrap_smoke --output-on-failure
-python3 tests/unit/test_registry_v2.py
-./build-codex/bin/pafio_native_tests --gtest_filter='SecurityTests.*'
-./build-codex/bin/pafio_native_tests --gtest_filter='ToolInstallTests.*'
+cmake --build build-codex --target pafio pafio_native_tests
+ctest --test-dir build-codex -R '<focused-pattern>' --output-on-failure
+git diff --check
 ```
+
+For process-only adaptation, build `pafio_process_tests` and run
+`ctest --test-dir <build> -R '^PortableProcess\.' --output-on-failure`.
+The Windows manual CI lane accepts `native_process_only=true` to run the CLI
+build, process contracts, the Unicode compiler-probe producer test, and CLI
+probes independently. Full platform release acceptance remains governed by the
+post-commit and release specifications.
+
+When `PAFIO_GATE_LOG_DIR` is set, `native-check.sh` retains each configure,
+build and test command, full streams and actual exits in a unique subdirectory.
+Verbose CTest output, JUnit and copied `Testing/` records preserve named results
+before another run or isolated-build cleanup. Logging does not select tests or
+change failure handling. Extractability always builds inside its isolated copy.
+
+The Windows implementation follows the [Win32 process creation](https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-createprocessw)
+and [overlapped pipe](https://learn.microsoft.com/en-us/windows/win32/ipc/named-pipe-server-using-overlapped-i-o)
+contracts; argument handling was compared with established LLVM/libuv process
+implementations. Tests execute a native fixture to exercise arguments,
+environment, working directory, streams, capture limits, and termination.
 
 ## Cross-Team Dependencies
 
-1. Styio / Contracts reviews published-binary compatibility behavior and source-build contract wording.
-2. Registry / Publish reviews changes that affect publish/fetch source semantics.
-3. Docs / Delivery reviews workflow entrypoint or gate shape changes.
+Registry / Publish reviews source acquisition and package lifecycle changes.
+Styio / Contracts reviews compile-plan and compiler discovery changes.
+Docs / Delivery reviews public surface changes.
 
 ## Handoff / Recovery
 
-Record the affected command path, fixture or test coverage gap, the selected project toolchain mode, and whether the next recovery step needs a published external `styio` binary, a source-build checkout, or a downstream `styio-platform` change.
+Record the affected transaction, last passing focused test, and remaining owner
+handoff. Do not record local paths, credentials, or backend runtime data.
+
+2026-09-05: `check`, `build`, `run`, and `test` accept the opt-in
+`--emit-observable-static-snapshot[=<schema-version>]` and repeatable
+`--observable-capability <name>` flags, which only add
+`emit.observable_static_snapshot` to the compile plan. Plans without the flag
+keep ordinary semantic inputs and cache identity; focused coverage lives in `BuildPlanTests` and
+`BuildCliTests` plus the `pafio_cli_*_help` CTest entries.
+
+2026-09-05: The same commands accept `--observable-parent-snapshot <path>`
+(requires the emission flag), which only adds
+`emit.observable_static_snapshot.parent_snapshot_path`. The path stays out of
+the cache key; output roots are independently allocated per invocation; the same test suites
+cover the flag, its usage errors, and the unchanged cache key.
+
+2026-09-05: The same commands accept `--emit-runtime-observation[=<version>]`
+with the dependent `--runtime-observation-mode`,
+`--runtime-observation-capability`, `--runtime-observation-lane-capacity`, and
+`--runtime-observation-sampling <numerator>/<denominator>[@<seed>]`, which only
+add `emit.runtime_observation` with the fields the caller set. The request enters
+the cache key so an observed request has distinct cache identity; plans without the flag
+keep ordinary semantic inputs and cache identity. The same test suites cover each flag, its dependency on the
+emission flag, and the strict value parsing.
+
+2026-10-23: Hardened the registry publication lane and its regression
+coverage: role envelopes now require `expires` instead of accepting missing
+expiry (`TufVerifier`), source archives stream into a uniquely created
+same-directory temporary file instead of a predictable `.tmp` sibling
+(`PafioPack`), manifest lib/bin/test target paths reject `..` traversal while
+path dependencies keep their existing semantics (`PafioManifest`), registry
+reads only follow redirects when no provider headers are attached
+(`PafioRegistryClient`), and the publish help CTest matches the documented
+`--allow-plaintext-http` usage line. Focused coverage lives in
+`TufVerifierTests`, `PackTests`, `ManifestTests`, and the `pafio_cli_*_help`
+CTest entries.
