@@ -24,6 +24,7 @@
 #include "PafioCore/Process.hpp"
 #include "PafioCore/Sha256.hpp"
 #include "PafioCore/ToolPaths.hpp"
+#include "PafioSecurity/CanonicalJson.hpp"
 #include "PafioSecurity/PrescanArchive.hpp"
 #include "PafioSecurity/RegistrySecurity.hpp"
 #include "PafioSecurity/RegistryTrust.hpp"
@@ -153,6 +154,9 @@ ValidateConfig(const json &config, const std::string &context) {
 struct RegistryPackageMetadata
 {
   std::string index_path;
+  std::string index_record_sha256;
+  std::string source_artifact_sha256;
+  std::string source_artifact_path;
 };
 
 RegistryPackageMetadata
@@ -190,12 +194,28 @@ ValidateTargetsMetadata(
   if (!package_it->contains("releases") || !(*package_it)["releases"].is_object()) {
     throw pafio::FetchError("registry v2 targets metadata is missing releases for " + package_name);
   }
-  if ((*package_it)["releases"].find(version) == (*package_it)["releases"].end()) {
+  const auto release_it = (*package_it)["releases"].find(version);
+  if (release_it == (*package_it)["releases"].end() || !release_it->is_object()) {
     throw pafio::FetchError("registry v2 targets metadata does not contain version " + package_name + "@" + version);
+  }
+  const std::string index_record_sha256 = release_it->value("index_record_sha256", "");
+  if (!pafio::IsRegistrySha256Digest(index_record_sha256)) {
+    throw pafio::FetchError("registry v2 release metadata is missing a valid index_record_sha256 for " + package_name + "@" + version);
+  }
+  const std::string source_artifact_sha256 = release_it->value("source_artifact_sha256", "");
+  if (!pafio::IsRegistrySha256Digest(source_artifact_sha256)) {
+    throw pafio::FetchError("registry v2 release metadata is missing a valid source_artifact_sha256 for " + package_name + "@" + version);
+  }
+  const std::string source_artifact_path = release_it->value("source_artifact_path", "");
+  if (source_artifact_path.empty()) {
+    throw pafio::FetchError("registry v2 release metadata is missing source_artifact_path for " + package_name + "@" + version);
   }
 
   return {
     .index_path = NormalizeRelativeRegistryPath(index_path, "registry v2 package index_path").generic_string(),
+    .index_record_sha256 = index_record_sha256,
+    .source_artifact_sha256 = source_artifact_sha256,
+    .source_artifact_path = NormalizeRelativeRegistryPath(source_artifact_path, "registry v2 release source_artifact_path").generic_string(),
   };
 }
 
@@ -537,19 +557,38 @@ LoadEntry(
     session_objects
   );
 
+  std::optional<RegistryEntry> selected;
   std::istringstream lines(text);
   std::string line;
   while (std::getline(lines, line)) {
     if (line.find_first_not_of(" \t\r\n") == std::string::npos) {
       continue;
     }
-    const json entry = ParseJsonObject(line, "registry v2 index record");
-    if (entry.value("package", "") == package_name && entry.value("version", "") == version) {
-      return ValidateEntry(entry, package_name, version);
+    const json record = ParseJsonObject(line, "registry v2 index record");
+    if (record.value("package", "") != package_name || record.value("version", "") != version) {
+      continue;
     }
+    if (selected.has_value()) {
+      throw pafio::FetchError("registry v2 index contains duplicate records for " + package_name + "@" + version);
+    }
+    // Index records arrive over the mutable read plane; the record that
+    // selects the resolved source must match the signed release metadata
+    // carried by the verified targets document. The canonical record digest
+    // covers every record field including source_artifact.size_bytes.
+    if (pafio::Sha256Text(pafio::CanonicalJsonBytes(record)) != metadata.index_record_sha256) {
+      throw pafio::FetchError("registry v2 index record does not match the signed release metadata for " + package_name + "@" + version);
+    }
+    RegistryEntry entry = ValidateEntry(record, package_name, version);
+    if (entry.sha256 != metadata.source_artifact_sha256 ||
+        NormalizeRelativeRegistryPath(entry.artifact_path, "registry v2 source_artifact path").generic_string() != metadata.source_artifact_path) {
+      throw pafio::FetchError("registry v2 index record source_artifact does not match the signed release metadata for " + package_name + "@" + version);
+    }
+    selected = std::move(entry);
   }
-
-  throw pafio::FetchError("registry v2 index does not contain package version: " + package_name + "@" + version);
+  if (!selected.has_value()) {
+    throw pafio::FetchError("registry v2 index does not contain package version: " + package_name + "@" + version);
+  }
+  return *selected;
 }
 
 fs::path

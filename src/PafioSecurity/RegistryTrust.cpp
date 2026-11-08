@@ -59,9 +59,15 @@ LoadDescriptorText(const std::string &source) {
           "registry trust descriptor URL must not embed credentials in the URL userinfo; "
           "configure authentication separately");
     }
+    // -q must be the first curl argument: it disables the user's curl
+    // configuration, which could otherwise enable redirects and steer the
+    // request to a different host. --max-redirs 0 keeps redirect following
+    // off even though -L is present, and --proto pins the URL scheme so a
+    // redirect cannot downgrade https to http.
+    const std::string scheme = source.substr(0, source.find("://"));
     const pafio::ProcessResult result = pafio::RunProcess<pafio::FetchError>({
       .program = pafio::ResolvedCurlPath(),
-      .args = {"-fsSL", "--connect-timeout", "10", "--max-time", "30", source},
+      .args = {"-q", "-fsSL", "--connect-timeout", "10", "--max-time", "30", "--max-redirs", "0", "--proto", "=" + scheme, source},
       .search_path = false,
       .timeout = pafio::kExternalProcessStepTimeout,
       .error_context = "registry trust descriptor fetch",

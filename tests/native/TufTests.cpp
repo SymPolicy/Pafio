@@ -3,6 +3,7 @@
 #include "BuildTestSupport.hpp"
 
 #include "PafioCore/Errors.hpp"
+#include "PafioCore/Paths.hpp"
 #include "PafioCore/Process.hpp"
 #include "PafioCore/Sha256.hpp"
 #include "PafioCore/ToolPaths.hpp"
@@ -74,6 +75,20 @@ RunOpenSsl(const std::vector<std::string> &args, const std::string &context) {
   }
 }
 
+void
+RunTar(const std::vector<std::string> &args, const std::string &context) {
+  const pafio::ProcessResult result = pafio::RunProcess<pafio::FetchError>({
+    .program = pafio::ResolvedTarPath(),
+    .args = args,
+    .search_path = false,
+    .timeout = std::chrono::seconds{30},
+    .error_context = context,
+  });
+  if (result.exit_code != 0) {
+    throw pafio::FetchError(context + ": " + pafio::DescribeProcessFailure(result));
+  }
+}
+
 TestKeyPair
 GenerateTestKeyPair(const fs::path &work_dir) {
   fs::create_directories(work_dir);
@@ -132,13 +147,39 @@ RolePolicy() {
   return {{"keyids", json::array({kTestKeyId})}, {"threshold", 1}};
 }
 
+struct TufFixture
+{
+  std::map<std::string, std::string> objects;
+  fs::path artifact_path;
+  std::string artifact_relative_path;
+  std::string artifact_sha256;
+  std::string index_relative_path;
+  json index_record;
+};
+
 // Builds the minimal registry-v2 trust set the verifier walks for one package:
-// config + root + timestamp + snapshot + checkpoint + namespace targets, all
-// genuinely signed with the test key.
-std::map<std::string, std::string>
+// config + root + timestamp + snapshot + checkpoint + namespace targets plus
+// the package index file and a real source artifact tar, all genuinely signed
+// with the test key. The targets release entry binds index_record_sha256,
+// source_artifact_sha256, and source_artifact_path the way the registry
+// publisher does.
+TufFixture
 BuildFixtureObjects(const fs::path &work_dir) {
   const TestKeyPair key = GenerateTestKeyPair(work_dir);
-  std::map<std::string, std::string> objects;
+  TufFixture fixture;
+  std::map<std::string, std::string> &objects = fixture.objects;
+
+  const fs::path package_dir = work_dir / "package-source";
+  WriteFile(
+    package_dir / "pafio.toml",
+    "[pafio]\nmanifest-version = 1\n\n[package]\nname = \"acme/util\"\nversion = \"1.0.0\"\nedition = \"2026\"\n\n[lib]\npath = \"src/lib.styio\"\n");
+  WriteFile(package_dir / "src/lib.styio", "// tuf fixture library\n");
+  fixture.artifact_path = work_dir / "acme-util-1.0.0.pafio.src.tar";
+  RunTar(
+    {"-cf", pafio::ProcessPathString(fixture.artifact_path), "-C", pafio::ProcessPathString(package_dir), "pafio.toml", "src"},
+    "tar fixture archive");
+  fixture.artifact_sha256 = pafio::Sha256File(fixture.artifact_path);
+  fixture.artifact_relative_path = "artifacts/source/" + fixture.artifact_sha256 + ".pafio.src.tar";
 
   objects["config.json"] = json{
     {"protocol", "pafio-static-registry"},
@@ -169,9 +210,41 @@ BuildFixtureObjects(const fs::path &work_dir) {
   };
   objects["trust/root.json"] = SignedEnvelope(root_signed, key, work_dir).dump(2) + '\n';
 
+  fixture.index_relative_path = "index/acme.util.jsonl";
+  fixture.index_record = {
+    {"schema_version", 1},
+    {"package", "acme/util"},
+    {"version", "1.0.0"},
+    {"release_revision", 1},
+    {"published_at", "2026-01-01T00:00:00Z"},
+    {"publisher_id", "pafio-tests"},
+    {"yanked", false},
+    {"deprecated_message", ""},
+    {"source_artifact",
+     {{"sha256", fixture.artifact_sha256},
+      {"size_bytes", fs::file_size(fixture.artifact_path)},
+      {"path", fixture.artifact_relative_path},
+      {"archive_format", "tar"},
+      {"compression", "none"}}},
+    {"binary_artifacts", json::array()},
+    {"dependencies", json::array()},
+    {"dev_dependencies", json::array()},
+    {"features", {{"default", json::array()}, {"optional", json::array()}}},
+    {"manifest_digest", pafio::Sha256Text("fixture manifest")},
+    {"metadata_digest", pafio::Sha256Text("fixture metadata")},
+  };
+  objects[fixture.index_relative_path] = fixture.index_record.dump() + '\n';
+
   const json package_entry = {
-    {"latest", "1.0.0"},
-    {"versions", {{"1.0.0", {{"index", "index/acme.util.jsonl"}}}}},
+    {"index_path", fixture.index_relative_path},
+    {"latest_version", "1.0.0"},
+    {"releases",
+     {{"1.0.0",
+       {{"release_revision", 1},
+        {"index_record_sha256", pafio::Sha256Text(pafio::CanonicalJsonBytes(fixture.index_record))},
+        {"source_artifact_sha256", fixture.artifact_sha256},
+        {"source_artifact_path", fixture.artifact_relative_path},
+        {"binary_artifact_count", 0}}}}},
   };
   const json targets_signed = {
     {"type", "targets"},
@@ -197,7 +270,9 @@ BuildFixtureObjects(const fs::path &work_dir) {
     {"spec_version", "1"},
     {"version", 1},
     {"expires", kFarFutureExpiry},
-    {"meta", {{"trust/targets/acme.json", MetaFor(objects["trust/targets/acme.json"], false)}}},
+    {"meta",
+     {{"trust/targets/acme.json", MetaFor(objects["trust/targets/acme.json"], false)},
+      {fixture.index_relative_path, MetaFor(objects[fixture.index_relative_path], false)}}},
     {"log_meta", {{"log/checkpoint.json", MetaFor(objects["log/checkpoint.json"], false)}}},
   };
   objects["trust/snapshot.json"] = SignedEnvelope(snapshot_signed, key, work_dir).dump(2) + '\n';
@@ -211,7 +286,7 @@ BuildFixtureObjects(const fs::path &work_dir) {
   };
   objects["trust/timestamp.json"] = SignedEnvelope(timestamp_signed, key, work_dir).dump(2) + '\n';
 
-  return objects;
+  return fixture;
 }
 
 void
@@ -221,6 +296,32 @@ WriteFixtureTree(const std::map<std::string, std::string> &objects, const fs::pa
     fs::create_directories(target.parent_path());
     WriteFile(target, bytes);
   }
+}
+
+// Writes the signed metadata tree plus the source artifact the index record
+// points at, so a file:// registry serves a fully materializable package.
+void
+WriteFixtureRegistry(const TufFixture &fixture, const fs::path &root) {
+  WriteFixtureTree(fixture.objects, root);
+  const fs::path artifact_target = root / fixture.artifact_relative_path;
+  fs::create_directories(artifact_target.parent_path());
+  fs::copy_file(fixture.artifact_path, artifact_target);
+}
+
+// Packs a single-manifest archive distinct from the fixture artifact so a
+// tampered index record can point at a real attacker-controlled tarball.
+fs::path
+BuildFixtureArtifact(const fs::path &work_dir, const std::string &label, std::string &sha256_out) {
+  const fs::path package_dir = work_dir / label;
+  WriteFile(
+    package_dir / "pafio.toml",
+    "[pafio]\nmanifest-version = 1\n\n[package]\nname = \"acme/util\"\nversion = \"1.0.0\"\nedition = \"2026\"\n\n[lib]\npath = \"src/lib.styio\"\n");
+  const fs::path artifact_path = work_dir / (label + ".tar");
+  RunTar(
+    {"-cf", pafio::ProcessPathString(artifact_path), "-C", pafio::ProcessPathString(package_dir), "pafio.toml"},
+    "tar fixture archive");
+  sha256_out = pafio::Sha256File(artifact_path);
+  return artifact_path;
 }
 
 // Bumping the signed version both invalidates the signature and changes the
@@ -264,7 +365,7 @@ StripExpiryResignAndRepair(std::map<std::string, std::string> &objects, const fs
 TEST(TufVerifierTests, AcceptsValidFixtureAndRejectsTamperedRoles)
 {
   const fs::path work_dir = MakeTempDir("tuf-fixture");
-  const auto objects = BuildFixtureObjects(work_dir);
+  const auto objects = BuildFixtureObjects(work_dir).objects;
   const pafio::TufVerifyResult ok = pafio::VerifyTufChainForPackage(objects, "acme/util", "acme", std::nullopt, "trust/targets/acme.json");
   ASSERT_TRUE(ok.ok) << ok.error_code << ": " << ok.error;
 
@@ -281,7 +382,7 @@ TEST(TufVerifierTests, AcceptsValidFixtureAndRejectsTamperedRoles)
 TEST(TufVerifierTests, RejectsRolesWithoutExpiry)
 {
   const fs::path work_dir = MakeTempDir("tuf-missing-expires");
-  const auto objects = BuildFixtureObjects(work_dir);
+  const auto objects = BuildFixtureObjects(work_dir).objects;
   const TestKeyPair key{.private_key_path = work_dir / "fixture.key", .public_key_pem = ReadFile(work_dir / "fixture.pub")};
   for (const char *role : {"trust/root.json", "trust/timestamp.json", "trust/snapshot.json", "trust/targets/acme.json", "log/checkpoint.json"})
   {
@@ -296,7 +397,7 @@ TEST(TufVerifierTests, RejectsRolesWithoutExpiry)
 TEST(TufVerifierTests, RejectsReplayedMetadataBelowPersistedFloors)
 {
   const fs::path work_dir = MakeTempDir("tuf-replay-floor");
-  const auto objects = BuildFixtureObjects(work_dir);
+  const auto objects = BuildFixtureObjects(work_dir).objects;
   const pafio::TufVerifyResult ok = pafio::VerifyTufChainForPackage(
       objects, "acme/util", "acme", std::nullopt, "trust/targets/acme.json");
   ASSERT_TRUE(ok.ok) << ok.error_code << ": " << ok.error;
@@ -334,7 +435,7 @@ TEST(TufVerifierTests, MaterializeFailsClosedOnTamperedRootWithoutCacheWrite)
   const fs::path root = work_dir / "case";
   const ScopedEnvVar pafio_home("PAFIO_HOME", (root / ".pafio-home").string());
   const fs::path registry = root / "registry";
-  WriteFixtureTree(BuildFixtureObjects(work_dir / "signing"), registry);
+  WriteFixtureTree(BuildFixtureObjects(work_dir / "signing").objects, registry);
 
   // Tampering with the signed timestamp invalidates its signature and fails
   // the chain before any package cache write can happen.
@@ -347,4 +448,97 @@ TEST(TufVerifierTests, MaterializeFailsClosedOnTamperedRootWithoutCacheWrite)
       pafio::MaterializeRegistryPackage(registry_root, "acme/util", "1.0.0", false),
       pafio::FetchError);
   EXPECT_TRUE(!fs::exists(blob_root) || fs::is_empty(blob_root));
+}
+
+TEST(TufVerifierTests, MaterializeResolvesPackageThroughSignedReleaseBinding)
+{
+  const fs::path work_dir = MakeTempDir("tuf-index-binding");
+  const fs::path root = work_dir / "case";
+  const ScopedEnvVar pafio_home("PAFIO_HOME", (root / ".pafio-home").string());
+  const fs::path registry = root / "registry";
+  const TufFixture fixture = BuildFixtureObjects(work_dir / "signing");
+  WriteFixtureRegistry(fixture, registry);
+
+  const std::string registry_root = std::string("file://") + fs::absolute(registry).generic_string();
+  const pafio::RegistryMaterializationResult resolved =
+      pafio::MaterializeRegistryPackage(registry_root, "acme/util", "1.0.0", false);
+  EXPECT_EQ(resolved.package_name, "acme/util");
+  EXPECT_EQ(resolved.version, "1.0.0");
+  EXPECT_EQ(resolved.sha256, fixture.artifact_sha256);
+  EXPECT_TRUE(fs::exists(resolved.snapshot_root / "pafio.toml"));
+}
+
+TEST(TufVerifierTests, MaterializeRefusesSubstitutedIndexRecordWithoutCacheWrite)
+{
+  const fs::path work_dir = MakeTempDir("tuf-index-swap");
+  const fs::path root = work_dir / "case";
+  const ScopedEnvVar pafio_home("PAFIO_HOME", (root / ".pafio-home").string());
+  const fs::path registry = root / "registry";
+  const TufFixture fixture = BuildFixtureObjects(work_dir / "signing");
+  WriteFixtureRegistry(fixture, registry);
+
+  // The signed chain is untouched: a write-capable read plane replaces the
+  // index record for acme/util@1.0.0 with one pointing at an attacker
+  // tarball, so every role signature stays valid and only the signed release
+  // binding can refuse the substitution.
+  std::string attacker_sha256;
+  const fs::path attacker_tar =
+      BuildFixtureArtifact(work_dir / "signing", "attacker-source", attacker_sha256);
+  const std::string attacker_relative =
+      "artifacts/source/" + attacker_sha256 + ".pafio.src.tar";
+  const fs::path attacker_target = registry / attacker_relative;
+  fs::create_directories(attacker_target.parent_path());
+  fs::copy_file(attacker_tar, attacker_target);
+  json swapped = fixture.index_record;
+  swapped["source_artifact"]["sha256"] = attacker_sha256;
+  swapped["source_artifact"]["size_bytes"] = fs::file_size(attacker_tar);
+  swapped["source_artifact"]["path"] = attacker_relative;
+  WriteFile(registry / fixture.index_relative_path, swapped.dump() + '\n');
+
+  const std::string registry_root = std::string("file://") + fs::absolute(registry).generic_string();
+  const fs::path blob_root = pafio::RegistryBlobCacheRoot(root / ".pafio-home");
+  try {
+    (void)pafio::MaterializeRegistryPackage(registry_root, "acme/util", "1.0.0", false);
+    FAIL() << "expected FetchError for a substituted index record";
+  }
+  catch (const pafio::FetchError &error) {
+    EXPECT_NE(
+        std::string(error.what()).find("does not match the signed release metadata"),
+        std::string::npos)
+        << error.what();
+  }
+  EXPECT_TRUE(!fs::exists(blob_root) || fs::is_empty(blob_root));
+}
+
+TEST(TufVerifierTests, MaterializeRefusesDuplicateIndexRecords)
+{
+  const fs::path work_dir = MakeTempDir("tuf-index-duplicate");
+  const fs::path root = work_dir / "case";
+  const ScopedEnvVar pafio_home("PAFIO_HOME", (root / ".pafio-home").string());
+  const fs::path registry = root / "registry";
+  const TufFixture fixture = BuildFixtureObjects(work_dir / "signing");
+  WriteFixtureRegistry(fixture, registry);
+
+  // A second record for the same package/version must not shadow the signed
+  // one: append an attacker-controlled duplicate after the signed record.
+  std::string attacker_sha256;
+  const fs::path attacker_tar =
+      BuildFixtureArtifact(work_dir / "signing", "attacker-source", attacker_sha256);
+  json duplicate = fixture.index_record;
+  duplicate["source_artifact"]["sha256"] = attacker_sha256;
+  duplicate["source_artifact"]["size_bytes"] = fs::file_size(attacker_tar);
+  duplicate["source_artifact"]["path"] =
+      "artifacts/source/" + attacker_sha256 + ".pafio.src.tar";
+  const fs::path index_path = registry / fixture.index_relative_path;
+  WriteFile(index_path, ReadFile(index_path) + duplicate.dump() + '\n');
+
+  const std::string registry_root = std::string("file://") + fs::absolute(registry).generic_string();
+  try {
+    (void)pafio::MaterializeRegistryPackage(registry_root, "acme/util", "1.0.0", false);
+    FAIL() << "expected FetchError for duplicate index records";
+  }
+  catch (const pafio::FetchError &error) {
+    EXPECT_NE(std::string(error.what()).find("duplicate records"), std::string::npos)
+        << error.what();
+  }
 }
