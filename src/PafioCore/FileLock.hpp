@@ -2,6 +2,7 @@
 
 #include <chrono>
 #include <filesystem>
+#include <optional>
 #include <stdexcept>
 #include <string>
 
@@ -41,7 +42,7 @@ private:
   friend FileLockGuard AcquireFileLock(
     const std::filesystem::path &store_path,
     FileLockScope scope,
-    std::chrono::milliseconds timeout
+    std::optional<std::chrono::milliseconds> timeout
   );
 
   void Release() noexcept;
@@ -53,7 +54,7 @@ private:
 FileLockGuard AcquireFileLock(
   const std::filesystem::path &store_path,
   FileLockScope scope,
-  std::chrono::milliseconds timeout = std::chrono::seconds{30}
+  std::optional<std::chrono::milliseconds> timeout = std::chrono::seconds{30}
 );
 
 }  // namespace pafio

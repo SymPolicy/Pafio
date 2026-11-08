@@ -1,4 +1,5 @@
 #include <gtest/gtest.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
 #include <chrono>
@@ -211,6 +212,50 @@ TEST(FileLockTests, MoveAssignmentReleasesThePreviouslyOwnedLock) {
       pafio::AcquireFileLock(root / "second", pafio::FileLockScope::kCache, 0ms)
     )
   );
+
+  std::error_code ignored;
+  std::filesystem::remove_all(root, ignored);
+}
+
+TEST(FileLockTests, UnlimitedWaitBlocksUntilTheHoldingProcessReleases) {
+  const std::filesystem::path root =
+    std::filesystem::temp_directory_path() / ("pafio-file-lock-wait-" + std::to_string(static_cast<long long>(getpid())));
+  std::filesystem::create_directories(root);
+
+  int ready_pipe[2];
+  ASSERT_EQ(::pipe(ready_pipe), 0);
+  const pid_t child = ::fork();
+  ASSERT_NE(child, -1);
+  if (child == 0) {
+    ::close(ready_pipe[0]);
+    const char token = 'x';
+    try {
+      const pafio::FileLockGuard held =
+        pafio::AcquireFileLock(root, pafio::FileLockScope::kCache, 0ms);
+      static_cast<void>(::write(ready_pipe[1], &token, 1));
+      ::usleep(300000);
+    }
+    catch (...) {
+      static_cast<void>(::write(ready_pipe[1], &token, 1));
+    }
+    ::_exit(0);
+  }
+  ::close(ready_pipe[1]);
+  char token = 0;
+  ASSERT_EQ(::read(ready_pipe[0], &token, 1), 1);
+  ::close(ready_pipe[0]);
+
+  // std::nullopt carries no wall-clock cap: the call must wait out the
+  // holder and return the acquired lock instead of throwing LockHeldError.
+  const auto started = std::chrono::steady_clock::now();
+  const pafio::FileLockGuard waited =
+    pafio::AcquireFileLock(root, pafio::FileLockScope::kCache, std::nullopt);
+  const auto waited_for = std::chrono::steady_clock::now() - started;
+  EXPECT_TRUE(static_cast<bool>(waited));
+  EXPECT_GE(waited_for, 150ms);
+
+  int status = 0;
+  EXPECT_EQ(::waitpid(child, &status, 0), child);
 
   std::error_code ignored;
   std::filesystem::remove_all(root, ignored);

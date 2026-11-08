@@ -659,6 +659,11 @@ DigestLockRoot(const fs::path &pafio_home, const std::string &sha256) {
     sha256.substr(0U, 2U) / sha256.substr(2U, 2U) / sha256;
 }
 
+// The digest lock serializes paid fetch-and-verify work on one artifact
+// across processes. A contender waits without a wall-clock cap so it can
+// reuse the completed cache entry instead of timing out and fetching again.
+constexpr std::optional<std::chrono::milliseconds> kDigestLockWait = std::nullopt;
+
 std::string
 ReadyMarkerBytes(const std::string &sha256, const uintmax_t size_bytes) {
   return json({
@@ -699,19 +704,14 @@ VerifiedBlobSha256(const fs::path &blob_path, const uintmax_t size_bytes) {
   return digest;
 }
 
-std::optional<VerifiedCacheHit>
-InspectVerifiedCache(
+std::optional<uintmax_t>
+InspectVerifiedBlob(
   const fs::path &pafio_home,
-  const std::string &package_name,
-  const std::string &version,
   const std::string &sha256,
   const std::optional<uintmax_t> expected_size,
   std::string &failure
 ) {
   const fs::path blob_path = BlobCachePath(pafio_home, sha256);
-  const fs::path checkout_root = CheckoutPath(pafio_home, package_name, version, sha256);
-  const fs::path ready_marker = checkout_root / ".pafio-snapshot-ready";
-
   std::error_code status_error;
   if (!fs::is_regular_file(blob_path, status_error) || status_error) {
     failure = "verified blob is missing";
@@ -736,7 +736,18 @@ InspectVerifiedCache(
     failure = std::string("cached registry artifact integrity check failed: ") + error.what();
     return std::nullopt;
   }
+  return actual_size;
+}
 
+std::optional<VerifiedCacheHit>
+InspectVerifiedCheckout(
+  const fs::path &checkout_root,
+  const std::string &sha256,
+  const uintmax_t size_bytes,
+  std::string &failure
+) {
+  const fs::path ready_marker = checkout_root / ".pafio-snapshot-ready";
+  std::error_code status_error;
   if (!fs::is_regular_file(ready_marker, status_error) || status_error) {
     failure = "verified checkout marker is missing";
     return std::nullopt;
@@ -751,7 +762,7 @@ InspectVerifiedCache(
         marker.value("sha256", "") != sha256 ||
         !marker.contains("size_bytes") ||
         !marker["size_bytes"].is_number_unsigned() ||
-        marker["size_bytes"].get<uintmax_t>() != actual_size) {
+        marker["size_bytes"].get<uintmax_t>() != size_bytes) {
       failure = "verified checkout marker does not match the cached artifact";
       return std::nullopt;
     }
@@ -764,7 +775,7 @@ InspectVerifiedCache(
   try {
     return VerifiedCacheHit{
       .snapshot_root = DetectSnapshotRoot(checkout_root),
-      .size_bytes = actual_size,
+      .size_bytes = size_bytes,
     };
   }
   catch (const std::exception &error) {
@@ -773,16 +784,26 @@ InspectVerifiedCache(
   }
 }
 
-void
-RemoveDigestObject(
+std::optional<VerifiedCacheHit>
+InspectVerifiedCache(
   const fs::path &pafio_home,
   const std::string &package_name,
   const std::string &version,
-  const std::string &sha256
+  const std::string &sha256,
+  const std::optional<uintmax_t> expected_size,
+  std::string &failure
 ) {
-  std::error_code ignored;
-  fs::remove(BlobCachePath(pafio_home, sha256), ignored);
-  fs::remove_all(CheckoutPath(pafio_home, package_name, version, sha256), ignored);
+  const std::optional<uintmax_t> blob_size =
+    InspectVerifiedBlob(pafio_home, sha256, expected_size, failure);
+  if (!blob_size.has_value()) {
+    return std::nullopt;
+  }
+  return InspectVerifiedCheckout(
+    CheckoutPath(pafio_home, package_name, version, sha256),
+    sha256,
+    *blob_size,
+    failure
+  );
 }
 
 fs::path
@@ -793,6 +814,9 @@ CommitRegistryEntry(
   const RegistryEntry &entry,
   const bool offline
 ) {
+  const fs::path blob_path = BlobCachePath(pafio_home, entry.sha256);
+  const fs::path checkout_root = CheckoutPath(pafio_home, entry.package, entry.version, entry.sha256);
+
   std::string cache_failure;
   if (const std::optional<VerifiedCacheHit> cached = InspectVerifiedCache(
         pafio_home,
@@ -811,57 +835,87 @@ CommitRegistryEntry(
     );
   }
 
-  RemoveDigestObject(pafio_home, entry.package, entry.version, entry.sha256);
+  // Blob validity and checkout validity are repaired independently: only a
+  // blob that fails size or digest verification is fetched again, while a
+  // missing marker or failed checkout rename is repaired by unpacking the
+  // verified blob already in the cache.
+  std::string blob_failure;
+  if (!InspectVerifiedBlob(pafio_home, entry.sha256, entry.size_bytes, blob_failure).has_value()) {
+    const fs::path blob_staging = UniqueTemporaryPath(blob_path, "artifact");
+    const fs::path artifact_relative =
+      NormalizeRelativeRegistryPath(entry.artifact_path, "registry v2 source artifact path");
+    std::error_code stale_error;
+    fs::remove(blob_path, stale_error);
+    fs::create_directories(blob_path.parent_path());
+    try {
+      if (IsFileRegistry(registry_root)) {
+        const fs::path source_blob = FileUrlToPath(registry_root) / artifact_relative;
+        if (!fs::exists(source_blob)) {
+          throw pafio::FetchError(
+            "registry v2 source artifact not found: " + source_blob.string()
+          );
+        }
+        std::error_code copy_error;
+        fs::copy_file(source_blob, blob_staging, fs::copy_options::overwrite_existing, copy_error);
+        if (copy_error) {
+          throw pafio::CacheError(
+            "failed to stage registry v2 source artifact: " + blob_staging.string()
+          );
+        }
+      }
+      else {
+        FetchUrlToFile(
+          JoinUrl(registry_root, artifact_relative.generic_string()),
+          blob_staging,
+          request_headers,
+          kRegistryArtifactMaxBytes,
+          RegistryRemoteObjectKind::kArtifact
+        );
+      }
 
-  const fs::path blob_path = BlobCachePath(pafio_home, entry.sha256);
-  const fs::path blob_staging = UniqueTemporaryPath(blob_path, "artifact");
-  const fs::path checkout_root = CheckoutPath(pafio_home, entry.package, entry.version, entry.sha256);
+      std::error_code size_error;
+      const uintmax_t actual_size = fs::file_size(blob_staging, size_error);
+      if (size_error || actual_size != entry.size_bytes) {
+        throw pafio::FetchError(
+          "registry v2 source artifact size mismatch for " + entry.package + "@" + entry.version
+        );
+      }
+      if (pafio::Sha256File(blob_staging) != entry.sha256) {
+        throw pafio::FetchError(
+          "registry v2 source artifact sha256 mismatch for " + entry.package + "@" + entry.version
+        );
+      }
+      std::error_code rename_error;
+      fs::rename(blob_staging, blob_path, rename_error);
+      if (rename_error) {
+        throw pafio::CacheError(
+          "failed to finalize verified registry artifact: " + blob_path.string()
+        );
+      }
+    }
+    catch (...) {
+      std::error_code ignored;
+      fs::remove(blob_staging, ignored);
+      throw;
+    }
+  }
+
+  std::string checkout_failure;
+  if (const std::optional<VerifiedCacheHit> cached = InspectVerifiedCheckout(
+        checkout_root,
+        entry.sha256,
+        entry.size_bytes,
+        checkout_failure);
+      cached.has_value()) {
+    return cached->snapshot_root;
+  }
+
   const fs::path checkout_staging = UniqueTemporaryPath(checkout_root, "checkout");
-  const fs::path artifact_relative =
-    NormalizeRelativeRegistryPath(entry.artifact_path, "registry v2 source artifact path");
-
-  fs::create_directories(blob_path.parent_path());
+  std::error_code stale_error;
+  fs::remove_all(checkout_root, stale_error);
   fs::create_directories(checkout_root.parent_path());
   try {
-    if (IsFileRegistry(registry_root)) {
-      const fs::path source_blob = FileUrlToPath(registry_root) / artifact_relative;
-      if (!fs::exists(source_blob)) {
-        throw pafio::FetchError(
-          "registry v2 source artifact not found: " + source_blob.string()
-        );
-      }
-      std::error_code copy_error;
-      fs::copy_file(source_blob, blob_staging, fs::copy_options::overwrite_existing, copy_error);
-      if (copy_error) {
-        throw pafio::CacheError(
-          "failed to stage registry v2 source artifact: " + blob_staging.string()
-        );
-      }
-    }
-    else {
-      FetchUrlToFile(
-        JoinUrl(registry_root, artifact_relative.generic_string()),
-        blob_staging,
-        request_headers,
-        kRegistryArtifactMaxBytes,
-        RegistryRemoteObjectKind::kArtifact
-      );
-    }
-
-    std::error_code size_error;
-    const uintmax_t actual_size = fs::file_size(blob_staging, size_error);
-    if (size_error || actual_size != entry.size_bytes) {
-      throw pafio::FetchError(
-        "registry v2 source artifact size mismatch for " + entry.package + "@" + entry.version
-      );
-    }
-    if (pafio::Sha256File(blob_staging) != entry.sha256) {
-      throw pafio::FetchError(
-        "registry v2 source artifact sha256 mismatch for " + entry.package + "@" + entry.version
-      );
-    }
-
-    ValidateTarListingPaths(blob_staging);
+    ValidateTarListingPaths(blob_path);
     fs::create_directories(checkout_staging);
     const pafio::ProcessResult extract = pafio::RunProcess<pafio::CacheError>({
       .program = pafio::ResolvedTarPath(),
@@ -869,7 +923,7 @@ CommitRegistryEntry(
         "--no-same-owner",
         "--no-same-permissions",
         "-xf",
-        pafio::ProcessPathString(blob_staging),
+        pafio::ProcessPathString(blob_path),
         "-C",
         pafio::ProcessPathString(checkout_staging),
       },
@@ -879,7 +933,7 @@ CommitRegistryEntry(
     });
     if (extract.exit_code != 0) {
       throw pafio::CacheError(
-        "failed to extract registry artifact '" + blob_staging.string() +
+        "failed to extract registry artifact '" + blob_path.string() +
         "': " + pafio::DescribeProcessFailure(extract)
       );
     }
@@ -892,12 +946,6 @@ CommitRegistryEntry(
     );
 
     std::error_code rename_error;
-    fs::rename(blob_staging, blob_path, rename_error);
-    if (rename_error) {
-      throw pafio::CacheError(
-        "failed to finalize verified registry artifact: " + blob_path.string()
-      );
-    }
     fs::rename(checkout_staging, checkout_root, rename_error);
     if (rename_error) {
       throw pafio::CacheError(
@@ -910,7 +958,6 @@ CommitRegistryEntry(
   }
   catch (...) {
     std::error_code ignored;
-    fs::remove(blob_staging, ignored);
     fs::remove_all(checkout_staging, ignored);
     throw;
   }
@@ -960,7 +1007,8 @@ MaterializeRegistryPackage(
     }
     const FileLockGuard digest_lock = AcquireFileLock(
       DigestLockRoot(pafio_home, *locked_sha256),
-      FileLockScope::kCache
+      FileLockScope::kCache,
+      kDigestLockWait
     );
     std::string cache_failure;
     if (const std::optional<VerifiedCacheHit> cached = InspectVerifiedCache(
@@ -1065,7 +1113,8 @@ MaterializeRegistryPackage(
 
   const FileLockGuard digest_lock = AcquireFileLock(
     DigestLockRoot(pafio_home, entry.sha256),
-    FileLockScope::kCache
+    FileLockScope::kCache,
+    kDigestLockWait
   );
   const fs::path snapshot_root = CommitRegistryEntry(
     pafio_home,

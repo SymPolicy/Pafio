@@ -79,7 +79,7 @@ FileLockGuard
 AcquireFileLock(
   const std::filesystem::path &store_path,
   FileLockScope scope,
-  std::chrono::milliseconds timeout
+  std::optional<std::chrono::milliseconds> timeout
 ) {
 #if defined(_WIN32)
   (void)timeout;
@@ -91,7 +91,7 @@ AcquireFileLock(
   return guard;
 #else
   std::filesystem::create_directories(store_path);
-  if (timeout < std::chrono::milliseconds::zero()) {
+  if (timeout.has_value() && *timeout < std::chrono::milliseconds::zero()) {
     throw CacheError("file lock timeout must not be negative");
   }
   FileLockGuard guard;
@@ -101,7 +101,11 @@ AcquireFileLock(
     throw CacheError("failed to open lock file: " + guard.lock_path_.string());
   }
 
-  const auto deadline = std::chrono::steady_clock::now() + timeout;
+  // std::nullopt waits without a wall-clock cap: callers that serialize paid
+  // work behind the lock must reuse the holder's result rather than give up.
+  const auto deadline = timeout.has_value()
+    ? std::chrono::steady_clock::now() + *timeout
+    : std::chrono::steady_clock::time_point::max();
   while (true) {
     if (::flock(guard.fd_, LOCK_EX | LOCK_NB) == 0) {
       return guard;

@@ -468,6 +468,83 @@ TEST(TufVerifierTests, MaterializeResolvesPackageThroughSignedReleaseBinding)
   EXPECT_TRUE(fs::exists(resolved.snapshot_root / "pafio.toml"));
 }
 
+TEST(TufVerifierTests, MaterializeRebuildsCheckoutFromVerifiedBlobWithoutRefetch)
+{
+  const fs::path work_dir = MakeTempDir("tuf-checkout-repair");
+  const fs::path root = work_dir / "case";
+  const ScopedEnvVar pafio_home("PAFIO_HOME", (root / ".pafio-home").string());
+  const fs::path registry = root / "registry";
+  const TufFixture fixture = BuildFixtureObjects(work_dir / "signing");
+  WriteFixtureRegistry(fixture, registry);
+
+  const std::string registry_root = std::string("file://") + fs::absolute(registry).generic_string();
+  const pafio::RegistryMaterializationResult first =
+      pafio::MaterializeRegistryPackage(registry_root, "acme/util", "1.0.0", false);
+  ASSERT_TRUE(fs::exists(first.snapshot_root / "pafio.toml"));
+
+  const fs::path pafio_home_path = root / ".pafio-home";
+  const fs::path blob_path =
+      pafio::RegistryBlobCacheRoot(pafio_home_path) /
+      fixture.artifact_sha256.substr(0U, 2U) /
+      fixture.artifact_sha256.substr(2U, 2U) /
+      (fixture.artifact_sha256 + ".tar");
+  const fs::path checkout_root =
+      pafio::RegistryCheckoutRoot(pafio_home_path) / "acme" / "util" / "1.0.0" /
+      fixture.artifact_sha256;
+  ASSERT_TRUE(fs::exists(blob_path));
+  ASSERT_TRUE(fs::exists(checkout_root / ".pafio-snapshot-ready"));
+
+  // A missing checkout marker must not discard the verified blob: the
+  // registry-side artifact is removed too, so any re-fetch attempt fails and
+  // only a re-unpack from the cached blob can satisfy the materialization.
+  fs::remove(checkout_root / ".pafio-snapshot-ready");
+  fs::remove(registry / fixture.artifact_relative_path);
+
+  const pafio::RegistryMaterializationResult second =
+      pafio::MaterializeRegistryPackage(registry_root, "acme/util", "1.0.0", false);
+  EXPECT_EQ(second.snapshot_root, first.snapshot_root);
+  EXPECT_TRUE(fs::exists(second.snapshot_root / "pafio.toml"));
+  EXPECT_TRUE(fs::exists(checkout_root / ".pafio-snapshot-ready"));
+}
+
+TEST(TufVerifierTests, MaterializeRefetchesOnlyTheCorruptedBlobAndKeepsCheckout)
+{
+  const fs::path work_dir = MakeTempDir("tuf-blob-repair");
+  const fs::path root = work_dir / "case";
+  const ScopedEnvVar pafio_home("PAFIO_HOME", (root / ".pafio-home").string());
+  const fs::path registry = root / "registry";
+  const TufFixture fixture = BuildFixtureObjects(work_dir / "signing");
+  WriteFixtureRegistry(fixture, registry);
+
+  const std::string registry_root = std::string("file://") + fs::absolute(registry).generic_string();
+  const pafio::RegistryMaterializationResult first =
+      pafio::MaterializeRegistryPackage(registry_root, "acme/util", "1.0.0", false);
+  ASSERT_TRUE(fs::exists(first.snapshot_root / "pafio.toml"));
+
+  const fs::path pafio_home_path = root / ".pafio-home";
+  const fs::path blob_path =
+      pafio::RegistryBlobCacheRoot(pafio_home_path) /
+      fixture.artifact_sha256.substr(0U, 2U) /
+      fixture.artifact_sha256.substr(2U, 2U) /
+      (fixture.artifact_sha256 + ".tar");
+  const fs::path checkout_root =
+      pafio::RegistryCheckoutRoot(pafio_home_path) / "acme" / "util" / "1.0.0" /
+      fixture.artifact_sha256;
+  ASSERT_TRUE(fs::exists(blob_path));
+
+  // A blob that fails size/digest verification is fetched again, but the
+  // still-valid checkout must survive the repair.
+  WriteFile(checkout_root / "sentinel.keep", "keep");
+  WriteFile(blob_path, "corrupted cache bytes");
+
+  const pafio::RegistryMaterializationResult second =
+      pafio::MaterializeRegistryPackage(registry_root, "acme/util", "1.0.0", false);
+  EXPECT_EQ(second.sha256, fixture.artifact_sha256);
+  EXPECT_EQ(pafio::Sha256File(blob_path), fixture.artifact_sha256);
+  EXPECT_TRUE(fs::exists(checkout_root / "sentinel.keep"));
+  EXPECT_TRUE(fs::exists(second.snapshot_root / "pafio.toml"));
+}
+
 TEST(TufVerifierTests, MaterializeRefusesSubstitutedIndexRecordWithoutCacheWrite)
 {
   const fs::path work_dir = MakeTempDir("tuf-index-swap");
