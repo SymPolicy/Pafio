@@ -130,19 +130,32 @@ bool IsSecretNamedFile(const fs::path &relative_path)
 
 // Credential shapes scanned over packaged file contents: a private-key block,
 // a provider API token, or a structured JWT must never leave the machine
-// inside a published archive.
-const std::vector<std::pair<std::string_view, std::regex>> &SecretContentPatterns()
+// inside a published archive. `literals` holds every fixed substring a match
+// of `pattern` must contain, so contents without any of them are known clean
+// by plain substring search and never reach the regex engine.
+struct SecretContentPattern
 {
-  static const std::vector<std::pair<std::string_view, std::regex>> patterns = {
-      {"private-key-block", std::regex(R"(-----BEGIN [A-Z0-9]+ ?PRIVATE KEY-----)")},
-      {"aws-access-key", std::regex(R"((AKIA|ASIA)[A-Z0-9]{16})")},
-      {"github-token", std::regex(R"(gh[pousr]_[A-Za-z0-9]{36,}|github_pat_[A-Za-z0-9_]{22,})")},
-      {"anthropic-key", std::regex(R"(sk-ant-[A-Za-z0-9_-]{20,})")},
-      {"google-api-key", std::regex(R"(AIza[A-Za-z0-9_-]{35})")},
-      {"openai-key", std::regex(R"(sk-[A-Za-z0-9_-]{20,})")},
-      {"slack-token", std::regex(R"(xox[baprs]-[A-Za-z0-9-]{10,})")},
-      {"stripe-key", std::regex(R"((sk|rk)_(live|test)_[A-Za-z0-9]{20,})")},
-      {"json-web-token", std::regex(R"(eyJ[A-Za-z0-9_-]{10,}[.][A-Za-z0-9_-]{10,}[.][A-Za-z0-9_-]{10,})")},
+  std::string_view rule;
+  std::vector<std::string_view> literals;
+  std::regex pattern;
+};
+
+const std::vector<SecretContentPattern> &SecretContentPatterns()
+{
+  static const std::vector<SecretContentPattern> patterns = {
+      {"private-key-block", {"-----BEGIN"}, std::regex(R"(-----BEGIN [A-Z0-9]+ ?PRIVATE KEY-----)")},
+      {"aws-access-key", {"AKIA", "ASIA"}, std::regex(R"((AKIA|ASIA)[A-Z0-9]{16})")},
+      {"github-token",
+       {"ghp_", "gho_", "ghu_", "ghs_", "ghr_", "github_pat_"},
+       std::regex(R"(gh[pousr]_[A-Za-z0-9]{36,}|github_pat_[A-Za-z0-9_]{22,})")},
+      {"anthropic-key", {"sk-ant-"}, std::regex(R"(sk-ant-[A-Za-z0-9_-]{20,})")},
+      {"google-api-key", {"AIza"}, std::regex(R"(AIza[A-Za-z0-9_-]{35})")},
+      {"openai-key", {"sk-"}, std::regex(R"(sk-[A-Za-z0-9_-]{20,})")},
+      {"slack-token", {"xox"}, std::regex(R"(xox[baprs]-[A-Za-z0-9-]{10,})")},
+      {"stripe-key",
+       {"sk_live_", "sk_test_", "rk_live_", "rk_test_"},
+       std::regex(R"((sk|rk)_(live|test)_[A-Za-z0-9]{20,})")},
+      {"json-web-token", {"eyJ"}, std::regex(R"(eyJ[A-Za-z0-9_-]{10,}[.][A-Za-z0-9_-]{10,}[.][A-Za-z0-9_-]{10,})")},
   };
   return patterns;
 }
@@ -160,16 +173,21 @@ std::string ReadBinaryFile(const fs::path &path)
   return buffer.str();
 }
 
-void RejectSecretContents(const PackEntry &entry)
+// Runs inside the archive write loop on the already-read contents so each
+// packaged byte is read and scanned exactly once; a throw discards the
+// temporary archive through the caller's cleanup path.
+void RejectSecretContents(const std::string &contents, const std::string &archive_path)
 {
-  const std::string contents =
-      entry.inline_contents.has_value() ? *entry.inline_contents : ReadBinaryFile(*entry.source_path);
-  for (const auto &[rule, pattern] : SecretContentPatterns())
+  for (const SecretContentPattern &entry : SecretContentPatterns())
   {
-    if (std::regex_search(contents, pattern))
+    const bool candidate = std::any_of(
+        entry.literals.begin(),
+        entry.literals.end(),
+        [&contents](std::string_view literal) { return contents.find(literal) != std::string::npos; });
+    if (candidate && std::regex_search(contents, entry.pattern))
     {
       throw pafio::PackError(
-          "pack refuses to archive credential-shaped content (" + std::string(rule) + ") in " + entry.archive_path);
+          "pack refuses to archive credential-shaped content (" + std::string(entry.rule) + ") in " + archive_path);
     }
   }
 }
@@ -298,10 +316,6 @@ std::vector<PackEntry> CollectPackEntries(const pafio::PackageSelection &selecti
       [](const PackEntry &left, const PackEntry &right) {
         return left.archive_path < right.archive_path;
       });
-  for (const PackEntry &entry : entries)
-  {
-    RejectSecretContents(entry);
-  }
   return entries;
 }
 
@@ -444,6 +458,7 @@ void WriteTarArchive(const std::vector<PackEntry> &entries, const fs::path &arch
     {
       const std::string archive_member = std::string(archive_prefix) + "/" + entry.archive_path;
       const std::string contents = entry.inline_contents.has_value() ? *entry.inline_contents : ReadBinaryFile(*entry.source_path);
+      RejectSecretContents(contents, entry.archive_path);
       try
       {
         WriteTarEntry(
