@@ -53,7 +53,9 @@ the Better Plan workspace, and release evidence.
     reported as a skip rather than a failure, because the gate's fixed-revision
     workspace contract still names downstream checkouts that are not provisioned
     on every host. `team-docs-gate.py` also classifies workflow files such as
-    `.github/workflows/audit.yml` under the owning team rules.
+    `.github/workflows/audit.yml` under the owning team rules; that workflow
+    sources its trusted range scanner from the `nightly` integration trunk for
+    push events and from the pull-request base for review events.
 
 ## Change Classes
 
