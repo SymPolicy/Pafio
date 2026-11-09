@@ -18,6 +18,9 @@ namespace
 {
 
 using json = nlohmann::json;
+// Protocol-fixed resource limits, not operator-tunable configuration: they are
+// part of the signed-metadata verification policy and change only with the
+// registry protocol, through a reviewed code change.
 constexpr int kMaxTransparencyLogEntries = 1'000'000;
 
 struct RolePolicy

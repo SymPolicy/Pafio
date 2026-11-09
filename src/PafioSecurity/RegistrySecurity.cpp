@@ -181,14 +181,15 @@ SecurityHandlerResult ValidateReadRegistryRootScheme(
     const pafio::RegistryReadSecurityRequest &request,
     pafio::RegistryReadSecurityDecision &decision)
 {
-  if (!IsFileRegistryRoot(decision.registry_root) && !IsHttpRegistryRoot(decision.registry_root))
-  {
-    throw pafio::FetchError("registry root must use file://, http://, or https://: " + request.registry_root);
-  }
+  (void) request;
   if (RegistryRootHasUserinfo(decision.registry_root))
   {
     throw pafio::FetchError(
         "registry root must not embed credentials in the URL userinfo; configure authentication separately");
+  }
+  if (!IsFileRegistryRoot(decision.registry_root) && !IsHttpRegistryRoot(decision.registry_root))
+  {
+    throw pafio::FetchError("registry root must use file://, http://, or https://");
   }
   if (decision.registry_root.starts_with("http://") && !IsLoopbackHttpRegistryRoot(decision.registry_root))
   {
@@ -220,9 +221,15 @@ SecurityHandlerResult ValidateWriteRegistryRootScheme(
     const pafio::RegistryWriteSecurityRequest &request,
     pafio::RegistryWriteSecurityDecision &decision)
 {
+  (void) request;
+  if (RegistryRootHasUserinfo(decision.registry_root))
+  {
+    throw pafio::PublishError(
+        "registry root must not embed credentials in the URL userinfo; configure authentication separately");
+  }
   if (!IsHttpRegistryRoot(decision.registry_root))
   {
-    throw pafio::PublishError("remote registry publish requires an http:// or https:// registry root: " + request.registry_root);
+    throw pafio::PublishError("remote registry publish requires an http:// or https:// registry root");
   }
   return SecurityHandlerResult::kContinue;
 }

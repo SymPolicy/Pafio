@@ -164,7 +164,7 @@ struct TufFixture
 // source_artifact_sha256, and source_artifact_path the way the registry
 // publisher does.
 TufFixture
-BuildFixtureObjects(const fs::path &work_dir) {
+BuildFixtureObjects(const fs::path &work_dir, const bool symlink_member = false) {
   const TestKeyPair key = GenerateTestKeyPair(work_dir);
   TufFixture fixture;
   std::map<std::string, std::string> &objects = fixture.objects;
@@ -174,6 +174,12 @@ BuildFixtureObjects(const fs::path &work_dir) {
     package_dir / "pafio.toml",
     "[pafio]\nmanifest-version = 1\n\n[package]\nname = \"acme/util\"\nversion = \"1.0.0\"\nedition = \"2026\"\n\n[lib]\npath = \"src/lib.styio\"\n");
   WriteFile(package_dir / "src/lib.styio", "// tuf fixture library\n");
+  if (symlink_member) {
+    // A link member keeps the TUF chain and index record internally
+    // consistent while the artifact itself violates the file/directory-only
+    // member policy checked before extraction.
+    fs::create_directory_symlink("/etc", package_dir / "src" / "escape-link");
+  }
   fixture.artifact_path = work_dir / "acme-util-1.0.0.pafio.src.tar";
   RunTar(
     {"-cf", pafio::ProcessPathString(fixture.artifact_path), "-C", pafio::ProcessPathString(package_dir), "pafio.toml", "src"},
@@ -618,4 +624,33 @@ TEST(TufVerifierTests, MaterializeRefusesDuplicateIndexRecords)
     EXPECT_NE(std::string(error.what()).find("duplicate records"), std::string::npos)
         << error.what();
   }
+}
+
+TEST(TufVerifierTests, MaterializeRejectsNonFileArchiveMemberBeforeExtraction)
+{
+  const fs::path work_dir = MakeTempDir("tuf-archive-member-type");
+  const fs::path root = work_dir / "case";
+  const ScopedEnvVar pafio_home("PAFIO_HOME", (root / ".pafio-home").string());
+  const fs::path registry = root / "registry";
+  // The TUF chain and signed release binding are fully consistent; the
+  // artifact itself carries a symlink member, which the pre-extraction
+  // listing check must refuse.
+  const TufFixture fixture = BuildFixtureObjects(work_dir / "signing", true);
+  WriteFixtureRegistry(fixture, registry);
+
+  const std::string registry_root = std::string("file://") + fs::absolute(registry).generic_string();
+  const fs::path pafio_home_path = root / ".pafio-home";
+  const fs::path checkout_root =
+      pafio::RegistryCheckoutRoot(pafio_home_path) / "acme" / "util" / "1.0.0" /
+      fixture.artifact_sha256;
+  try {
+    (void)pafio::MaterializeRegistryPackage(registry_root, "acme/util", "1.0.0", false);
+    FAIL() << "expected CacheError for a non-file archive member";
+  }
+  catch (const pafio::CacheError &error) {
+    EXPECT_NE(std::string(error.what()).find("member type"), std::string::npos)
+        << error.what();
+  }
+  EXPECT_FALSE(fs::exists(checkout_root / "pafio.toml"));
+  EXPECT_FALSE(fs::exists(checkout_root / ".pafio-snapshot-ready"));
 }

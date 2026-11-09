@@ -4,6 +4,7 @@
 #include "PafioCore/Paths.hpp"
 #include "PafioCore/Process.hpp"
 #include "PafioCore/Sha256.hpp"
+#include "PafioCore/ToolPaths.hpp"
 #include "PafioSecurity/CanonicalJson.hpp"
 #include "PafioSecurity/RegistrySecurity.hpp"
 #include "PafioSecurity/RegistryTrust.hpp"
@@ -403,8 +404,9 @@ void FetchUrlToFile(
   args.push_back(temp_path.string());
   args.push_back(url);
   const pafio::ProcessResult result = pafio::RunProcess<pafio::CacheError>({
-      .program = "curl",
+      .program = pafio::ResolvedCurlPath(),
       .args = args,
+      .search_path = false,
       .timeout = pafio::kExternalProcessStepTimeout,
       .error_context = "registry process",
   });
@@ -669,8 +671,9 @@ fs::path DetectSnapshotRoot(const fs::path &checkout_root)
 void ValidateTarListingPaths(const fs::path &blob_cache_path)
 {
   const pafio::ProcessResult path_listing = pafio::RunProcess<pafio::CacheError>({
-      .program = "tar",
+      .program = pafio::ResolvedTarPath(),
       .args = {"-tf", blob_cache_path.string()},
+      .search_path = false,
       .timeout = pafio::kExternalProcessStepTimeout,
       .error_context = "registry process",
   });
@@ -706,8 +709,9 @@ void ValidateTarListingPaths(const fs::path &blob_cache_path)
   }
 
   const pafio::ProcessResult verbose_listing = pafio::RunProcess<pafio::CacheError>({
-      .program = "tar",
+      .program = pafio::ResolvedTarPath(),
       .args = {"-tvf", blob_cache_path.string()},
+      .search_path = false,
       .timeout = pafio::kExternalProcessStepTimeout,
       .error_context = "registry process",
   });
@@ -749,8 +753,9 @@ fs::path EnsureCheckout(const fs::path &pafio_home, const RegistryEntry &entry)
   const fs::path blob_cache_path = BlobCachePath(pafio_home, entry.sha256);
   ValidateTarListingPaths(blob_cache_path);
   const pafio::ProcessResult extract = pafio::RunProcess<pafio::CacheError>({
-      .program = "tar",
+      .program = pafio::ResolvedTarPath(),
       .args = {"--no-same-owner", "--no-same-permissions", "-xf", blob_cache_path.string(), "-C", checkout_root.string()},
+      .search_path = false,
       .timeout = pafio::kExternalProcessStepTimeout,
       .error_context = "registry process",
   });

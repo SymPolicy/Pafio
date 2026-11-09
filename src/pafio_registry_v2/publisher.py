@@ -40,6 +40,15 @@ from .common import (
 
 MAX_ARCHIVE_MANIFEST_BYTES = 1024 * 1024
 
+# Signed-role expiry windows are fixed protocol policy, not operator-tunable
+# deployment settings: every registry publishes the same windows and a change
+# to them is a protocol change made through a reviewed code change.
+ROOT_EXPIRY_DAYS = 365
+TARGETS_EXPIRY_DAYS = 30
+SNAPSHOT_EXPIRY_DAYS = 7
+CHECKPOINT_EXPIRY_DAYS = 7
+TIMESTAMP_EXPIRY_DAYS = 1
+
 
 def _prescan_source_archive(archive_path: pathlib.Path) -> None:
     with tarfile.open(archive_path, mode="r:*") as archive:
@@ -369,7 +378,7 @@ def _initialize_registry_root(
         "type": "checkpoint",
         "spec_version": "1",
         "version": 1,
-        "expires": expires_in(7),
+        "expires": expires_in(CHECKPOINT_EXPIRY_DAYS),
         "generated_at": registry_time,
         "tree_size": 0,
         "root_hash": _log_root_hash([]),
@@ -382,7 +391,7 @@ def _initialize_registry_root(
         "type": "snapshot",
         "spec_version": "1",
         "version": 1,
-        "expires": expires_in(7),
+        "expires": expires_in(SNAPSHOT_EXPIRY_DAYS),
         "meta": {},
         "log_meta": {
             "log/checkpoint.json": signed_file_meta(checkpoint_path, version=1),
@@ -396,7 +405,7 @@ def _initialize_registry_root(
         "type": "timestamp",
         "spec_version": "1",
         "version": 1,
-        "expires": expires_in(1),
+        "expires": expires_in(TIMESTAMP_EXPIRY_DAYS),
         "meta": {
             "trust/snapshot.json": signed_file_meta(snapshot_path, version=1),
         },
@@ -409,7 +418,7 @@ def _initialize_registry_root(
         "type": "root",
         "spec_version": "1",
         "version": 1,
-        "expires": expires_in(365),
+        "expires": expires_in(ROOT_EXPIRY_DAYS),
         "keys": _role_keys_dict(role_keys),
         "roles": _roles_policy(role_keys),
     }
@@ -478,7 +487,7 @@ def _refresh_signed_metadata(dest_root: pathlib.Path, role_keys: dict[str, Any],
             "type": "targets",
             "spec_version": "1",
             "version": targets_version,
-            "expires": expires_in(30),
+            "expires": expires_in(TARGETS_EXPIRY_DAYS),
             "namespace": namespace,
             "packages": package_map,
         }
@@ -495,7 +504,7 @@ def _refresh_signed_metadata(dest_root: pathlib.Path, role_keys: dict[str, Any],
         "type": "checkpoint",
         "spec_version": "1",
         "version": checkpoint_version,
-        "expires": expires_in(7),
+        "expires": expires_in(CHECKPOINT_EXPIRY_DAYS),
         "generated_at": registry_time,
         "tree_size": len(leaf_hashes),
         "root_hash": _log_root_hash(leaf_hashes),
@@ -508,7 +517,7 @@ def _refresh_signed_metadata(dest_root: pathlib.Path, role_keys: dict[str, Any],
         "type": "snapshot",
         "spec_version": "1",
         "version": snapshot_version,
-        "expires": expires_in(7),
+        "expires": expires_in(SNAPSHOT_EXPIRY_DAYS),
         "meta": snapshot_meta,
         "log_meta": {
             "log/checkpoint.json": signed_file_meta(checkpoint_path, version=checkpoint_version),
@@ -522,7 +531,7 @@ def _refresh_signed_metadata(dest_root: pathlib.Path, role_keys: dict[str, Any],
         "type": "timestamp",
         "spec_version": "1",
         "version": timestamp_version,
-        "expires": expires_in(1),
+        "expires": expires_in(TIMESTAMP_EXPIRY_DAYS),
         "meta": {
             "trust/snapshot.json": signed_file_meta(snapshot_path, version=snapshot_version),
         },
