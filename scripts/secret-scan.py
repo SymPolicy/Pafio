@@ -13,7 +13,10 @@ Modes:
                  material added and later removed inside the range is still
                  reported. Merge commits are scanned against their first
                  parent so material introduced by a merge resolution is
-                 still attributed
+                 still attributed, root commits are scanned against the
+                 empty tree, and every diff is forced to text output so a
+                 `-diff` attribute or textconv driver in the range cannot
+                 hide added material
 """
 
 import re
@@ -41,15 +44,15 @@ def git(*args: str) -> bytes:
     ).stdout
 
 
-def scan_lines(lines, path_of, hits):
-    for lineno, raw in enumerate(lines, 1):
+def scan_lines(lines, path_of, hits, start=0):
+    for index, raw in enumerate(lines):
         try:
             text = raw.decode("utf-8")
         except UnicodeDecodeError:
             continue
         for name, pattern in PATTERNS:
             if pattern.search(text):
-                hits.append(f"{path_of}:{lineno} {name}")
+                hits.append(f"{path_of}:{start + index + 1} {name}")
                 break
 
 
@@ -72,7 +75,7 @@ def diff_hits(*diff_args):
     hits = []
     path = "<unknown>"
     lineno = 0
-    for raw in git("diff", "--unified=0", *diff_args).splitlines():
+    for raw in git("diff", "--text", "--no-textconv", "--unified=0", *diff_args).splitlines():
         if raw.startswith(b"+++"):
             path = raw[6:].decode("utf-8", "surrogateescape")
         elif raw.startswith(b"@@"):
@@ -80,10 +83,13 @@ def diff_hits(*diff_args):
             lineno = int(m.group(1)) - 1 if m else 0
         elif raw.startswith(b"+") and not raw.startswith(b"+++"):
             lineno += 1
-            scan_lines([raw[1:]], path, hits)
-        elif raw.startswith(b"-") or raw.startswith(b" "):
+            scan_lines([raw[1:]], path, hits, start=lineno - 1)
+        elif raw.startswith(b" "):
             lineno += 1
     return hits
+
+
+EMPTY_TREE = "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
 
 
 def range_hits(revspec):
@@ -91,10 +97,8 @@ def range_hits(revspec):
     for sha in git("rev-list", revspec).split():
         commit = sha.decode("utf-8", "surrogateescape")
         parents = git("show", "-s", "--format=%P", commit).split()
-        if not parents:
-            continue
-        first_parent = parents[0].decode("utf-8", "surrogateescape")
-        for hit in diff_hits(f"{first_parent}..{commit}"):
+        base = parents[0].decode("utf-8", "surrogateescape") if parents else EMPTY_TREE
+        for hit in diff_hits(f"{base}..{commit}"):
             hits.append(f"{commit[:10]} {hit}")
     return hits
 

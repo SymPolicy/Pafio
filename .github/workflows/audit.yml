@@ -97,13 +97,26 @@ jobs:
           git config --global --add safe.directory "$GITHUB_WORKSPACE/audited-tree"
           BASE="${{ steps.range.outputs.base }}"
           SCANNER="$RUNNER_TEMP/secret-scan.py"
-          # Run the base revision's scanner so the audited range cannot
-          # weaken the check that reviews it; only a base that predates the
-          # scanner falls back to the range's own copy.
-          if [ -n "$BASE" ] && git cat-file -e "$BASE:scripts/secret-scan.py" 2>/dev/null; then
-            git show "$BASE:scripts/secret-scan.py" > "$SCANNER"
+          # Run the scanner from a trusted revision so the audited range
+          # cannot weaken the check that reviews it: the pull-request or
+          # merge-queue base for those events, the protected default
+          # branch's tip for everything else (github.event.before is
+          # self-selected and untrusted). Fail closed when the trusted
+          # copy cannot be obtained.
+          case "$GITHUB_EVENT_NAME" in
+            pull_request|pull_request_target|merge_group)
+              SRC="$BASE"
+              ;;
+            *)
+              git fetch --no-tags --depth=1 origin "${{ github.event.repository.default_branch }}"
+              SRC="FETCH_HEAD"
+              ;;
+          esac
+          if [ -n "$SRC" ] && git show "$SRC:scripts/secret-scan.py" > "$SCANNER" 2>/dev/null; then
+            :
           else
-            cp scripts/secret-scan.py "$SCANNER"
+            echo "::error::trusted secret scanner unavailable"
+            exit 1
           fi
           if [ -n "$BASE" ]; then
             python3 "$SCANNER" --range "$BASE..HEAD"

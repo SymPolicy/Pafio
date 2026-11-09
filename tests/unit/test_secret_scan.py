@@ -99,6 +99,35 @@ class SecretScanRangeTest(unittest.TestCase):
             repo.commit("a.txt", "plain content\n")
             self.assertEqual(run_scan(repo.path).returncode, 0)
 
+    def test_diff_attribute_cannot_hide_credential(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = TempRepo(pathlib.Path(tmp))
+            base = repo.commit("a.txt", "plain content\n")
+            repo.commit(".gitattributes", "* -diff\n")
+            repo.commit("leak.txt", SECRET_SHAPED)
+            result = run_scan(repo.path, "--range", f"{base}..HEAD")
+            self.assertEqual(result.returncode, 1)
+            self.assertIn("leak.txt:1 github-token", result.stdout)
+
+    def test_root_commit_in_range_is_scanned(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = TempRepo(pathlib.Path(tmp))
+            repo.commit("leak.txt", SECRET_SHAPED)
+            result = run_scan(repo.path, "--range", "HEAD")
+            self.assertEqual(result.returncode, 1)
+            self.assertIn("leak.txt:1 github-token", result.stdout)
+
+    def test_modified_file_reports_true_line(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = TempRepo(pathlib.Path(tmp))
+            base = repo.commit("a.txt", "one\ntwo\nthree\n")
+            (repo.path / "a.txt").write_text(f"one\n{SECRET_SHAPED}three\n")
+            repo.git("add", "a.txt")
+            repo.git("commit", "-qm", "fixture")
+            result = run_scan(repo.path, "--range", f"{base}..HEAD")
+            self.assertEqual(result.returncode, 1)
+            self.assertIn("a.txt:2 github-token", result.stdout)
+
 
 if __name__ == "__main__":
     unittest.main()

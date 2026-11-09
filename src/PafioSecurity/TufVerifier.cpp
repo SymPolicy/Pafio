@@ -149,8 +149,12 @@ EnforceExpires(const json &signed_payload, const std::string &context, pafio::Tu
   if (!parsed.has_value()) {
     Fail(result, "tuf.expires", context + " expires is not a valid UTC timestamp");
   }
+  const std::time_t raw_now = std::time(nullptr);
+  if (raw_now == static_cast<std::time_t>(-1)) {
+    Fail(result, "tuf.clock", context + " system clock unavailable");
+  }
   // 5-minute clock-skew tolerance.
-  const std::time_t now = std::time(nullptr) - (5 * 60);
+  const std::time_t now = raw_now - (5 * 60);
   if (*parsed < now) {
     Fail(result, "tuf.expired", context + " has expired");
   }
