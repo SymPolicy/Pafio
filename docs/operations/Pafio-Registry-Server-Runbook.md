@@ -1,6 +1,6 @@
 # Pafio Registry Origin Compatibility Runbook
 
-**Purpose:** Provide the executable client-side validation procedure that proves
+**Purpose:** Provide the executable client-side validation procedure that proves a pafio client can publish to and fetch from a shared pafio registry v2 origin operated elsewhere.
 a `pafio` client can publish to and fetch from a shared registry `v2` origin.
 The origin itself — its deployment, replication, retention, and write policy —
 is operated and documented by the platform-service repository, not here.

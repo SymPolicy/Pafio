@@ -13,7 +13,6 @@
 | `adr/` | [ADR Index](./adr/INDEX.md) | Define the conventions and scope for pafio/docs/adr/, which holds durable design and implementation decisions for the standalone pafio project. |
 | `archive/` | [Archive Index](./archive/INDEX.md) | Hold archived pafio documentation provenance and lifecycle metadata; active summaries stay in docs/rollups/, active recovery notes stay in docs/history/, and only retired raw material belongs here. |
 | `assets/` | [Assets Index](./assets/INDEX.md) | Define the reusable workflow and gate asset boundary under docs/assets/; concrete entries live in INDEX.md. |
-| `audit/` | [Audit Index](./audit/INDEX.md) | Define the repository-local audit queue for security, correctness, and design defects discovered before they are converted into normal tracked work. |
 | `external/` | [External Docs Index](./external/INDEX.md) | Define the scope and naming rules for external handoff docs that pafio shares with sibling Styio repositories. |
 | `governance/` | [Governance Index](./governance/INDEX.md) | Hold normative pafio rules. These files define stable contracts, policy, and compatibility constraints. |
 | `history/` | [History Index](./history/INDEX.md) | Hold active daily recovery notes for pafio; these files track interrupted checkpoints, recovery commands, and rollback points before older provenance moves to docs/archive/history/. |

@@ -100,7 +100,7 @@ def gate_steps(profile: str) -> list[Step]:
         ),
         Step(
             "quality_ecosystem_cli_docs",
-            [sys.executable, str(ECOSYSTEM_CLI_DOC_GATE), "--json"],
+            [sys.executable, str(ECOSYSTEM_CLI_DOC_GATE), "--json", "--require-workspace"],
             ROOT,
         ),
         Step("regression_native_check", [str(NATIVE_CHECK)], ROOT),
