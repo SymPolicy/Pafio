@@ -113,7 +113,7 @@ NormalizeRelative(const std::string &relative_path, const std::string &context, 
   return {};
 }
 
-std::optional<std::chrono::system_clock::time_point>
+std::optional<std::time_t>
 ParseUtcTimestamp(const std::string &value) {
   if (value.size() != 20U || value[4] != '-' || value[7] != '-' || value[10] != 'T' || value[13] != ':' || value[16] != ':' || value[19] != 'Z') {
     return std::nullopt;
@@ -139,7 +139,7 @@ ParseUtcTimestamp(const std::string &value) {
   if (seconds < 0) {
     return std::nullopt;
   }
-  return std::chrono::system_clock::from_time_t(seconds);
+  return seconds;
 }
 
 void
@@ -150,7 +150,7 @@ EnforceExpires(const json &signed_payload, const std::string &context, pafio::Tu
     Fail(result, "tuf.expires", context + " expires is not a valid UTC timestamp");
   }
   // 5-minute clock-skew tolerance.
-  const auto now = std::chrono::system_clock::now() - std::chrono::minutes{5};
+  const std::time_t now = std::time(nullptr) - (5 * 60);
   if (*parsed < now) {
     Fail(result, "tuf.expired", context + " has expired");
   }

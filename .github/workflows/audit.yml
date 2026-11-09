@@ -57,13 +57,13 @@ jobs:
           python3 scripts/ecosystem-cli-doc-gate.py --json
           python3 scripts/dependency-policy-check.py --repo-root .
 
-  # Outgoing-range policy gate: the deterministic privacy/credential/
-  # identity/workspace-hygiene contract, pinned to the published probator
-  # revision. This job is isolated on purpose: it never executes
-  # repository-provided scripts, checks out the audited range as data, and
-  # shares no PATH, workspace, or artifacts with jobs that run PR code.
-  # The operator-local withheld-name list is not shipped to CI by design;
-  # the publication gate audits it at push.
+  # Outgoing-range credential gate: the repository-local exact-match
+  # scanner audits the lines added by every commit in the outgoing range.
+  # This job is isolated on purpose: it checks out the audited range as
+  # data, runs the base revision's scanner, and shares no PATH,
+  # workspace, or artifacts with jobs that run PR code. The broader
+  # privacy/workspace-hygiene contract and the operator-local
+  # withheld-name list stay with the local publication gate by design.
   range-scan:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -74,18 +74,6 @@ jobs:
         with:
           fetch-depth: 0
           path: audited-tree
-          persist-credentials: false
-
-      - name: Install probator
-        run: cargo install --locked --git https://github.com/Unka-Malloc/Probator --rev 06370579165cd6816c1ade0b32108795783e4680 probator
-
-      - name: Check out the pinned policy contract
-        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
-        with:
-          repository: Unka-Malloc/Probator
-          ref: 06370579165cd6816c1ade0b32108795783e4680
-          path: probator
-          sparse-checkout: tools/privacy-cleaner
           persist-credentials: false
 
       - name: Resolve the audited base
@@ -100,12 +88,28 @@ jobs:
           if [[ -z "$BASE" || "$BASE" == "0000000000000000000000000000000000000000" ]]; then
             echo "base=" >> "$GITHUB_OUTPUT"
           else
-            echo "base=--base $BASE" >> "$GITHUB_OUTPUT"
+            echo "base=$BASE" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Audit the outgoing range
+      - name: Scan the outgoing range for credential material
         working-directory: audited-tree
-        run: probator stage1 --contract ../probator/tools/privacy-cleaner/contract.json --repo . --head HEAD ${{ steps.range.outputs.base }}
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE/audited-tree"
+          BASE="${{ steps.range.outputs.base }}"
+          SCANNER="$RUNNER_TEMP/secret-scan.py"
+          # Run the base revision's scanner so the audited range cannot
+          # weaken the check that reviews it; only a base that predates the
+          # scanner falls back to the range's own copy.
+          if [ -n "$BASE" ] && git cat-file -e "$BASE:scripts/secret-scan.py" 2>/dev/null; then
+            git show "$BASE:scripts/secret-scan.py" > "$SCANNER"
+          else
+            cp scripts/secret-scan.py "$SCANNER"
+          fi
+          if [ -n "$BASE" ]; then
+            python3 "$SCANNER" --range "$BASE..HEAD"
+          else
+            python3 "$SCANNER" --range HEAD
+          fi
 
   # Stable aggregate gate: rulesets require this single `audit` check context,
   # and it only turns green when both the policy surface and the isolated

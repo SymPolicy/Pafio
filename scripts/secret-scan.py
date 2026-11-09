@@ -8,7 +8,12 @@ privacy review is owned by the local GitVault reviewer, not this gate.
 Modes:
   (default)      scan every tracked file in the worktree
   --staged       scan added lines of the staged diff (pre-commit)
-  --range A..B   scan added lines of a revision range (delivery gate)
+  --range A..B   scan added lines of every commit in a revision range
+                 (delivery gate); hits are prefixed with the commit id, so
+                 material added and later removed inside the range is still
+                 reported. Merge commits are scanned against their first
+                 parent so material introduced by a merge resolution is
+                 still attributed
 """
 
 import re
@@ -81,12 +86,25 @@ def diff_hits(*diff_args):
     return hits
 
 
+def range_hits(revspec):
+    hits = []
+    for sha in git("rev-list", revspec).split():
+        commit = sha.decode("utf-8", "surrogateescape")
+        parents = git("show", "-s", "--format=%P", commit).split()
+        if not parents:
+            continue
+        first_parent = parents[0].decode("utf-8", "surrogateescape")
+        for hit in diff_hits(f"{first_parent}..{commit}"):
+            hits.append(f"{commit[:10]} {hit}")
+    return hits
+
+
 def main():
     args = sys.argv[1:]
     if args[:1] == ["--staged"]:
         hits = diff_hits("--cached")
     elif args[:1] == ["--range"] and len(args) == 2:
-        hits = diff_hits(args[1])
+        hits = range_hits(args[1])
     elif not args:
         hits = worktree_hits()
     else:

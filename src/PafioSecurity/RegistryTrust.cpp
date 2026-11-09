@@ -136,7 +136,7 @@ PinFromJson(const json &payload) {
   return pin;
 }
 
-std::optional<std::chrono::system_clock::time_point>
+std::optional<std::time_t>
 ParseUtcTimestamp(const std::string &value) {
   if (value.size() != 20U || value[4] != '-' || value[7] != '-' || value[10] != 'T' || value[13] != ':' || value[16] != ':' || value[19] != 'Z') {
     return std::nullopt;
@@ -162,7 +162,7 @@ ParseUtcTimestamp(const std::string &value) {
   if (seconds < 0) {
     return std::nullopt;
   }
-  return std::chrono::system_clock::from_time_t(seconds);
+  return seconds;
 }
 
 void
@@ -174,8 +174,8 @@ EnforceDescriptorValidityWindow(const json &signed_payload) {
   if (!issued.has_value() || !expiry.has_value()) {
     throw pafio::FetchError("registry trust descriptor issued_at/expires must be UTC timestamps");
   }
-  const auto now = std::chrono::system_clock::now();
-  constexpr auto kSkew = std::chrono::minutes{5};
+  const std::time_t now = std::time(nullptr);
+  constexpr std::time_t kSkew = 5 * 60;
   if (*issued > now + kSkew) {
     throw pafio::FetchError("registry trust descriptor issued_at is in the future");
   }
