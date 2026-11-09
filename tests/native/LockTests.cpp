@@ -1193,7 +1193,7 @@ TEST(FetchCliTests, FetchesRegistrySourcesWithoutWritingLockfile)
   EXPECT_TRUE(fs::exists(root / ".pafio-home" / "registry" / "checkouts" / "acme" / "util" / "0.2.0"));
 }
 
-TEST(FetchCliTests, RejectsRegistryArchiveTraversalBeforeExtraction)
+TEST(FetchCliTests, RejectsRegistryIndexRecordTamperBeforeExtraction)
 {
   const fs::path root = MakeTempDir("fetch-registry-traversal");
   const ScopedEnvVar pafio_home("PAFIO_HOME", (root / ".pafio-home").string());
@@ -1256,7 +1256,7 @@ TEST(FetchCliTests, RejectsRegistryArchiveTraversalBeforeExtraction)
   EXPECT_EQ(pafio::RunCli({"--json", "fetch", "--manifest-path", manifest_path.string()}), pafio::kExitFetch);
   (void) testing::internal::GetCapturedStdout();
   const std::string stderr_text = testing::internal::GetCapturedStderr();
-  EXPECT_NE(stderr_text.find("registry archive member path"), std::string::npos);
+  EXPECT_NE(stderr_text.find("signed release metadata"), std::string::npos);
   EXPECT_FALSE(fs::exists(root / "escape.txt"));
 }
 

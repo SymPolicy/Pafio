@@ -71,4 +71,4 @@ That is the point where signatures, stronger policy, or transparency-style appen
 
 ## 7. Operational Validation
 
-The executable deployment validation path lives in [../operations/Pafio-Registry-Server-Runbook.md](../operations/Pafio-Registry-Server-Runbook.md).
+The executable client-side compatibility validation path lives in [../operations/Pafio-Registry-Server-Runbook.md](../operations/Pafio-Registry-Server-Runbook.md).

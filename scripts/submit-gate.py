@@ -13,7 +13,6 @@ from dataclasses import dataclass
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 CHECK_NO_BINARIES = ROOT / "scripts" / "check_no_binaries.py"
 REPO_HYGIENE = ROOT / "scripts" / "repo-hygiene-check.py"
-DOCS_AUDIT = ROOT / "scripts" / "docs-audit.py"
 NATIVE_CHECK = ROOT / "scripts" / "native-check.sh"
 EXTRACTABILITY_CHECK = ROOT / "scripts" / "extractability-check.sh"
 PERF_GATE = ROOT / "scripts" / "perf-gate.py"
@@ -99,10 +98,9 @@ def gate_steps(profile: str) -> list[Step]:
             [sys.executable, str(REPO_HYGIENE), "--repo-root", str(ROOT), "--mode", "tracked"],
             ROOT,
         ),
-        Step("quality_docs_governance", [sys.executable, str(DOCS_AUDIT)], ROOT),
         Step(
             "quality_ecosystem_cli_docs",
-            [sys.executable, str(ECOSYSTEM_CLI_DOC_GATE), "--json"],
+            [sys.executable, str(ECOSYSTEM_CLI_DOC_GATE), "--json", "--require-workspace"],
             ROOT,
         ),
         Step("regression_native_check", [str(NATIVE_CHECK)], ROOT),

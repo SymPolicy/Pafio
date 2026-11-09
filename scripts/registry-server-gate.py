@@ -117,6 +117,34 @@ def expected_publish_transport(registry_root: str) -> str:
     return "filesystem"
 
 
+def redact_root(root: str) -> str:
+    parsed = urlsplit(root)
+    if parsed.scheme:
+        host = parsed.hostname or ""
+        if parsed.port is not None:
+            host = f"{host}:{parsed.port}"
+        return f"{parsed.scheme}://{host}{parsed.path}"
+    return "<path>"
+
+
+def apply_redactions(text: str, redactions: list[tuple[str, str]]) -> str:
+    for secret, placeholder in redactions:
+        if secret:
+            text = text.replace(secret, placeholder)
+    return text
+
+
+def sanitize_step_record(step: dict, redactions: list[tuple[str, str]]) -> dict:
+    return {
+        "name": step["name"],
+        "command": [apply_redactions(arg, redactions) for arg in step["command"]],
+        "returncode": step["returncode"],
+        "stdout": apply_redactions(step["stdout"], redactions),
+        "stderr": apply_redactions(step["stderr"], redactions),
+        "ok": step["ok"],
+    }
+
+
 def write_publishable_package(root: pathlib.Path) -> pathlib.Path:
     manifest_path = root / "pafio.toml"
     source_path = root / "src" / "lib.styio"
@@ -346,6 +374,7 @@ def main(argv: list[str] | None = None) -> int:
     duplicate_rejected = False
     trust_import_succeeded = not args.fetch_trust_descriptor
     fetch_succeeded = False
+    consumer_manifest: pathlib.Path | None = None
 
     with tempfile.TemporaryDirectory(prefix="pafio-registry-server-gate-") as temp_dir:
         temp_root = pathlib.Path(temp_dir)
@@ -471,24 +500,44 @@ def main(argv: list[str] | None = None) -> int:
 
     ok = publish_step["ok"] and duplicate_rejected and trust_import_succeeded and fetch_succeeded and not validation_errors
 
+    redactions: list[tuple[str, str]] = [
+        (publish_root, redact_root(publish_root)),
+        (fetch_root, redact_root(fetch_root)),
+        (pafio_bin, "<pafio-bin>"),
+        (str(temp_root), "<workdir>"),
+        (str(publish_manifest), "<manifest>"),
+    ]
+    if consumer_manifest is not None:
+        redactions.append((str(consumer_manifest), "<manifest>"))
+    if args.publish_policy_file:
+        redactions.append((os.path.abspath(args.publish_policy_file), "<policy-file>"))
+    if args.fetch_trust_descriptor:
+        redactions.append((args.fetch_trust_descriptor, "<trust-descriptor>"))
+    for header in args.publish_header:
+        redactions.append((header, "<redacted-header>"))
+        if ":" in header:
+            redactions.append((header.split(":", 1)[1].strip(), "<redacted>"))
+    sanitized_steps = [sanitize_step_record(step, redactions) for step in steps]
+    redacted_errors = [apply_redactions(error, redactions) for error in validation_errors]
+
     summary = {
         "ok": ok,
-        "publish_root": publish_root,
-        "fetch_root": fetch_root,
-        "pafio_bin": pafio_bin,
-        "publish_headers": args.publish_header,
-        "publish_policy_file": os.path.abspath(args.publish_policy_file) if args.publish_policy_file else "",
+        "publish_root": redact_root(publish_root),
+        "fetch_root": redact_root(fetch_root),
+        "pafio_bin": pathlib.Path(pafio_bin).name,
+        "publish_headers": sorted({header.partition(":")[0].strip() for header in args.publish_header}),
+        "publish_policy_file_supplied": bool(args.publish_policy_file),
         "publish_profile": args.publish_profile or "",
-        "fetch_trust_descriptor": args.fetch_trust_descriptor or "",
+        "fetch_trust_descriptor_supplied": bool(args.fetch_trust_descriptor),
         "sync_timeout_seconds": args.sync_timeout_seconds,
-        "validation_errors": validation_errors,
-        "steps": steps,
+        "validation_errors": redacted_errors,
+        "steps": sanitized_steps,
     }
 
     if args.json:
         sys.stdout.write(json.dumps(summary, sort_keys=True) + "\n")
     else:
-        for step in steps:
+        for step in sanitized_steps:
             status = "OK" if step["ok"] else "FAIL"
             sys.stdout.write(f"[{status}] {step['name']}\n")
             if step["stdout"].strip():
@@ -499,11 +548,11 @@ def main(argv: list[str] | None = None) -> int:
                 sys.stderr.write(step["stderr"])
                 if not step["stderr"].endswith("\n"):
                     sys.stderr.write("\n")
-        if validation_errors:
-            for error in validation_errors:
+        if redacted_errors:
+            for error in redacted_errors:
                 sys.stderr.write(f"[VALIDATION] {error}\n")
         sys.stdout.write(
-            f"registry server gate {'passed' if ok else 'failed'} for publish={publish_root} fetch={fetch_root}\n"
+            f"registry server gate {'passed' if ok else 'failed'} for publish={redact_root(publish_root)} fetch={redact_root(fetch_root)}\n"
         )
 
     return 0 if ok else 1

@@ -32,6 +32,10 @@ contracts, or `pafio` server control-plane behavior.
 9. For HTTP read-root validation, import the platform descriptor through
    `pafio registry trust import` or `registry-server-gate.py --fetch-trust-descriptor`
    before claiming fetch coverage.
+10. Keep `registry-server-gate.py` reports free of credential values and local
+    filesystem paths: stored step records redact header values and path-bearing
+    arguments, policy files and trust descriptors are reported as supplied-or-not,
+    and published dependency metadata must reject credential-bearing registry URLs.
 
 ## Change Classes
 
@@ -45,7 +49,7 @@ contracts, or `pafio` server control-plane behavior.
 ./scripts/checkpoint-health.sh
 python3 ./tests/interop/registry-control-plane-contract-gate.py
 python3 ./tests/interop/native-contract-source-gate.py
-./scripts/delivery-gate.sh --skip-audit --skip-health
+./scripts/delivery-gate.sh --skip-health
 ```
 
 ## Cross-Team Dependencies

@@ -36,8 +36,9 @@ compiler contracts.
 8. Keep any remaining local cloud compatibility deterministic and small; new cloud stress or scheduler behavior belongs in `styio-platform`.
 9. Keep `pafio cloud plan --json` targeting the native JSON `styio-platform` submit-job route, currently `POST /api/styio-platform/v1/jobs`, and update native tests when that route changes.
 10. Keep registry package identity, registry object paths, HTTP read limits, and tar pre-extraction checks aligned between the native client and Python registry v2 helpers.
-11. Preserve offline package operation: cache reads must not require platform connectivity once metadata and artifacts are available locally.
-12. Treat remote HTTP registry trust as a core fetch invariant: public clients
+11. Keep unit tests on `tempfile`-owned directories and keep published registry metadata free of credential-bearing registry URLs.
+12. Preserve offline package operation: cache reads must not require platform connectivity once metadata and artifacts are available locally.
+13. Treat remote HTTP registry trust as a core fetch invariant: public clients
     must import a platform descriptor and validate the pinned root metadata
     before materializing registry packages.
 
@@ -51,7 +52,7 @@ compiler contracts.
 
 ```bash
 ./scripts/checkpoint-health.sh
-./scripts/delivery-gate.sh --skip-audit --skip-health
+./scripts/delivery-gate.sh --skip-health
 ctest --test-dir build-codex -R pafio_installer_bootstrap_smoke --output-on-failure
 python3 tests/unit/test_registry_v2.py
 ./build-codex/bin/pafio_native_tests --gtest_filter='SecurityTests.*'

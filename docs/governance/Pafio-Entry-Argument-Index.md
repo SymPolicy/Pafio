@@ -1547,7 +1547,7 @@ Arguments:
 - `[target-dir]`
   - optional
   - copy destination
-  - defaults to `$HOME/DevSpace/Unka-Malloc/styio-pafio`
+  - defaults to the `<pafio-workspace>` placeholder directory under the current working directory
 
 ## 6. Public Environment Variables
 

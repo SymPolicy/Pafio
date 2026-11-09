@@ -25,10 +25,11 @@ jobs:
 
     steps:
       - name: Checkout pafio
-        uses: actions/checkout@v5
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           fetch-depth: 0
           path: pafio
+          persist-credentials: false
 
       - name: Resolve sibling checkout ref
         id: sibling-ref
@@ -39,33 +40,26 @@ jobs:
             requested="${{ github.base_ref }}"
           fi
 
-          for ref in "$requested" stable nightly; do
-            if git ls-remote --exit-code --heads https://github.com/Unka-Malloc/styio-nightly.git "$ref" >/dev/null 2>&1 \
-              && git ls-remote --exit-code --heads https://github.com/Unka-Malloc/styio-view.git "$ref" >/dev/null 2>&1; then
+          for ref in "$requested" nightly stable; do
+            if git ls-remote --exit-code --heads https://github.com/SymPolicy/Styio.git "$ref" >/dev/null 2>&1; then
               echo "ref=$ref" >> "$GITHUB_OUTPUT"
               exit 0
             fi
           done
 
-          echo "No common sibling checkout ref found for '$requested' or fallbacks 'stable'/'nightly'." >&2
+          echo "No sibling checkout ref found for '$requested' or fallbacks 'nightly'/'stable'." >&2
           exit 1
 
-      - name: Checkout styio-nightly sibling repository
-        uses: actions/checkout@v5
+      - name: Checkout Styio sibling repository
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
-          repository: Unka-Malloc/styio-nightly
+          repository: SymPolicy/Styio
           ref: ${{ steps.sibling-ref.outputs.ref }}
           path: styio-nightly
-
-      - name: Checkout styio-view sibling repository
-        uses: actions/checkout@v5
-        with:
-          repository: Unka-Malloc/styio-view
-          ref: ${{ steps.sibling-ref.outputs.ref }}
-          path: styio-view
+          persist-credentials: false
 
       - name: Set up standardized Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: ${{ env.STYIO_PYTHON_VERSION }}
 
@@ -132,7 +126,6 @@ jobs:
           --mode push
           --base "${{ steps.ci_refs.outputs.base_ref }}"
           --range "${{ steps.ci_refs.outputs.range }}"
-          --skip-audit
           --skip-health
 
       - name: Run unified submit gate
@@ -148,10 +141,12 @@ jobs:
 
     steps:
       - name: Checkout pafio
-        uses: actions/checkout@v5
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
 
       - name: Set up standardized Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: ${{ env.STYIO_PYTHON_VERSION }}
 
@@ -170,10 +165,40 @@ jobs:
 
     steps:
       - name: Checkout pafio
-        uses: actions/checkout@v5
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          path: pafio
+          persist-credentials: false
+
+      - name: Resolve sibling checkout ref
+        id: sibling-ref
+        shell: bash
+        run: |
+          requested="${GITHUB_REF_NAME}"
+          if [[ "${GITHUB_EVENT_NAME}" == "pull_request" || "${GITHUB_EVENT_NAME}" == "pull_request_target" ]]; then
+            requested="${{ github.base_ref }}"
+          fi
+
+          for ref in "$requested" nightly stable; do
+            if git ls-remote --exit-code --heads https://github.com/SymPolicy/Styio.git "$ref" >/dev/null 2>&1; then
+              echo "ref=$ref" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          done
+
+          echo "No sibling checkout ref found for '$requested' or fallbacks 'nightly'/'stable'." >&2
+          exit 1
+
+      - name: Checkout Styio sibling repository
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          repository: SymPolicy/Styio
+          ref: ${{ steps.sibling-ref.outputs.ref }}
+          path: styio-nightly
+          persist-credentials: false
 
       - name: Set up standardized Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: ${{ env.STYIO_PYTHON_VERSION }}
 
@@ -192,9 +217,11 @@ jobs:
             llvm-${STYIO_LLVM_MAJOR}-tools
 
       - name: Run unit golden tests
+        working-directory: pafio
         run: python3 -m unittest discover -s tests/unit -v
 
       - name: Run unified golden submit gate
+        working-directory: pafio
         env:
           PAFIO_BUILD_DIR: ${{ runner.temp }}/pafio-golden-build
         run: python3 scripts/submit-gate.py --profile ci --json

@@ -19,6 +19,7 @@ set(PAFIO_FOUNDATION_SOURCES
     PafioCore/Paths.cpp
     PafioCore/Process.cpp
     PafioCore/Sha256.cpp
+    PafioCore/ToolPaths.cpp
 )
 
 set(PAFIO_MANIFEST_SOURCES
@@ -29,8 +30,10 @@ set(PAFIO_MANIFEST_SOURCES
 set(PAFIO_RESOLUTION_SOURCES
     PafioRegistryClient/Client.cpp
     PafioResolve/Resolver.cpp
+    PafioSecurity/Ed25519.cpp
     PafioSecurity/RegistrySecurity.cpp
     PafioSecurity/RegistryTrust.cpp
+    PafioSecurity/TufVerifier.cpp
 )
 
 set(PAFIO_TOOLCHAIN_SERVICE_SOURCES

@@ -4,14 +4,18 @@
 #include "PafioCore/Paths.hpp"
 #include "PafioCore/Process.hpp"
 #include "PafioCore/Sha256.hpp"
+#include "PafioCore/ToolPaths.hpp"
+#include "PafioSecurity/CanonicalJson.hpp"
 #include "PafioSecurity/RegistrySecurity.hpp"
 #include "PafioSecurity/RegistryTrust.hpp"
+#include "PafioSecurity/TufVerifier.hpp"
 
 #include <algorithm>
 #include <cstdlib>
 #include <cctype>
 #include <filesystem>
 #include <fstream>
+#include <map>
 #include <optional>
 #include <sstream>
 #include <string>
@@ -176,6 +180,9 @@ RegistryConfig ValidateConfig(const json &config, const std::string &context)
 struct RegistryPackageMetadata
 {
   std::string index_path;
+  std::string index_record_sha256;
+  std::string source_artifact_sha256;
+  std::string source_artifact_path;
 };
 
 RegistryPackageMetadata ValidateTargetsMetadata(
@@ -219,13 +226,32 @@ RegistryPackageMetadata ValidateTargetsMetadata(
   {
     throw pafio::FetchError("registry v2 targets metadata is missing releases for " + package_name);
   }
-  if ((*package_it)["releases"].find(version) == (*package_it)["releases"].end())
+  const auto release_it = (*package_it)["releases"].find(version);
+  if (release_it == (*package_it)["releases"].end() || !release_it->is_object())
   {
     throw pafio::FetchError("registry v2 targets metadata does not contain version " + package_name + "@" + version);
+  }
+  const std::string index_record_sha256 = release_it->value("index_record_sha256", "");
+  if (!pafio::IsRegistrySha256Digest(index_record_sha256))
+  {
+    throw pafio::FetchError("registry v2 release metadata is missing a valid index_record_sha256 for " + package_name + "@" + version);
+  }
+  const std::string source_artifact_sha256 = release_it->value("source_artifact_sha256", "");
+  if (!pafio::IsRegistrySha256Digest(source_artifact_sha256))
+  {
+    throw pafio::FetchError("registry v2 release metadata is missing a valid source_artifact_sha256 for " + package_name + "@" + version);
+  }
+  const std::string source_artifact_path = release_it->value("source_artifact_path", "");
+  if (source_artifact_path.empty())
+  {
+    throw pafio::FetchError("registry v2 release metadata is missing source_artifact_path for " + package_name + "@" + version);
   }
 
   return {
       .index_path = NormalizeRelativeRegistryPath(index_path, "registry v2 package index_path").generic_string(),
+      .index_record_sha256 = index_record_sha256,
+      .source_artifact_sha256 = source_artifact_sha256,
+      .source_artifact_path = NormalizeRelativeRegistryPath(source_artifact_path, "registry v2 release source_artifact_path").generic_string(),
   };
 }
 
@@ -378,8 +404,9 @@ void FetchUrlToFile(
   args.push_back(temp_path.string());
   args.push_back(url);
   const pafio::ProcessResult result = pafio::RunProcess<pafio::CacheError>({
-      .program = "curl",
+      .program = pafio::ResolvedCurlPath(),
       .args = args,
+      .search_path = false,
       .timeout = pafio::kExternalProcessStepTimeout,
       .error_context = "registry process",
   });
@@ -475,45 +502,6 @@ std::string LoadRegistryObjectText(
   return ReadTextFile(cache_path, "cached " + context);
 }
 
-RegistryConfig LoadConfig(
-    const fs::path &pafio_home,
-    const std::string &registry_root,
-    const std::vector<std::string> &request_headers,
-    const bool offline)
-{
-  return ValidateConfig(
-      ParseJsonObject(
-          LoadRegistryObjectText(pafio_home, registry_root, request_headers, "config.json", "registry v2 config", offline),
-          "registry v2 config"),
-      "registry v2 config");
-}
-
-RegistryPackageMetadata LoadPackageMetadata(
-    const fs::path &pafio_home,
-    const std::string &registry_root,
-    const std::vector<std::string> &request_headers,
-    const RegistryConfig &config,
-    const std::string &package_name,
-    const std::string &version,
-    const bool offline)
-{
-  const auto [package_namespace, _short_name] = SplitPackageName(package_name);
-  return ValidateTargetsMetadata(
-      ParseJsonObject(
-          LoadRegistryObjectText(
-              pafio_home,
-              registry_root,
-              request_headers,
-              config.targets_prefix + package_namespace + ".json",
-              "registry v2 targets metadata",
-              offline),
-          "registry v2 targets metadata"),
-      package_name,
-      package_namespace,
-      version,
-      "registry v2 targets metadata");
-}
-
 RegistryEntry LoadEntry(
     const fs::path &pafio_home,
     const std::string &registry_root,
@@ -531,6 +519,7 @@ RegistryEntry LoadEntry(
       "registry v2 index",
       offline);
 
+  std::optional<RegistryEntry> selected;
   std::istringstream lines(text);
   std::string line;
   while (std::getline(lines, line))
@@ -539,14 +528,36 @@ RegistryEntry LoadEntry(
     {
       continue;
     }
-    const json entry = ParseJsonObject(line, "registry v2 index record");
-    if (entry.value("package", "") == package_name && entry.value("version", "") == version)
+    const json record = ParseJsonObject(line, "registry v2 index record");
+    if (record.value("package", "") != package_name || record.value("version", "") != version)
     {
-      return ValidateEntry(entry, package_name, version);
+      continue;
     }
+    if (selected.has_value())
+    {
+      throw pafio::FetchError("registry v2 index contains duplicate records for " + package_name + "@" + version);
+    }
+    // Index records arrive over the mutable read plane; the record that
+    // selects the resolved source must match the signed release metadata
+    // carried by the verified targets document. The canonical record digest
+    // covers every record field including source_artifact.size_bytes.
+    if (pafio::Sha256Text(pafio::CanonicalJsonBytes(record)) != metadata.index_record_sha256)
+    {
+      throw pafio::FetchError("registry v2 index record does not match the signed release metadata for " + package_name + "@" + version);
+    }
+    RegistryEntry entry = ValidateEntry(record, package_name, version);
+    if (entry.sha256 != metadata.source_artifact_sha256 ||
+        NormalizeRelativeRegistryPath(entry.artifact_path, "registry v2 source_artifact path").generic_string() != metadata.source_artifact_path)
+    {
+      throw pafio::FetchError("registry v2 index record source_artifact does not match the signed release metadata for " + package_name + "@" + version);
+    }
+    selected = std::move(entry);
   }
-
-  throw pafio::FetchError("registry v2 index does not contain package version: " + package_name + "@" + version);
+  if (!selected.has_value())
+  {
+    throw pafio::FetchError("registry v2 index does not contain package version: " + package_name + "@" + version);
+  }
+  return *selected;
 }
 
 void MaterializeArtifact(
@@ -560,17 +571,21 @@ void MaterializeArtifact(
   if (fs::exists(blob_cache_path))
   {
     const std::string actual_sha256 = pafio::Sha256File(blob_cache_path);
-    if (actual_sha256 != entry.sha256)
-    {
-      throw pafio::CacheError("cached registry artifact sha256 mismatch: " + blob_cache_path.string());
-    }
     std::error_code size_ec;
     const uintmax_t cached_size = fs::file_size(blob_cache_path, size_ec);
-    if (size_ec || cached_size != entry.size_bytes)
+    if (!size_ec && actual_sha256 == entry.sha256 && cached_size == entry.size_bytes)
     {
-      throw pafio::CacheError("cached registry artifact size mismatch: " + blob_cache_path.string());
+      return;
     }
-    return;
+    if (offline)
+    {
+      throw pafio::CacheError(
+          "cached registry artifact integrity check failed and offline mode cannot refetch: " +
+          blob_cache_path.string());
+    }
+    // A corrupted cached blob is evicted and refetched; the post-fetch size
+    // and digest checks below still authenticate the replacement.
+    fs::remove(blob_cache_path);
   }
 
   const fs::path artifact_relative = NormalizeRelativeRegistryPath(entry.artifact_path, "registry v2 source artifact path");
@@ -643,8 +658,9 @@ fs::path DetectSnapshotRoot(const fs::path &checkout_root)
 void ValidateTarListingPaths(const fs::path &blob_cache_path)
 {
   const pafio::ProcessResult path_listing = pafio::RunProcess<pafio::CacheError>({
-      .program = "tar",
+      .program = pafio::ResolvedTarPath(),
       .args = {"-tf", blob_cache_path.string()},
+      .search_path = false,
       .timeout = pafio::kExternalProcessStepTimeout,
       .error_context = "registry process",
   });
@@ -680,8 +696,9 @@ void ValidateTarListingPaths(const fs::path &blob_cache_path)
   }
 
   const pafio::ProcessResult verbose_listing = pafio::RunProcess<pafio::CacheError>({
-      .program = "tar",
+      .program = pafio::ResolvedTarPath(),
       .args = {"-tvf", blob_cache_path.string()},
+      .search_path = false,
       .timeout = pafio::kExternalProcessStepTimeout,
       .error_context = "registry process",
   });
@@ -723,8 +740,9 @@ fs::path EnsureCheckout(const fs::path &pafio_home, const RegistryEntry &entry)
   const fs::path blob_cache_path = BlobCachePath(pafio_home, entry.sha256);
   ValidateTarListingPaths(blob_cache_path);
   const pafio::ProcessResult extract = pafio::RunProcess<pafio::CacheError>({
-      .program = "tar",
+      .program = pafio::ResolvedTarPath(),
       .args = {"--no-same-owner", "--no-same-permissions", "-xf", blob_cache_path.string(), "-C", checkout_root.string()},
+      .search_path = false,
       .timeout = pafio::kExternalProcessStepTimeout,
       .error_context = "registry process",
   });
@@ -762,6 +780,7 @@ RegistryMaterializationResult MaterializeRegistryPackage(
   });
   const fs::path pafio_home = ResolvePafioHome();
 
+  std::optional<std::string> trusted_root_sha256;
   if (IsHttpRegistry(security.registry_root))
   {
     const std::optional<RegistryTrustPin> trust_pin = ResolveRegistryTrustPin(pafio_home, security.registry_root);
@@ -771,25 +790,57 @@ RegistryMaterializationResult MaterializeRegistryPackage(
           "remote registry is not trusted: import a platform registry descriptor with 'pafio registry trust import' before fetching " +
           security.registry_root);
     }
-    const std::string root_metadata = LoadRegistryObjectText(
+    trusted_root_sha256 = trust_pin->root_sha256;
+  }
+
+  const std::string config_text = LoadRegistryObjectText(
+      pafio_home, security.registry_root, security.request_headers, "config.json", "registry v2 config", offline);
+  const RegistryConfig config = ValidateConfig(ParseJsonObject(config_text, "registry v2 config"), "registry v2 config");
+  const auto [package_namespace, _short_name] = SplitPackageName(package_name);
+  const std::string targets_relative = config.targets_prefix + package_namespace + ".json";
+
+  // Collect the signed trust objects so the timestamp -> snapshot -> targets
+  // chain can be verified before any registry-declared path is used.
+  std::map<std::string, std::string> tuf_objects;
+  tuf_objects["config.json"] = config_text;
+  const auto load_object = [&](const std::string &relative_path, const std::string &context) {
+    tuf_objects[NormalizeRelativeRegistryPath(relative_path, context).generic_string()] = LoadRegistryObjectText(
         pafio_home,
         security.registry_root,
         security.request_headers,
-        "trust/root.json",
-        "registry v2 root metadata",
+        relative_path,
+        context,
         offline);
-    const std::string actual_root_sha256 = Sha256Text(root_metadata);
-    if (actual_root_sha256 != trust_pin->root_sha256)
-    {
-      throw FetchError(
-          "registry v2 root metadata does not match the imported platform descriptor pin for " +
-          security.registry_root);
-    }
+  };
+  load_object("trust/root.json", "registry v2 root metadata");
+  load_object("trust/timestamp.json", "registry v2 timestamp metadata");
+  load_object("trust/snapshot.json", "registry v2 snapshot metadata");
+  load_object("log/checkpoint.json", "registry v2 transparency checkpoint");
+  load_object(targets_relative, "registry v2 targets metadata");
+
+  const pafio::TufVerifyResult tuf = pafio::VerifyTufChainForPackage(
+      tuf_objects,
+      package_name,
+      package_namespace,
+      trusted_root_sha256,
+      targets_relative);
+  if (!tuf.ok || !tuf.targets.has_value())
+  {
+    throw FetchError(
+        std::string("registry v2 TUF verification failed") +
+        (tuf.error_code.empty() ? "" : " (" + tuf.error_code + ")") + ": " + tuf.error);
   }
 
-  const RegistryConfig config = LoadConfig(pafio_home, security.registry_root, security.request_headers, offline);
-  const RegistryPackageMetadata metadata =
-      LoadPackageMetadata(pafio_home, security.registry_root, security.request_headers, config, package_name, version, offline);
+  // The targets bytes in tuf_objects were authenticated by the verified
+  // snapshot digest and role signature; the release metadata binds the index
+  // record and source artifact digests used below.
+  const std::string targets_key = NormalizeRelativeRegistryPath(targets_relative, "registry v2 targets path").generic_string();
+  const RegistryPackageMetadata metadata = ValidateTargetsMetadata(
+      ParseJsonObject(tuf_objects.at(targets_key), "registry v2 targets metadata"),
+      package_name,
+      package_namespace,
+      version,
+      "registry v2 targets metadata");
   const RegistryEntry entry =
       LoadEntry(pafio_home, security.registry_root, security.request_headers, package_name, version, metadata, offline);
   MaterializeArtifact(pafio_home, security.registry_root, security.request_headers, entry, offline);

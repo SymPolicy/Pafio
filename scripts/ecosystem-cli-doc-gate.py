@@ -13,9 +13,12 @@ CANONICAL_GATE = ROOT.parent / "styio-nightly" / "scripts" / "ecosystem-cli-doc-
 
 def main(argv: list[str] | None = None) -> int:
     args = list(sys.argv[1:] if argv is None else argv)
+    require_workspace = "--require-workspace" in args
+    if require_workspace:
+        args.remove("--require-workspace")
     if not CANONICAL_GATE.is_file():
         payload = {
-            "ok": True,
+            "ok": not require_workspace,
             "skipped": True,
             "reason": f"canonical gate not found at {CANONICAL_GATE}",
         }
@@ -23,7 +26,7 @@ def main(argv: list[str] | None = None) -> int:
             print(json.dumps(payload, sort_keys=True))
         else:
             print(f"[SKIP] {payload['reason']}")
-        return 0
+        return 1 if require_workspace else 0
     proc = subprocess.run([sys.executable, str(CANONICAL_GATE), *args], cwd=ROOT)
     return proc.returncode
 
