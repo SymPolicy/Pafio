@@ -2,11 +2,13 @@
 
 #include "PafioCore/Errors.hpp"
 
+#include <algorithm>
 #include <array>
 #include <cctype>
 #include <filesystem>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <sstream>
 #include <utility>
 #include <vector>
@@ -39,6 +41,74 @@ bool IsHttpRegistryRoot(const std::string &value)
 bool IsFileRegistryRoot(const std::string &value)
 {
   return value.starts_with("file://");
+}
+
+bool IsLoopbackHttpRegistryRoot(const std::string &value)
+{
+  constexpr std::string_view kScheme = "http://";
+  if (!value.starts_with(kScheme))
+  {
+    return false;
+  }
+  const std::string authority = std::string(value).substr(kScheme.size(), value.find('/', kScheme.size()) - kScheme.size());
+  std::string host = authority;
+  if (host.starts_with("["))
+  {
+    const std::size_t close = host.find(']');
+    host = close == std::string::npos ? "" : host.substr(1, close - 1);
+    return host == "::1";
+  }
+  if (const std::size_t colon = host.rfind(':'); colon != std::string::npos)
+  {
+    host = host.substr(0, colon);
+  }
+  for (char &ch : host)
+  {
+    ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
+  }
+  if (host == "localhost" || host == "localhost.")
+  {
+    return true;
+  }
+  // Only a strict dotted IPv4 literal may claim loopback: a registered name
+  // that merely shares the 127. prefix resolves through DNS to a remote host.
+  // Shorthand or non-decimal inet_aton forms are rejected rather than
+  // reinterpreted.
+  if (std::count(host.begin(), host.end(), '.') != 3)
+  {
+    return false;
+  }
+  std::stringstream stream(host);
+  std::string segment;
+  int octets = 0;
+  while (std::getline(stream, segment, '.'))
+  {
+    if (octets >= 4 || segment.empty() || segment.size() > 3 ||
+        !std::all_of(segment.begin(), segment.end(), [](unsigned char ch) { return std::isdigit(ch) != 0; }) ||
+        std::stoi(segment) > 255)
+    {
+      return false;
+    }
+    if (octets == 0 && std::stoi(segment) != 127)
+    {
+      return false;
+    }
+    ++octets;
+  }
+  return octets == 4;
+}
+
+bool RegistryRootHasUserinfo(const std::string &value)
+{
+  const std::size_t scheme_end = value.find("://");
+  if (scheme_end == std::string::npos)
+  {
+    return false;
+  }
+  const std::size_t authority_start = scheme_end + 3;
+  const std::size_t authority_end = value.find('/', authority_start);
+  const std::string authority = value.substr(authority_start, authority_end - authority_start);
+  return authority.find('@') != std::string::npos;
 }
 
 std::vector<std::string> SplitPosixPath(const std::string &value)
@@ -114,6 +184,16 @@ SecurityHandlerResult ValidateReadRegistryRootScheme(
   if (!IsFileRegistryRoot(decision.registry_root) && !IsHttpRegistryRoot(decision.registry_root))
   {
     throw pafio::FetchError("registry root must use file://, http://, or https://: " + request.registry_root);
+  }
+  if (RegistryRootHasUserinfo(decision.registry_root))
+  {
+    throw pafio::FetchError(
+        "registry root must not embed credentials in the URL userinfo; configure authentication separately");
+  }
+  if (decision.registry_root.starts_with("http://") && !IsLoopbackHttpRegistryRoot(decision.registry_root))
+  {
+    throw pafio::FetchError(
+        "remote registry reads require https://; http:// registry roots are limited to loopback development registries");
   }
   return SecurityHandlerResult::kContinue;
 }

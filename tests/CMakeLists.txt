@@ -25,6 +25,7 @@ add_executable(pafio_native_tests
   native/ToolPinTests.cpp
   native/ToolchainStateTests.cpp
   native/ToolStatusTests.cpp
+  native/TufTests.cpp
   native/VendorTests.cpp
 )
 target_link_libraries(pafio_native_tests PRIVATE pafio_core GTest::gtest_main)

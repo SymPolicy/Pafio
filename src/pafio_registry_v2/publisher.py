@@ -190,7 +190,7 @@ def _prepare_publish_candidate(
 
 def _validate_dependency_registry(registry: str, context: str) -> None:
     parsed = urlsplit(registry)
-    if parsed.scheme and (
+    if (
         parsed.username is not None
         or parsed.password is not None
         or parsed.query
@@ -198,6 +198,14 @@ def _validate_dependency_registry(registry: str, context: str) -> None:
     ):
         raise RegistryV2Error(
             f"{context} must not embed credentials or token-bearing components in the registry URL"
+        )
+    if parsed.netloc and not parsed.scheme:
+        raise RegistryV2Error(
+            f"{context} must be a local path, file:// root, or http(s) root, not a scheme-relative reference"
+        )
+    if parsed.scheme and parsed.scheme not in ("file", "http", "https"):
+        raise RegistryV2Error(
+            f"{context} uses unsupported registry URL scheme '{parsed.scheme}'"
         )
 
 
@@ -361,6 +369,7 @@ def _initialize_registry_root(
         "type": "checkpoint",
         "spec_version": "1",
         "version": 1,
+        "expires": expires_in(7),
         "generated_at": registry_time,
         "tree_size": 0,
         "root_hash": _log_root_hash([]),
@@ -486,6 +495,7 @@ def _refresh_signed_metadata(dest_root: pathlib.Path, role_keys: dict[str, Any],
         "type": "checkpoint",
         "spec_version": "1",
         "version": checkpoint_version,
+        "expires": expires_in(7),
         "generated_at": registry_time,
         "tree_size": len(leaf_hashes),
         "root_hash": _log_root_hash(leaf_hashes),

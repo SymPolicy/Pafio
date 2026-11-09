@@ -518,6 +518,7 @@ def main(argv: list[str] | None = None) -> int:
         if ":" in header:
             redactions.append((header.split(":", 1)[1].strip(), "<redacted>"))
     sanitized_steps = [sanitize_step_record(step, redactions) for step in steps]
+    redacted_errors = [apply_redactions(error, redactions) for error in validation_errors]
 
     summary = {
         "ok": ok,
@@ -529,7 +530,7 @@ def main(argv: list[str] | None = None) -> int:
         "publish_profile": args.publish_profile or "",
         "fetch_trust_descriptor_supplied": bool(args.fetch_trust_descriptor),
         "sync_timeout_seconds": args.sync_timeout_seconds,
-        "validation_errors": [apply_redactions(error, redactions) for error in validation_errors],
+        "validation_errors": redacted_errors,
         "steps": sanitized_steps,
     }
 
@@ -547,8 +548,8 @@ def main(argv: list[str] | None = None) -> int:
                 sys.stderr.write(step["stderr"])
                 if not step["stderr"].endswith("\n"):
                     sys.stderr.write("\n")
-        if validation_errors:
-            for error in validation_errors:
+        if redacted_errors:
+            for error in redacted_errors:
                 sys.stderr.write(f"[VALIDATION] {error}\n")
         sys.stdout.write(
             f"registry server gate {'passed' if ok else 'failed'} for publish={redact_root(publish_root)} fetch={redact_root(fetch_root)}\n"

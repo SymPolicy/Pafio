@@ -9,10 +9,102 @@ permissions:
   contents: read
 
 jobs:
-  audit:
+  range-scan:
+    name: audit / range credential scan
     runs-on: ubuntu-24.04
-    timeout-minutes: 2
+    timeout-minutes: 10
 
     steps:
-      - name: Confirm policy workflow handoff
-        run: echo "The released policy audit runs in .github/workflows/audit.yml."
+      - name: Checkout pafio
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Resolve audited range and trusted scanner base
+        id: refs
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            base="${{ github.event.pull_request.base.sha }}"
+            head="${{ github.event.pull_request.head.sha }}"
+            trusted="${{ github.event.pull_request.base.sha }}"
+          else
+            git fetch --no-tags origin nightly
+            trusted="$(git rev-parse FETCH_HEAD)"
+            if [[ "${{ github.event.before }}" == "0000000000000000000000000000000000000000" ]]; then
+              base="$trusted"
+            else
+              base="${{ github.event.before }}"
+            fi
+            head="${{ github.sha }}"
+          fi
+          echo "base=$base" >> "$GITHUB_OUTPUT"
+          echo "head=$head" >> "$GITHUB_OUTPUT"
+          echo "trusted=$trusted" >> "$GITHUB_OUTPUT"
+
+      - name: Install scanner pinned to the trusted base
+        shell: bash
+        run: |
+          # The scanner always comes from the audited base revision (pull
+          # request base) or the default nightly tip (push), never from the
+          # revision under review. Fails closed when the trusted base does
+          # not carry scripts/secret-scan.py yet.
+          git cat-file -e "${{ steps.refs.outputs.trusted }}^{commit}"
+          git show "${{ steps.refs.outputs.trusted }}:scripts/secret-scan.py" > "$RUNNER_TEMP/secret-scan.py"
+          test -s "$RUNNER_TEMP/secret-scan.py"
+
+      - name: Scan the outgoing range
+        run: |
+          python3 "$RUNNER_TEMP/secret-scan.py" \
+            --range "${{ steps.refs.outputs.base }}..${{ steps.refs.outputs.head }}"
+
+  policy:
+    name: audit / policy checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout pafio
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Resolve audited base
+        id: refs
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            base="${{ github.event.pull_request.base.sha }}"
+            head="${{ github.event.pull_request.head.sha }}"
+          elif [[ "${{ github.event.before }}" == "0000000000000000000000000000000000000000" ]]; then
+            base="HEAD^"
+            head="${{ github.sha }}"
+          else
+            base="${{ github.event.before }}"
+            head="${{ github.sha }}"
+          fi
+          echo "base=$base" >> "$GITHUB_OUTPUT"
+          echo "head=$head" >> "$GITHUB_OUTPUT"
+
+      - name: Repository hygiene gate
+        run: |
+          python3 scripts/repo-hygiene-gate.py \
+            --mode push \
+            --range "${{ steps.refs.outputs.base }}..${{ steps.refs.outputs.head }}"
+
+      - name: No binary artifacts
+        run: python3 scripts/check_no_binaries.py
+
+      - name: Team runbook gate
+        run: python3 scripts/team-docs-gate.py --base "${{ steps.refs.outputs.base }}"
+
+  audit:
+    name: audit
+    needs: [range-scan, policy]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Confirm audit gates passed
+        run: echo "range credential scan and policy checks passed"

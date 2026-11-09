@@ -25,10 +25,11 @@ jobs:
 
     steps:
       - name: Checkout pafio
-        uses: actions/checkout@v5
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           fetch-depth: 0
           path: pafio
+          persist-credentials: false
 
       - name: Resolve sibling checkout ref
         id: sibling-ref
@@ -51,21 +52,23 @@ jobs:
           exit 1
 
       - name: Checkout styio-nightly sibling repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           repository: Unka-Malloc/styio-nightly
           ref: ${{ steps.sibling-ref.outputs.ref }}
           path: styio-nightly
+          persist-credentials: false
 
       - name: Checkout styio-view sibling repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           repository: Unka-Malloc/styio-view
           ref: ${{ steps.sibling-ref.outputs.ref }}
           path: styio-view
+          persist-credentials: false
 
       - name: Set up standardized Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: ${{ env.STYIO_PYTHON_VERSION }}
 
@@ -132,7 +135,6 @@ jobs:
           --mode push
           --base "${{ steps.ci_refs.outputs.base_ref }}"
           --range "${{ steps.ci_refs.outputs.range }}"
-          --skip-audit
           --skip-health
 
       - name: Run unified submit gate
@@ -148,10 +150,12 @@ jobs:
 
     steps:
       - name: Checkout pafio
-        uses: actions/checkout@v5
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
 
       - name: Set up standardized Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: ${{ env.STYIO_PYTHON_VERSION }}
 
@@ -170,10 +174,12 @@ jobs:
 
     steps:
       - name: Checkout pafio
-        uses: actions/checkout@v5
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
 
       - name: Set up standardized Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: ${{ env.STYIO_PYTHON_VERSION }}
 

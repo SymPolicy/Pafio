@@ -53,6 +53,16 @@ ProcessResult RunProcessChecked(const ProcessRequest &request);
 std::string DescribeProcessFailure(const ProcessResult &result);
 std::string TrimTrailingNewline(std::string text);
 
+inline std::string ProcessPathString(const std::filesystem::path &path)
+{
+#if defined(_WIN32)
+  const std::u8string value = path.u8string();
+  return {reinterpret_cast<const char *>(value.data()), value.size()};
+#else
+  return path.string();
+#endif
+}
+
 template <typename Error = ProcessFailure>
 ProcessResult RunProcess(const ProcessRequest &request)
 {

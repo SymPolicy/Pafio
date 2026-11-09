@@ -20,7 +20,7 @@ without redefining planning, registry, compiler, or service contract semantics.
 6. `docs/`
 7. `docs/external/`
 8. `docs/audit/`
-9. `scripts/audit-gate.sh`
+9. `.github/workflows/audit.yml`
 10. `scripts/docs-index.py`
 11. `scripts/docs-lifecycle.py`
 12. `scripts/docs-audit.py`
@@ -73,7 +73,6 @@ without redefining planning, registry, compiler, or service contract semantics.
 
 ```bash
 ./scripts/docs-gate.sh
-./scripts/audit-gate.sh
 python3 scripts/submit-gate.py --profile ci --json
 python3 scripts/perf-gate.py
 python3 scripts/repo-hygiene-check.py --mode tracked
