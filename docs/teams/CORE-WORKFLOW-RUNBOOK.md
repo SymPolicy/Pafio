@@ -47,9 +47,10 @@ installation or hosted execution.
    library dependencies; MSVC does not supply the incidental `<string>` import
    previously inherited by `WorkflowApp.hpp` on other toolchains.
 9. Keep filesystem paths native inside Pafio, and convert them to UTF-8 only
-   when placing them in Windows process fields. Resolve the shared home from a
-   nonempty `PAFIO_HOME`, then `HOME`, then the Unix account database; fail
-   explicitly when no home can be resolved.
+   when placing them in Windows process fields; `ProcessPathString` in
+   `Process.hpp` owns that conversion for process arguments. Resolve the shared
+   home from a nonempty `PAFIO_HOME`, then `HOME`, then the Unix account
+   database; fail explicitly when no home can be resolved.
 
 ## Change Classes
 

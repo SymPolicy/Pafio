@@ -24,7 +24,7 @@ class ArtifactPolicyTests(unittest.TestCase):
         self.assertEqual(policy.tracked_binary_allow_globs, ())
         self.assertIn("build/", policy.required_gitignore_patterns)
         self.assertIn(".github/workflows", policy.required_delivery_paths)
-        self.assertIn(".git/", policy.export_excludes)
+        self.assertIn(".git", policy.export_excludes)
 
 
 if __name__ == "__main__":
