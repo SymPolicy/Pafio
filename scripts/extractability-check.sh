@@ -37,6 +37,7 @@ fi
 (
   cd "$TMP_DIR/pafio"
   env \
+    PAFIO_BUILD_DIR="$TMP_DIR/build" \
     FETCHCONTENT_SOURCE_DIR_TOMLPLUSPLUS="${DEPS_CACHE_DIR}/tomlplusplus-src" \
     FETCHCONTENT_SOURCE_DIR_NLOHMANN_JSON="${DEPS_CACHE_DIR}/nlohmann_json-src" \
     FETCHCONTENT_SOURCE_DIR_GOOGLETEST="${DEPS_CACHE_DIR}/googletest-src" \
