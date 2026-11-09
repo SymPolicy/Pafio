@@ -99,8 +99,8 @@ jobs:
           SCANNER="$RUNNER_TEMP/secret-scan.py"
           # Run the scanner from a trusted revision so the audited range
           # cannot weaken the check that reviews it: the pull-request or
-          # merge-queue base for those events, the protected default
-          # branch's tip for everything else (github.event.before is
+          # merge-queue base for those events, the protected integration
+          # trunk's tip for everything else (github.event.before is
           # self-selected and untrusted). Fail closed when the trusted
           # copy cannot be obtained.
           case "$GITHUB_EVENT_NAME" in
@@ -108,7 +108,7 @@ jobs:
               SRC="$BASE"
               ;;
             *)
-              git fetch --no-tags --depth=1 origin "${{ github.event.repository.default_branch }}"
+              git fetch --no-tags --depth=1 origin nightly
               SRC="FETCH_HEAD"
               ;;
           esac
