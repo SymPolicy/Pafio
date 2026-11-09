@@ -20,6 +20,10 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#if !defined(__APPLE__)
+extern char **environ;
+#endif
+
 namespace
 {
 
@@ -79,7 +83,6 @@ char **CurrentEnvironment()
 #if defined(__APPLE__)
   return *_NSGetEnviron();
 #else
-  extern char **environ;
   return environ;
 #endif
 }
