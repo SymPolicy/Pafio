@@ -35,3 +35,12 @@ Docs/process-only delivery:
 diff when unstaged worktree changes or PR-range changes exist. Low-level
 `staged`, `checkpoint`, and `push` modes are retained for hooks and targeted
 debugging, but the delivery-facing command is the no-argument entrypoint.
+
+## Credential Scan Coverage
+
+The CI `range-scan` job runs the repository-local `scripts/secret-scan.py`
+over the outgoing range (token/key shapes only, per commit including merges
+against their first parent). The broader privacy, identity, local-path and
+workspace-hygiene contract is owned by the operator-side publication gate,
+not by CI; this split is deliberate and recorded here so the required merge
+checks stay unambiguous.

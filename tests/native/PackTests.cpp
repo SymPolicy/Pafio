@@ -6,6 +6,7 @@
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
+#include <random>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -53,6 +54,28 @@ std::string ReadTarFile(const fs::path &archive_path, const std::string &member)
   const ChildProcessResult result = RunChildProcess("tar", {"-xOf", archive_path.string(), member});
   EXPECT_EQ(result.exit_code, 0) << result.stderr_text;
   return result.stdout_text;
+}
+
+// Credential-shaped fixture content is minted at test runtime so no fixed
+// token value ever exists in the source tree.
+std::string RandomTokenChars(std::size_t length, const char *alphabet)
+{
+  std::mt19937_64 engine{std::random_device{}()};
+  std::uniform_int_distribution<std::size_t> pick{0, std::char_traits<char>::length(alphabet) - 1};
+  std::string out;
+  out.reserve(length);
+  for (std::size_t i = 0; i < length; ++i)
+  {
+    out.push_back(alphabet[pick(engine)]);
+  }
+  return out;
+}
+
+std::string RandomBase64Url(std::size_t length)
+{
+  return RandomTokenChars(
+      length,
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_");
 }
 
 }  // namespace
@@ -304,7 +327,10 @@ TEST(PackTests, RejectsCredentialShapedFileContents)
       "name = \"app\"\n"
       "path = \"src/main.styio\"\n");
   WriteFile(root / "src/main.styio", ">_(\"hello\")\n");
-  WriteFile(root / "notes.txt", std::string("-----BEGIN TEST ") + "PRIVATE KEY-----\n");
+  WriteFile(root / "notes.txt",
+            "-----BEGIN " +
+                RandomTokenChars(4, "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789") +
+                " PRIVATE KEY-----\n");
 
   EXPECT_THROW(
       pafio::WriteSourcePackage({
@@ -330,11 +356,10 @@ TEST(PackTests, RejectsJwtShapedFileContents)
       "name = \"app\"\n"
       "path = \"src/main.styio\"\n");
   WriteFile(root / "src/main.styio", ">_(\"hello\")\n");
-  // The JWT is assembled at test runtime so the credential-shaped literal
-  // never exists in the source tree while still exercising the detector.
+  // The JWT-shaped value is minted at test runtime so no credential literal
+  // exists in the source tree while still exercising the detector.
   const std::string jwt =
-      std::string("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9") + "." +
-      "eyJzdWIiOiIxMjM0NTY3ODkwIn0" + "." + "c2lnbmF0dXJlcGF5bG9hZA";
+      "eyJ" + RandomBase64Url(12) + "." + RandomBase64Url(12) + "." + RandomBase64Url(12);
   WriteFile(root / "notes.txt", "token: " + jwt + "\n");
 
   EXPECT_THROW(
