@@ -502,19 +502,6 @@ std::string LoadRegistryObjectText(
   return ReadTextFile(cache_path, "cached " + context);
 }
 
-RegistryConfig LoadConfig(
-    const fs::path &pafio_home,
-    const std::string &registry_root,
-    const std::vector<std::string> &request_headers,
-    const bool offline)
-{
-  return ValidateConfig(
-      ParseJsonObject(
-          LoadRegistryObjectText(pafio_home, registry_root, request_headers, "config.json", "registry v2 config", offline),
-          "registry v2 config"),
-      "registry v2 config");
-}
-
 RegistryEntry LoadEntry(
     const fs::path &pafio_home,
     const std::string &registry_root,
@@ -806,13 +793,16 @@ RegistryMaterializationResult MaterializeRegistryPackage(
     trusted_root_sha256 = trust_pin->root_sha256;
   }
 
-  const RegistryConfig config = LoadConfig(pafio_home, security.registry_root, security.request_headers, offline);
+  const std::string config_text = LoadRegistryObjectText(
+      pafio_home, security.registry_root, security.request_headers, "config.json", "registry v2 config", offline);
+  const RegistryConfig config = ValidateConfig(ParseJsonObject(config_text, "registry v2 config"), "registry v2 config");
   const auto [package_namespace, _short_name] = SplitPackageName(package_name);
   const std::string targets_relative = config.targets_prefix + package_namespace + ".json";
 
   // Collect the signed trust objects so the timestamp -> snapshot -> targets
   // chain can be verified before any registry-declared path is used.
   std::map<std::string, std::string> tuf_objects;
+  tuf_objects["config.json"] = config_text;
   const auto load_object = [&](const std::string &relative_path, const std::string &context) {
     tuf_objects[NormalizeRelativeRegistryPath(relative_path, context).generic_string()] = LoadRegistryObjectText(
         pafio_home,
@@ -822,7 +812,6 @@ RegistryMaterializationResult MaterializeRegistryPackage(
         context,
         offline);
   };
-  load_object("config.json", "registry v2 config");
   load_object("trust/root.json", "registry v2 root metadata");
   load_object("trust/timestamp.json", "registry v2 timestamp metadata");
   load_object("trust/snapshot.json", "registry v2 snapshot metadata");
