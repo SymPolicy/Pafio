@@ -127,30 +127,17 @@ class BootstrapCliTests(unittest.TestCase):
         self.assertEqual(payload["command"], "tool install")
 
     def test_new_creates_bin_project(self) -> None:
-        temp_root = pathlib.Path(self._testMethodName).resolve()
-        if temp_root.exists():
-            if temp_root.is_dir():
-                for child in sorted(temp_root.rglob("*"), reverse=True):
-                    if child.is_file():
-                        child.unlink()
-                    elif child.is_dir():
-                        child.rmdir()
-                temp_root.rmdir()
-        proc = self._run_cli(
-            ["new", "acme/demo", str(temp_root)],
-            check=True,
-            capture_output=True,
-            text=True,
-        )
-        self.assertIn("initialized project", proc.stdout)
-        self.assertTrue((temp_root / "pafio.toml").exists())
-        self.assertTrue((temp_root / "src" / "main.styio").exists())
-        for child in sorted(temp_root.rglob("*"), reverse=True):
-            if child.is_file():
-                child.unlink()
-            elif child.is_dir():
-                child.rmdir()
-        temp_root.rmdir()
+        with tempfile.TemporaryDirectory(prefix="pafio-bootstrap-new-") as temp_dir:
+            temp_root = pathlib.Path(temp_dir) / "project"
+            proc = self._run_cli(
+                ["new", "acme/demo", str(temp_root)],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            self.assertIn("initialized project", proc.stdout)
+            self.assertTrue((temp_root / "pafio.toml").exists())
+            self.assertTrue((temp_root / "src" / "main.styio").exists())
 
     def test_check_validates_manifest(self) -> None:
         manifest = FIXTURES / "manifests" / "ok-single-package" / "pafio.toml"

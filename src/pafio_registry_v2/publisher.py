@@ -8,6 +8,7 @@ import tarfile
 import tomllib
 from collections import defaultdict
 from typing import Any
+from urllib.parse import urlsplit
 
 from .common import (
     REGISTRY_SUBPROCESS_TIMEOUT_SECONDS,
@@ -187,6 +188,19 @@ def _prepare_publish_candidate(
     return payload
 
 
+def _validate_dependency_registry(registry: str, context: str) -> None:
+    parsed = urlsplit(registry)
+    if parsed.scheme and (
+        parsed.username is not None
+        or parsed.password is not None
+        or parsed.query
+        or parsed.fragment
+    ):
+        raise RegistryV2Error(
+            f"{context} must not embed credentials or token-bearing components in the registry URL"
+        )
+
+
 def _normalize_dependency(alias: str, spec: Any, section_name: str) -> dict[str, Any]:
     if not isinstance(spec, dict):
         raise RegistryV2Error(f"dependency '{alias}' in [{section_name}] must be an inline table")
@@ -194,6 +208,7 @@ def _normalize_dependency(alias: str, spec: Any, section_name: str) -> dict[str,
     validate_package_name(package, f"dependency '{alias}' package in [{section_name}]")
     version = require_string(spec.get("version"), f"dependency '{alias}' version in [{section_name}]")
     registry = require_string(spec.get("registry"), f"dependency '{alias}' registry in [{section_name}]")
+    _validate_dependency_registry(registry, f"dependency '{alias}' registry in [{section_name}]")
     return {
         "alias": alias,
         "package": package,

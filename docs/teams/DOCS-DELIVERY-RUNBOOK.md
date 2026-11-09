@@ -38,28 +38,29 @@ without redefining planning, registry, compiler, or service contract semantics.
 ## Daily Workflow
 
 1. Keep repository-level build, docs, and delivery entrypoints consistent.
-2. Regenerate `INDEX.md` files after docs-tree changes.
-3. Keep workflow docs in `docs/assets/workflow/` aligned with the actual scripts.
-4. Keep the shared `styio-pafio` / `styio-nightly` toolchain baseline explicit in docs and CI: Debian 13, LLVM 18.1.x, CMake/CTest 3.31.6, and Python 3.13.5.
-5. Keep the official command grammar consistent across docs: `pafio use <mode>`, `pafio set <subject> as <value>`, `pafio sync`, `pafio project-graph --json`, `pafio install styio@latest`, `pafio cloud status --json`, `pafio cloud plan --json`, and `pafio tool status --json`.
-6. Keep repo entry docs and closure docs aligned: `README.md`, `docs/BUILD-AND-DEV-ENV.md`, `docs/planning/Pafio-Master-Plan.md`, `docs/planning/Pafio-Stage-Review-and-Future-Features.md`, `docs/planning/Pafio-Workstreams-and-TODOs.md`, `docs/operations/Pafio-Verification-Matrix.md`, `docs/operations/Pafio-Cloud-Compile-Stress-Runbook.md`, and `docs/operations/Pafio-Repo-Split-Runbook.md` must agree on wrapper-vs-binary entrypoints, current implementation status, and root-relative command paths.
-7. When `docs/governance/Pafio-CLI-Contract.md` changes source-build wording, run the cross-repo ecosystem CLI doc gate from `styio-nightly` and keep its fixed source-build needles exact.
-8. Keep [../specs/POST-COMMIT-CI-CHECKS.md](../specs/POST-COMMIT-CI-CHECKS.md) aligned with actual GitHub Actions monitoring practice whenever commit, push, or CI handoff rules change.
-9. Keep sibling-repository handoff docs under `docs/external/for-*` or explicit planning handoff docs; do not recreate root-level external handoff collections.
-10. Keep `docs/planning/Pafio-Platform-Migration-Handoff.md` aligned with downstream `styio-platform` docs when server/platform ownership moves.
-11. Keep `docs/governance/Pafio-Local-Offline-Package-Contract.md` aligned with README and registry docs when offline package or local import/export wording changes.
-12. Keep top-level Apache-2.0 license, source-distribution policy, and dependency usage-boundary evidence aligned with `audit`.
-13. Treat regenerated `docs/audit/` reports as evidence snapshots: update ownership metadata and indexes when they move, but leave defect status changes to code/test gate evidence.
-14. Keep [../specs/TECHNOLOGY-COMPONENT-INVENTORY.md](../specs/TECHNOLOGY-COMPONENT-INVENTORY.md) aligned with `audit` whenever the technology stack, internal components, open-source components, dependency manifests, Apache-2.0 evidence, or commercial-risk boundaries change.
-15. For registry-management documentation changes, require explicit coverage of publish, verify, mirror handoff, offline behavior, cache reuse, and public/private security boundary before closing docs/audit work.
-16. Maintain GitHub merge gates through Rulesets rather than legacy classic branch protection; audit effective branch rules when required status-check governance changes, and keep `local-ci-gate` as the pafio repository's own CI status-check surface rather than treating it as the shared upstream `styio-ci-gate` ecosystem resource gate.
-17. Keep `local-ci-gate` sibling checkouts on downstream `nightly` branches when the downstream repositories have collapsed their branch set to `nightly`.
-18. Keep `docs/governance/Pafio-Entry-Argument-Index.md`, `docs/governance/Docs-Maintenance-Model.md`, and `docs/operations/Pafio-Verification-Matrix.md` aligned whenever delivery scripts or submit gates change.
-19. Keep `scripts/delivery-gate.sh` as the delivery-facing entrypoint with a
+2. Regenerate `INDEX.md` files after docs-tree changes, and retire superseded team runbooks through `docs/teams/INDEX.md` rather than deleting the index row silently.
+3. Keep operational docs scoped to client-side validation; service deployment ownership belongs to the platform-service repository.
+4. Keep workflow docs in `docs/assets/workflow/` aligned with the actual scripts.
+5. Keep the shared `styio-pafio` / `styio-nightly` toolchain baseline explicit in docs and CI: Debian 13, LLVM 18.1.x, CMake/CTest 3.31.6, and Python 3.13.5.
+6. Keep the official command grammar consistent across docs: `pafio use <mode>`, `pafio set <subject> as <value>`, `pafio sync`, `pafio project-graph --json`, `pafio install styio@latest`, `pafio cloud status --json`, `pafio cloud plan --json`, and `pafio tool status --json`.
+7. Keep repo entry docs and closure docs aligned: `README.md`, `docs/BUILD-AND-DEV-ENV.md`, `docs/planning/Pafio-Master-Plan.md`, `docs/planning/Pafio-Stage-Review-and-Future-Features.md`, `docs/planning/Pafio-Workstreams-and-TODOs.md`, `docs/operations/Pafio-Verification-Matrix.md`, `docs/operations/Pafio-Cloud-Compile-Stress-Runbook.md`, and `docs/operations/Pafio-Repo-Split-Runbook.md` must agree on wrapper-vs-binary entrypoints, current implementation status, and root-relative command paths.
+8. When `docs/governance/Pafio-CLI-Contract.md` changes source-build wording, run the cross-repo ecosystem CLI doc gate from `styio-nightly` and keep its fixed source-build needles exact.
+9. Keep [../specs/POST-COMMIT-CI-CHECKS.md](../specs/POST-COMMIT-CI-CHECKS.md) aligned with actual GitHub Actions monitoring practice whenever commit, push, or CI handoff rules change.
+10. Keep sibling-repository handoff docs under `docs/external/for-*` or explicit planning handoff docs; do not recreate root-level external handoff collections.
+11. Keep `docs/planning/Pafio-Platform-Migration-Handoff.md` aligned with downstream `styio-platform` docs when server/platform ownership moves.
+12. Keep `docs/governance/Pafio-Local-Offline-Package-Contract.md` aligned with README and registry docs when offline package or local import/export wording changes.
+13. Keep top-level Apache-2.0 license, source-distribution policy, and dependency usage-boundary evidence aligned with `audit`.
+14. Treat regenerated `docs/audit/` reports as evidence snapshots: update ownership metadata and indexes when they move, but leave defect status changes to code/test gate evidence.
+15. Keep [../specs/TECHNOLOGY-COMPONENT-INVENTORY.md](../specs/TECHNOLOGY-COMPONENT-INVENTORY.md) aligned with `audit` whenever the technology stack, internal components, open-source components, dependency manifests, Apache-2.0 evidence, or commercial-risk boundaries change.
+16. For registry-management documentation changes, require explicit coverage of publish, verify, mirror handoff, offline behavior, cache reuse, and public/private security boundary before closing docs/audit work.
+17. Maintain GitHub merge gates through Rulesets rather than legacy classic branch protection; audit effective branch rules when required status-check governance changes, and keep `local-ci-gate` as the pafio repository's own CI status-check surface rather than treating it as the shared upstream `styio-ci-gate` ecosystem resource gate.
+18. Keep `local-ci-gate` sibling checkouts on downstream `nightly` branches when the downstream repositories have collapsed their branch set to `nightly`.
+19. Keep `docs/governance/Pafio-Entry-Argument-Index.md`, `docs/governance/Docs-Maintenance-Model.md`, and `docs/operations/Pafio-Verification-Matrix.md` aligned whenever delivery scripts or submit gates change.
+20. Keep `scripts/delivery-gate.sh` as the delivery-facing entrypoint with a
     safe default. The no-argument command must cover dirty worktree changes
     and PR push ranges, infer the fork-parent base when possible, and fail
     when it cannot infer a delivery base.
-20. Keep `staged` checks as low-level hook/debugging tools only; do not use an
+21. Keep `staged` checks as low-level hook/debugging tools only; do not use an
     empty staged diff as evidence that a PR or local delivery is ready.
 
 ## Change Classes

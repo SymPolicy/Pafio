@@ -123,7 +123,7 @@ Must not:
 - workstream TODOs: `docs/planning/Pafio-Workstreams-and-TODOs.md`
 - bootstrap summary: `docs/planning/Pafio-Bootstrap-Checklist.md`
 - gate definitions and commands: `docs/operations/Pafio-Verification-Matrix.md`
-- registry server operational validation: `docs/operations/Pafio-Registry-Server-Runbook.md`
+- registry origin client compatibility validation: `docs/operations/Pafio-Registry-Server-Runbook.md`
 - split procedure: `docs/operations/Pafio-Repo-Split-Runbook.md`
 - `styio` developer knowledge: `docs/external/for-styio/Styio-for-Pafio-Developers.md`
 - `styio` handoff interface spec: `docs/external/for-styio/Styio-External-Interface-Requirement-Spec.md`

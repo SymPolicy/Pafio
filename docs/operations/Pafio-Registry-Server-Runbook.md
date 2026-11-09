@@ -1,24 +1,34 @@
-# Pafio Registry Origin Runbook
+# Pafio Registry Origin Compatibility Runbook
 
-**Purpose:** Provide the executable validation and deployment procedure for a shared `pafio` registry `v2` origin without mixing it with client cache behavior or hosted publish-service policy.
+**Purpose:** Provide the executable client-side validation procedure that proves
+a `pafio` client can publish to and fetch from a shared registry `v2` origin.
+The origin itself — its deployment, replication, retention, and write policy —
+is operated and documented by the platform-service repository, not here.
 
-**Last updated:** 2026-05-02
+**Last updated:** 2026-11-09
 
 ## 1. Scope
 
 This runbook owns:
 
-- server-side smoke validation commands
-- publish/read origin validation flow
-- deployment checklist for the current registry `v2` static root and publish-control-plane boundary
+- client-side publish/fetch compatibility validation commands
+- the `registry-server-gate.py` invocation surface used by the client interop gate
+- operator-facing notes for what a compatible origin must expose to clients
 
-Server policy lives in [../registry/Pafio-Registry-Control-Plane-Contract.md](../registry/Pafio-Registry-Control-Plane-Contract.md) and [../registry/Pafio-Registry-V2-Publish-Control-Plane.md](../registry/Pafio-Registry-V2-Publish-Control-Plane.md). Deployment baseline still lives in [../registry/Pafio-Registry-Deployment-Baseline.md](../registry/Pafio-Registry-Deployment-Baseline.md).
+It does not own origin deployment, server policy, or promotion runbooks for the
+backing store. Server policy lives in
+[../registry/Pafio-Registry-Control-Plane-Contract.md](../registry/Pafio-Registry-Control-Plane-Contract.md)
+and
+[../registry/Pafio-Registry-V2-Publish-Control-Plane.md](../registry/Pafio-Registry-V2-Publish-Control-Plane.md);
+deployment procedures belong to the platform-service repository.
 
 ## 2. Preconditions
 
 - native `pafio` binary is buildable locally
-- target registry root already exposes the canonical shared layout
-- if publish and fetch roots are split, replication or synchronization is already configured between them
+- the target registry origin is already deployed by its owning team and exposes
+  the canonical shared layout
+- if publish and fetch roots are split, the origin operator has already
+  configured replication or synchronization between them
 
 Recommended local build entry:
 
@@ -135,18 +145,21 @@ Use this before touching a real shared registry.
 
 Auth-bearing write-origin smoke tests are intentionally not shipped in the tracked public tree. If a private security module is linked, keep those validations under `tests-private/` and `docs-private/` instead of restoring them to `tests/interop/`.
 
-## 9. Production Checklist
+## 9. Operator Boundary Notes
 
 - use `https` for remote publish and fetch roots
-- preserve immutable object semantics for artifacts and log leaves
-- reject overwrite attempts with `409 Conflict`
-- retain audit logs for publication attempts
-- keep `config/`, `trust/`, `index/`, `artifacts/`, and `log/` backed up together
 - keep upload and download origins synchronized before enabling client installs
-- keep the promotion step auditable and repeatable when upload and read origins are separate
-- if the write origin requires gateway headers, keep them scoped to the upload path only and do not require them from public read origins
-- if a policy file is used for write-origin headers, keep it outside the source tree and rotate its contents through deployment config rather than project manifests
-- if a named profile is used, provision it through the private security module under deployment-owned state rather than from project state
+- if the write origin requires gateway headers, keep them scoped to the upload
+  path only and do not require them from public read origins
+- if a policy file is used for write-origin headers, keep it outside the source
+  tree and rotate its contents through deployment config rather than project
+  manifests
+- if a named profile is used, provision it through the private security module
+  under deployment-owned state rather than from project state
+- origin-side requirements — immutable object semantics, `409 Conflict` on
+  overwrite, audit retention, and backing-store backup — belong to the
+  platform-service runbooks; this repository only validates that the client
+  interoperates with an origin that meets them
 
 ## 10. Failure Triage
 
