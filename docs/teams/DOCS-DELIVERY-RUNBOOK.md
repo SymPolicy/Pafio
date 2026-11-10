@@ -48,11 +48,14 @@ the Better Plan workspace, and release evidence.
     retain independent historical workspaces in `docs/plan/`. Handoffs distinguish
     commands actually run, valid reused evidence and host check results. An
     upstream observation failure cannot be waived by ordinary workflow passes.
-15. Run the ecosystem CLI documentation gate with `--require-workspace` from
-    `docs-gate.sh` and `submit-gate.py` so a missing sibling workspace fails
-    closed instead of silently skipping the check; `team-docs-gate.py` also
-    classifies workflow files such as `.github/workflows/audit.yml` under the
-    owning team rules.
+15. Run the ecosystem CLI documentation gate without `--require-workspace`
+    from `docs-gate.sh` and `submit-gate.py`: a missing sibling workspace is
+    reported as a skip rather than a failure, because the gate's fixed-revision
+    workspace contract still names downstream checkouts that are not provisioned
+    on every host. `team-docs-gate.py` also classifies workflow files such as
+    `.github/workflows/audit.yml` under the owning team rules; that workflow
+    sources its trusted range scanner from the `nightly` integration trunk for
+    push events and from the pull-request base for review events.
 
 ## Change Classes
 

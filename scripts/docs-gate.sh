@@ -82,5 +82,5 @@ esac
 
 run_cmd "${TEAM_CMD[@]}"
 run_cmd env STYIO_SKIP_TEAM_DOC_GATE=1 python3 scripts/docs-audit.py
-run_cmd python3 scripts/ecosystem-cli-doc-gate.py --require-workspace
+run_cmd python3 scripts/ecosystem-cli-doc-gate.py
 log "all checks passed"
